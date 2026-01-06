@@ -3211,3 +3211,115 @@ export async function deleteStore(storeId: string): Promise<void> {
     method: "DELETE",
   });
 }
+
+// =============================================================================
+// Internal Users API
+// =============================================================================
+
+export type InternalUserRole = "ADMIN" | "DEVELOPER" | "CUSTOMER_SERVICE" | "WAREHOUSE_MANAGER";
+
+export interface InternalUser {
+  id: string;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  avatarUrl: string | null;
+  isActive: boolean;
+  emailVerified: boolean;
+  roles: string[];
+  lastLoginAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InternalUsersResponse {
+  users: InternalUser[];
+  count: number;
+  offset: number;
+  limit: number;
+}
+
+export interface InternalUserResponse {
+  user: InternalUser;
+}
+
+export interface CreateInternalUserRequest {
+  email: string;
+  password: string;
+  firstName?: string;
+  lastName?: string;
+  roles: string[];
+}
+
+export interface UpdateInternalUserRequest {
+  email?: string;
+  password?: string;
+  firstName?: string;
+  lastName?: string;
+  isActive?: boolean;
+  roles?: string[];
+}
+
+export interface InviteInternalUserRequest {
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  roles: string[];
+}
+
+export interface InviteInternalUserResponse {
+  userId: string;
+  email: string;
+}
+
+// Get all internal users
+export async function getInternalUsers(params?: {
+  limit?: number;
+  offset?: number;
+}): Promise<InternalUsersResponse> {
+  const searchParams = new URLSearchParams();
+  if (params?.limit) searchParams.append("limit", params.limit.toString());
+  if (params?.offset) searchParams.append("offset", params.offset.toString());
+
+  const query = searchParams.toString();
+  return apiFetch<InternalUsersResponse>(`/api/admin/internal-users${query ? `?${query}` : ""}`);
+}
+
+// Get single internal user
+export async function getInternalUser(userId: string): Promise<InternalUserResponse> {
+  return apiFetch<InternalUserResponse>(`/api/admin/internal-users/${userId}`);
+}
+
+// Create internal user directly
+export async function createInternalUser(data: CreateInternalUserRequest): Promise<InternalUserResponse> {
+  return apiFetch<InternalUserResponse>("/api/admin/internal-users", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+// Update internal user
+export async function updateInternalUser(
+  userId: string,
+  data: UpdateInternalUserRequest
+): Promise<InternalUserResponse> {
+  return apiFetch<InternalUserResponse>(`/api/admin/internal-users/${userId}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+// Delete internal user (soft delete)
+export async function deleteInternalUser(userId: string): Promise<void> {
+  await apiFetch<void>(`/api/admin/internal-users/${userId}`, {
+    method: "DELETE",
+  });
+}
+
+// Invite internal user via email
+export async function inviteInternalUser(data: InviteInternalUserRequest): Promise<InviteInternalUserResponse> {
+  return apiFetch<InviteInternalUserResponse>("/api/admin/internal-users/invite", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
