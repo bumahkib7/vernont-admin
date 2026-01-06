@@ -98,10 +98,6 @@ const navItems: NavItem[] = [
     title: "Categories",
     url: "/categories",
     icon: Tag,
-    children: [
-      { title: "All Categories", url: "/categories" },
-      { title: "Add Category", url: "/categories/new" },
-    ],
   },
   {
     title: "Inventory",

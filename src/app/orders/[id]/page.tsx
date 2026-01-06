@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 import {
   Card,
   CardContent,
@@ -56,7 +57,9 @@ import {
   RefreshCw,
   CheckCircle,
   Loader2,
+  Printer,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import {
   getOrder,
@@ -64,9 +67,13 @@ import {
   shipOrder,
   cancelOrder,
   completeOrder,
+  getShippingOptions,
+  getShippingConfig,
   Order,
   PaymentStatus,
   FulfillmentStatus,
+  ShippingOption,
+  ShippingConfig,
   formatPrice,
   formatDateTime,
   getPaymentStatusDisplay,
@@ -115,6 +122,7 @@ function TimelineIcon({ type }: { type: string }) {
 export default function OrderDetailsPage() {
   const params = useParams();
   const router = useRouter();
+  const { user, isLoading: authLoading } = useAuth();
   const orderId = params.id as string;
 
   const [order, setOrder] = useState<Order | null>(null);
@@ -130,6 +138,21 @@ export default function OrderDetailsPage() {
   const [trackingNumber, setTrackingNumber] = useState("");
   const [carrier, setCarrier] = useState("");
   const [cancelReason, setCancelReason] = useState("");
+  const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
+
+  // ShipEngine state
+  const [shippingConfig, setShippingConfig] = useState<ShippingConfig | null>(null);
+  const [useShipEngine, setUseShipEngine] = useState(false);
+  const [selectedCarrier, setSelectedCarrier] = useState("se-358070");
+  const [selectedService, setSelectedService] = useState("ups_worldwide_expedited");
+  const [packageDimensions, setPackageDimensions] = useState({
+    weight: "",
+    length: "",
+    width: "",
+    height: "",
+  });
+  const [labelDialogOpen, setLabelDialogOpen] = useState(false);
+  const [labelUrl, setLabelUrl] = useState<string | null>(null);
 
   const fetchOrder = async () => {
     setLoading(true);
@@ -137,6 +160,10 @@ export default function OrderDetailsPage() {
     try {
       const data = await getOrder(orderId);
       setOrder(data);
+      // Set default carrier based on order's shipping method
+      if (data.shippingMethodId) {
+        setCarrier(data.shippingMethodId);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load order");
     } finally {
@@ -144,9 +171,42 @@ export default function OrderDetailsPage() {
     }
   };
 
+  const fetchShippingOptions = async () => {
+    try {
+      const response = await getShippingOptions();
+      setShippingOptions(response.shipping_options || []);
+    } catch (err) {
+      console.error("Failed to load shipping options:", err);
+    }
+  };
+
+  const fetchShippingConfig = async () => {
+    try {
+      const config = await getShippingConfig();
+      setShippingConfig(config);
+      if (config.shipEngineConfigured) {
+        setSelectedCarrier(config.defaultCarrierId);
+        setSelectedService(config.defaultServiceCode);
+      }
+    } catch (err) {
+      console.error("Failed to load shipping config:", err);
+    }
+  };
+
   useEffect(() => {
-    fetchOrder();
-  }, [orderId]);
+    // Redirect to login if not authenticated
+    if (!authLoading && !user) {
+      router.push("/login");
+      return;
+    }
+
+    // Only fetch data when authenticated
+    if (user) {
+      fetchOrder();
+      fetchShippingOptions();
+      fetchShippingConfig();
+    }
+  }, [orderId, user, authLoading, router]);
 
   const copyToClipboard = (text: string, field: string) => {
     navigator.clipboard.writeText(text);
@@ -173,15 +233,40 @@ export default function OrderDetailsPage() {
     if (!order) return;
     setActionLoading("ship");
     try {
-      await shipOrder(order.id, {
-        trackingNumber: trackingNumber || undefined,
-        carrier: carrier || undefined,
+      const result = await shipOrder(order.id, {
+        trackingNumber: useShipEngine ? undefined : (trackingNumber || undefined),
+        carrier: useShipEngine ? undefined : (carrier || undefined),
+        useShipEngine,
+        carrierId: useShipEngine ? selectedCarrier : undefined,
+        serviceCode: useShipEngine ? selectedService : undefined,
+        packageWeight: useShipEngine && packageDimensions.weight
+          ? parseFloat(packageDimensions.weight) : undefined,
+        packageLength: useShipEngine && packageDimensions.length
+          ? parseFloat(packageDimensions.length) : undefined,
+        packageWidth: useShipEngine && packageDimensions.width
+          ? parseFloat(packageDimensions.width) : undefined,
+        packageHeight: useShipEngine && packageDimensions.height
+          ? parseFloat(packageDimensions.height) : undefined,
       });
+
       await fetchOrder();
-      setShipDialogOpen(false);
+
+      // If we got a label URL, show the label dialog
+      if (result.labelUrls && result.labelUrls.length > 0) {
+        setLabelUrl(result.labelUrls[0]);
+        setLabelDialogOpen(true);
+        setShipDialogOpen(false);
+        toast.success("Order shipped! Label ready for printing.");
+      } else {
+        setShipDialogOpen(false);
+        toast.success("Order marked as shipped");
+      }
+
+      // Reset form
       setTrackingNumber("");
       setCarrier("");
-      toast.success("Order marked as shipped");
+      setUseShipEngine(false);
+      setPackageDimensions({ weight: "", length: "", width: "", height: "" });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to ship order");
     } finally {
@@ -220,8 +305,8 @@ export default function OrderDetailsPage() {
     }
   };
 
-  // Loading state
-  if (loading) {
+  // Loading state (including auth loading)
+  if (authLoading || loading) {
     return (
       <div className="flex flex-col gap-6 p-6">
         <Skeleton className="h-6 w-48" />
@@ -643,40 +728,178 @@ export default function OrderDetailsPage() {
 
       {/* Ship Dialog */}
       <Dialog open={shipDialogOpen} onOpenChange={setShipDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Mark as Shipped</DialogTitle>
             <DialogDescription>
-              Add tracking information for this order.
+              {shippingConfig?.shipEngineConfigured
+                ? "Generate a shipping label automatically or enter tracking manually."
+                : "Add tracking information for this order."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Carrier</label>
-              <Select value={carrier} onValueChange={setCarrier}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select carrier" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="royal_mail">Royal Mail</SelectItem>
-                  <SelectItem value="dhl">DHL</SelectItem>
-                  <SelectItem value="ups">UPS</SelectItem>
-                  <SelectItem value="fedex">FedEx</SelectItem>
-                  <SelectItem value="dpd">DPD</SelectItem>
-                  <SelectItem value="evri">Evri (Hermes)</SelectItem>
-                  <SelectItem value="yodel">Yodel</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Tracking Number</label>
-              <Input
-                placeholder="Enter tracking number"
-                value={trackingNumber}
-                onChange={(e) => setTrackingNumber(e.target.value)}
-              />
-            </div>
+            {/* ShipEngine Toggle */}
+            {shippingConfig?.shipEngineConfigured && (
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Package className="h-4 w-4" />
+                  <div>
+                    <span className="text-sm font-medium">Auto-generate Label (ShipEngine)</span>
+                    {shippingConfig.sandboxMode && (
+                      <span className="ml-2 text-xs text-orange-500">(Sandbox Mode)</span>
+                    )}
+                  </div>
+                </div>
+                <Switch
+                  checked={useShipEngine}
+                  onCheckedChange={setUseShipEngine}
+                />
+              </div>
+            )}
+
+            {useShipEngine ? (
+              /* ShipEngine Options */
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Carrier</label>
+                    <Select value={selectedCarrier} onValueChange={setSelectedCarrier}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select carrier" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(shippingConfig?.availableCarriers || []).map((c) => (
+                          <SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Service</label>
+                    <Select value={selectedService} onValueChange={setSelectedService}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {/* SANDBOX - UPS (se-358070) - Valid service codes */}
+                        <SelectItem value="ups_worldwide_expedited">UPS Worldwide Expedited</SelectItem>
+                        <SelectItem value="ups_worldwide_express">UPS Worldwide Express</SelectItem>
+                        <SelectItem value="ups_worldwide_saver">UPS Worldwide Saver</SelectItem>
+                        <SelectItem value="ups_standard">UPS Standard</SelectItem>
+                        <SelectItem value="ups_ground">UPS Ground (US only)</SelectItem>
+                        <SelectItem value="ups_next_day_air">UPS Next Day Air (US only)</SelectItem>
+                        {/* SANDBOX - FedEx (se-358071) */}
+                        <SelectItem value="fedex_international_economy">FedEx International Economy</SelectItem>
+                        <SelectItem value="fedex_international_priority">FedEx International Priority</SelectItem>
+                        <SelectItem value="fedex_ground">FedEx Ground (US only)</SelectItem>
+                        {/* SANDBOX - Stamps.com/USPS (se-358069) - US origin only */}
+                        <SelectItem value="usps_priority_mail_international">USPS Priority Mail Intl (US origin)</SelectItem>
+                        <SelectItem value="usps_priority_mail">USPS Priority Mail (US only)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Package Dimensions (optional)</label>
+                  <p className="text-xs text-muted-foreground">
+                    Leave blank to auto-calculate from product data
+                  </p>
+                  <div className="grid grid-cols-4 gap-2">
+                    <div>
+                      <label className="text-xs text-muted-foreground">Weight (oz)</label>
+                      <Input
+                        type="number"
+                        placeholder="16"
+                        value={packageDimensions.weight}
+                        onChange={(e) => setPackageDimensions(prev => ({
+                          ...prev, weight: e.target.value
+                        }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Length (in)</label>
+                      <Input
+                        type="number"
+                        placeholder="10"
+                        value={packageDimensions.length}
+                        onChange={(e) => setPackageDimensions(prev => ({
+                          ...prev, length: e.target.value
+                        }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Width (in)</label>
+                      <Input
+                        type="number"
+                        placeholder="8"
+                        value={packageDimensions.width}
+                        onChange={(e) => setPackageDimensions(prev => ({
+                          ...prev, width: e.target.value
+                        }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Height (in)</label>
+                      <Input
+                        type="number"
+                        placeholder="4"
+                        value={packageDimensions.height}
+                        onChange={(e) => setPackageDimensions(prev => ({
+                          ...prev, height: e.target.value
+                        }))}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              /* Manual Tracking Entry */
+              <>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Shipping Method</label>
+                  <Select value={carrier} onValueChange={setCarrier}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select shipping method" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {shippingOptions.length > 0 ? (
+                        shippingOptions.map((option) => (
+                          <SelectItem key={option.id} value={option.id}>
+                            {option.name} ({formatPrice(option.amount / 100, order?.currencyCode || "GBP")})
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <>
+                          <SelectItem value="royal_mail">Royal Mail</SelectItem>
+                          <SelectItem value="dhl">DHL</SelectItem>
+                          <SelectItem value="ups">UPS</SelectItem>
+                          <SelectItem value="fedex">FedEx</SelectItem>
+                          <SelectItem value="dpd">DPD</SelectItem>
+                          <SelectItem value="evri">Evri (Hermes)</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {order?.shippingMethodId && (
+                    <p className="text-xs text-muted-foreground">
+                      Customer selected: {shippingOptions.find(o => o.id === order.shippingMethodId)?.name || order.shippingMethodId}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Tracking Number</label>
+                  <Input
+                    placeholder="Enter tracking number"
+                    value={trackingNumber}
+                    onChange={(e) => setTrackingNumber(e.target.value)}
+                  />
+                </div>
+              </>
+            )}
           </div>
           <DialogFooter>
             <Button
@@ -684,14 +907,55 @@ export default function OrderDetailsPage() {
               onClick={() => {
                 setShipDialogOpen(false);
                 setTrackingNumber("");
-                setCarrier("");
+                setUseShipEngine(false);
+                setPackageDimensions({ weight: "", length: "", width: "", height: "" });
+                setCarrier(order?.shippingMethodId || "");
               }}
             >
               Cancel
             </Button>
             <Button onClick={handleShip} disabled={actionLoading === "ship"}>
               {actionLoading === "ship" && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Mark as Shipped
+              {useShipEngine ? "Generate Label & Ship" : "Mark as Shipped"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Label Print Dialog */}
+      <Dialog open={labelDialogOpen} onOpenChange={setLabelDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Shipping Label Ready</DialogTitle>
+            <DialogDescription>
+              Your shipping label has been generated. Click below to download or print.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4 py-6">
+            <div className="p-4 bg-green-100 rounded-full">
+              <CheckCircle className="h-12 w-12 text-green-600" />
+            </div>
+            <p className="text-sm text-muted-foreground text-center">
+              The tracking number has been added to the order automatically.
+            </p>
+            {labelUrl && (
+              <Button asChild>
+                <a href={labelUrl} target="_blank" rel="noopener noreferrer">
+                  <Printer className="h-4 w-4 mr-2" />
+                  Download/Print Label
+                </a>
+              </Button>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setLabelDialogOpen(false);
+                setLabelUrl(null);
+              }}
+            >
+              Done
             </Button>
           </DialogFooter>
         </DialogContent>

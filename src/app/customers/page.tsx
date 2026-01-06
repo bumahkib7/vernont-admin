@@ -1,4 +1,6 @@
-import { Metadata } from "next";
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import {
   Card,
@@ -33,7 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Search,
   MoreHorizontal,
@@ -46,156 +48,140 @@ import {
   Crown,
   Star,
   TrendingUp,
+  Gift,
+  Edit,
+  CheckCircle,
+  Loader2,
 } from "lucide-react";
+import {
+  getCustomers,
+  getCustomerStats,
+  getTierDisplay,
+  getCustomerStatusDisplay,
+  getCustomerName,
+  getCustomerInitials,
+  formatPrice,
+  formatDate,
+  type CustomerSummary,
+  type CustomerTier,
+  type CustomerStatus,
+  type CustomerStats,
+} from "@/lib/api";
+import { SendEmailDialog } from "@/components/customers/SendEmailDialog";
+import { SendGiftCardDialog } from "@/components/customers/SendGiftCardDialog";
+import { SuspendCustomerDialog } from "@/components/customers/SuspendCustomerDialog";
+import { ChangeTierDialog } from "@/components/customers/ChangeTierDialog";
 
-export const metadata: Metadata = {
-  title: "Customers",
-};
-
-// Mock data
-const customers = [
-  {
-    id: "CUS-001",
-    name: "Olivia Martin",
-    email: "olivia@example.com",
-    avatar: "",
-    tier: "vip",
-    totalOrders: 12,
-    totalSpent: 45600,
-    lastOrder: "2024-01-15",
-    status: "active",
-    joinDate: "2023-03-15",
-  },
-  {
-    id: "CUS-002",
-    name: "Jackson Lee",
-    email: "jackson@example.com",
-    avatar: "",
-    tier: "gold",
-    totalOrders: 8,
-    totalSpent: 28400,
-    lastOrder: "2024-01-14",
-    status: "active",
-    joinDate: "2023-05-22",
-  },
-  {
-    id: "CUS-003",
-    name: "Isabella Nguyen",
-    email: "isabella@example.com",
-    avatar: "",
-    tier: "silver",
-    totalOrders: 5,
-    totalSpent: 12300,
-    lastOrder: "2024-01-13",
-    status: "active",
-    joinDate: "2023-08-10",
-  },
-  {
-    id: "CUS-004",
-    name: "William Kim",
-    email: "will@example.com",
-    avatar: "",
-    tier: "standard",
-    totalOrders: 2,
-    totalSpent: 4500,
-    lastOrder: "2024-01-12",
-    status: "active",
-    joinDate: "2023-11-05",
-  },
-  {
-    id: "CUS-005",
-    name: "Sofia Davis",
-    email: "sofia@example.com",
-    avatar: "",
-    tier: "gold",
-    totalOrders: 7,
-    totalSpent: 21800,
-    lastOrder: "2024-01-11",
-    status: "active",
-    joinDate: "2023-04-18",
-  },
-  {
-    id: "CUS-006",
-    name: "Liam Johnson",
-    email: "liam@example.com",
-    avatar: "",
-    tier: "standard",
-    totalOrders: 1,
-    totalSpent: 1950,
-    lastOrder: "2024-01-10",
-    status: "inactive",
-    joinDate: "2023-12-01",
-  },
-  {
-    id: "CUS-007",
-    name: "Emma Wilson",
-    email: "emma@example.com",
-    avatar: "",
-    tier: "silver",
-    totalOrders: 4,
-    totalSpent: 9800,
-    lastOrder: "2024-01-09",
-    status: "active",
-    joinDate: "2023-06-14",
-  },
-  {
-    id: "CUS-008",
-    name: "Noah Brown",
-    email: "noah@example.com",
-    avatar: "",
-    tier: "vip",
-    totalOrders: 15,
-    totalSpent: 58200,
-    lastOrder: "2024-01-08",
-    status: "active",
-    joinDate: "2022-11-20",
-  },
-];
-
-const customerStats = [
-  { label: "Total Customers", value: "12,234", icon: Users, change: "+12%" },
-  { label: "VIP Members", value: "142", icon: Crown, change: "+8%" },
-  { label: "Avg. Order Value", value: "$3,245", icon: TrendingUp, change: "+15%" },
-  { label: "Customer Rating", value: "4.8", icon: Star, change: "+0.2" },
-];
-
-function getTierBadge(tier: string) {
-  switch (tier) {
-    case "vip":
-      return (
-        <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600">
-          <Crown className="mr-1 h-3 w-3" /> VIP
-        </Badge>
-      );
-    case "gold":
-      return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Gold</Badge>;
-    case "silver":
-      return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">Silver</Badge>;
-    default:
-      return <Badge variant="outline">Standard</Badge>;
+function getTierBadge(tier: CustomerTier) {
+  const display = getTierDisplay(tier);
+  if (tier === "PLATINUM") {
+    return (
+      <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600">
+        <Crown className="mr-1 h-3 w-3" /> {display.label}
+      </Badge>
+    );
   }
+  return <Badge className={display.color}>{display.label}</Badge>;
 }
 
-function getStatusBadge(status: string) {
-  switch (status) {
-    case "active":
-      return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Active</Badge>;
-    case "inactive":
-      return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">Inactive</Badge>;
-    default:
-      return <Badge variant="secondary">{status}</Badge>;
-  }
-}
-
-function getInitials(name: string) {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase();
+function getStatusBadge(status: CustomerStatus) {
+  const display = getCustomerStatusDisplay(status);
+  return <Badge className={display.color}>{display.label}</Badge>;
 }
 
 export default function CustomersPage() {
+  const [customers, setCustomers] = useState<CustomerSummary[]>([]);
+  const [stats, setStats] = useState<CustomerStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [tierFilter, setTierFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [total, setTotal] = useState(0);
+
+  // Dialog state
+  const [selectedCustomer, setSelectedCustomer] = useState<CustomerSummary | null>(null);
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [giftCardDialogOpen, setGiftCardDialogOpen] = useState(false);
+  const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
+  const [changeTierDialogOpen, setChangeTierDialogOpen] = useState(false);
+
+  const fetchCustomers = useCallback(async () => {
+    try {
+      setLoading(true);
+      const params: {
+        limit?: number;
+        q?: string;
+        tier?: CustomerTier;
+        status?: CustomerStatus;
+      } = { limit: 50 };
+
+      if (search) params.q = search;
+      if (tierFilter !== "all") params.tier = tierFilter as CustomerTier;
+      if (statusFilter !== "all") params.status = statusFilter as CustomerStatus;
+
+      const response = await getCustomers(params);
+      setCustomers(response.customers);
+      setTotal(response.count);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load customers");
+    } finally {
+      setLoading(false);
+    }
+  }, [search, tierFilter, statusFilter]);
+
+  const fetchStats = useCallback(async () => {
+    try {
+      const statsData = await getCustomerStats();
+      setStats(statsData);
+    } catch (err) {
+      console.error("Failed to load stats:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCustomers();
+    fetchStats();
+  }, [fetchCustomers, fetchStats]);
+
+  // Debounced search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchCustomers();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search, fetchCustomers]);
+
+  const handleActionSuccess = () => {
+    fetchCustomers();
+    fetchStats();
+    setSelectedCustomer(null);
+  };
+
+  const customerStats = [
+    {
+      label: "Total Customers",
+      value: stats?.totalCustomers?.toLocaleString() ?? "...",
+      icon: Users,
+    },
+    {
+      label: "VIP Members",
+      value: stats ? (stats.customersByTier?.GOLD ?? 0) + (stats.customersByTier?.PLATINUM ?? 0) : "...",
+      icon: Crown,
+    },
+    {
+      label: "Active",
+      value: stats?.activeCustomers?.toLocaleString() ?? "...",
+      icon: CheckCircle,
+    },
+    {
+      label: "Total Revenue",
+      value: stats ? formatPrice(stats.totalRevenue, "GBP") : "...",
+      icon: TrendingUp,
+    },
+  ];
+
   return (
     <div className="flex flex-col gap-6 p-6">
       {/* Page Header */}
@@ -230,7 +216,6 @@ export default function CustomersPage() {
                 <p className="text-sm text-muted-foreground">{stat.label}</p>
                 <div className="flex items-baseline gap-2">
                   <p className="text-2xl font-bold">{stat.value}</p>
-                  <span className="text-xs text-green-500">{stat.change}</span>
                 </div>
               </div>
             </CardContent>
@@ -244,118 +229,219 @@ export default function CustomersPage() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input placeholder="Search customers..." className="pl-9" />
+              <Input
+                placeholder="Search customers..."
+                className="pl-9"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
             </div>
-            <Select defaultValue="all">
+            <Select value={tierFilter} onValueChange={setTierFilter}>
               <SelectTrigger className="w-[140px]">
                 <SelectValue placeholder="Tier" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Tiers</SelectItem>
-                <SelectItem value="vip">VIP</SelectItem>
-                <SelectItem value="gold">Gold</SelectItem>
-                <SelectItem value="silver">Silver</SelectItem>
-                <SelectItem value="standard">Standard</SelectItem>
+                <SelectItem value="PLATINUM">Platinum</SelectItem>
+                <SelectItem value="GOLD">Gold</SelectItem>
+                <SelectItem value="SILVER">Silver</SelectItem>
+                <SelectItem value="BRONZE">Bronze</SelectItem>
               </SelectContent>
             </Select>
-            <Select defaultValue="all">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-[140px]">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="ACTIVE">Active</SelectItem>
+                <SelectItem value="SUSPENDED">Suspended</SelectItem>
+                <SelectItem value="BANNED">Banned</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </CardContent>
       </Card>
 
+      {/* Error State */}
+      {error && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="py-4 text-center text-red-600">
+            {error}
+            <Button variant="link" onClick={fetchCustomers} className="ml-2">
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Customers Table */}
       <Card>
         <CardHeader>
           <CardTitle>All Customers</CardTitle>
           <CardDescription>
-            {customers.length} customers in your database
+            {total} customers in your database
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Customer</TableHead>
-                <TableHead>Tier</TableHead>
-                <TableHead className="text-center">Orders</TableHead>
-                <TableHead className="text-right">Total Spent</TableHead>
-                <TableHead>Last Order</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-[50px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {customers.map((customer) => (
-                <TableRow key={customer.id} className="cursor-pointer hover:bg-muted/50">
-                  <TableCell>
-                    <Link href={`/customers/${customer.id}`} className="flex items-center gap-3">
-                      <Avatar className="h-9 w-9">
-                        <AvatarImage src={customer.avatar} alt={customer.name} />
-                        <AvatarFallback className="bg-muted">
-                          {getInitials(customer.name)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex flex-col">
-                        <span className="font-medium hover:underline">{customer.name}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {customer.email}
-                        </span>
-                      </div>
-                    </Link>
-                  </TableCell>
-                  <TableCell>{getTierBadge(customer.tier)}</TableCell>
-                  <TableCell className="text-center">{customer.totalOrders}</TableCell>
-                  <TableCell className="text-right font-medium">
-                    ${customer.totalSpent.toLocaleString()}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {customer.lastOrder}
-                  </TableCell>
-                  <TableCell>{getStatusBadge(customer.status)}</TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Open menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem asChild>
-                          <Link href={`/customers/${customer.id}`}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            View Profile
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Mail className="mr-2 h-4 w-4" />
-                          Send Email
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-red-600">
-                          <Ban className="mr-2 h-4 w-4" />
-                          Suspend Account
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : customers.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No customers found
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Customer</TableHead>
+                  <TableHead>Tier</TableHead>
+                  <TableHead className="text-center">Orders</TableHead>
+                  <TableHead className="text-right">Total Spent</TableHead>
+                  <TableHead>Joined</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {customers.map((customer) => (
+                  <TableRow key={customer.id} className="cursor-pointer hover:bg-muted/50">
+                    <TableCell>
+                      <Link href={`/customers/${customer.id}`} className="flex items-center gap-3">
+                        <Avatar className="h-9 w-9">
+                          <AvatarFallback className="bg-muted">
+                            {getCustomerInitials(customer)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex flex-col">
+                          <span className="font-medium hover:underline">
+                            {getCustomerName(customer)}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {customer.email}
+                          </span>
+                        </div>
+                      </Link>
+                    </TableCell>
+                    <TableCell>{getTierBadge(customer.tier)}</TableCell>
+                    <TableCell className="text-center">{customer.orderCount}</TableCell>
+                    <TableCell className="text-right font-medium">
+                      {formatPrice(customer.totalSpent, "GBP")}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {formatDate(customer.createdAt)}
+                    </TableCell>
+                    <TableCell>{getStatusBadge(customer.status)}</TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Open menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem asChild>
+                            <Link href={`/customers/${customer.id}`}>
+                              <Eye className="mr-2 h-4 w-4" />
+                              View Profile
+                            </Link>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSelectedCustomer(customer);
+                              setEmailDialogOpen(true);
+                            }}
+                          >
+                            <Mail className="mr-2 h-4 w-4" />
+                            Send Email
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSelectedCustomer(customer);
+                              setGiftCardDialogOpen(true);
+                            }}
+                          >
+                            <Gift className="mr-2 h-4 w-4" />
+                            Send Gift Card
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSelectedCustomer(customer);
+                              setChangeTierDialogOpen(true);
+                            }}
+                          >
+                            <Star className="mr-2 h-4 w-4" />
+                            Change Tier
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          {customer.status === "ACTIVE" ? (
+                            <DropdownMenuItem
+                              className="text-red-600"
+                              onClick={() => {
+                                setSelectedCustomer(customer);
+                                setSuspendDialogOpen(true);
+                              }}
+                            >
+                              <Ban className="mr-2 h-4 w-4" />
+                              Suspend Account
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem
+                              className="text-green-600"
+                              onClick={() => {
+                                // TODO: Activate customer
+                              }}
+                            >
+                              <CheckCircle className="mr-2 h-4 w-4" />
+                              Activate Account
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
+
+      {/* Dialogs */}
+      {selectedCustomer && (
+        <>
+          <SendEmailDialog
+            open={emailDialogOpen}
+            onOpenChange={setEmailDialogOpen}
+            customer={selectedCustomer}
+            onSuccess={handleActionSuccess}
+          />
+          <SendGiftCardDialog
+            open={giftCardDialogOpen}
+            onOpenChange={setGiftCardDialogOpen}
+            customer={selectedCustomer}
+            onSuccess={handleActionSuccess}
+          />
+          <SuspendCustomerDialog
+            open={suspendDialogOpen}
+            onOpenChange={setSuspendDialogOpen}
+            customer={selectedCustomer}
+            onSuccess={handleActionSuccess}
+          />
+          <ChangeTierDialog
+            open={changeTierDialogOpen}
+            onOpenChange={setChangeTierDialogOpen}
+            customer={selectedCustomer}
+            onSuccess={handleActionSuccess}
+          />
+        </>
+      )}
     </div>
   );
 }

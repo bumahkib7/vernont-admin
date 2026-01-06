@@ -36,6 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Plus,
   Search,
@@ -45,164 +46,33 @@ import {
   Eye,
   Filter,
   Download,
+  RefreshCw,
+  AlertCircle,
 } from "lucide-react";
 import { StackedThumbnails } from "@/components/ui/thumbnail";
 import { AddProductModal } from "@/components/products/add-product-modal";
+import {
+  getProducts,
+  deleteProduct,
+  getCategories,
+  formatPrice,
+  type ProductSummary,
+  type ProductStatus,
+  type ProductCategory,
+} from "@/lib/api";
 
-// Mock data - products with multiple images
-const products = [
-  {
-    id: "PRD-001",
-    slug: "hermes-birkin-25",
-    name: "Hermès Birkin 25",
-    brand: "Hermès",
-    category: "Handbags",
-    price: 12500,
-    originalPrice: 15000,
-    stock: 3,
-    status: "active",
-    images: [
-      "https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=100&h=100&fit=crop",
-      "https://images.unsplash.com/photo-1566150905458-1bf1fc113f0d?w=100&h=100&fit=crop",
-    ],
-    condition: "Excellent",
-  },
-  {
-    id: "PRD-002",
-    slug: "chanel-classic-flap-medium",
-    name: "Chanel Classic Flap Medium",
-    brand: "Chanel",
-    category: "Handbags",
-    price: 8200,
-    originalPrice: 9500,
-    stock: 5,
-    status: "active",
-    images: [
-      "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=100&h=100&fit=crop",
-    ],
-    condition: "Very Good",
-  },
-  {
-    id: "PRD-003",
-    slug: "louis-vuitton-neverfull-mm",
-    name: "Louis Vuitton Neverfull MM",
-    brand: "Louis Vuitton",
-    category: "Handbags",
-    price: 2100,
-    originalPrice: 2400,
-    stock: 8,
-    status: "active",
-    images: [
-      "https://images.unsplash.com/photo-1594223274512-ad4803739b7c?w=100&h=100&fit=crop",
-      "https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=100&h=100&fit=crop",
-      "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=100&h=100&fit=crop",
-    ],
-    condition: "Good",
-  },
-  {
-    id: "PRD-004",
-    slug: "gucci-dionysus-small",
-    name: "Gucci Dionysus Small",
-    brand: "Gucci",
-    category: "Handbags",
-    price: 3450,
-    originalPrice: 3900,
-    stock: 0,
-    status: "out_of_stock",
-    images: [
-      "https://images.unsplash.com/photo-1566150905458-1bf1fc113f0d?w=100&h=100&fit=crop",
-    ],
-    condition: "Excellent",
-  },
-  {
-    id: "PRD-005",
-    slug: "dior-lady-dior-medium",
-    name: "Dior Lady Dior Medium",
-    brand: "Dior",
-    category: "Handbags",
-    price: 5800,
-    originalPrice: 6500,
-    stock: 2,
-    status: "active",
-    images: [
-      "https://images.unsplash.com/photo-1591561954557-26941169b49e?w=100&h=100&fit=crop",
-      "https://images.unsplash.com/photo-1594223274512-ad4803739b7c?w=100&h=100&fit=crop",
-    ],
-    condition: "Very Good",
-  },
-  {
-    id: "PRD-006",
-    slug: "prada-re-edition-2005",
-    name: "Prada Re-Edition 2005",
-    brand: "Prada",
-    category: "Handbags",
-    price: 1950,
-    originalPrice: 2200,
-    stock: 12,
-    status: "active",
-    images: [
-      "https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=100&h=100&fit=crop",
-    ],
-    condition: "Like New",
-  },
-  {
-    id: "PRD-007",
-    slug: "bottega-veneta-cassette",
-    name: "Bottega Veneta Cassette",
-    brand: "Bottega Veneta",
-    category: "Handbags",
-    price: 3200,
-    originalPrice: 3800,
-    stock: 4,
-    status: "draft",
-    images: [
-      "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=100&h=100&fit=crop",
-      "https://images.unsplash.com/photo-1566150905458-1bf1fc113f0d?w=100&h=100&fit=crop",
-    ],
-    condition: "Excellent",
-  },
-  {
-    id: "PRD-008",
-    slug: "celine-triomphe",
-    name: "Celine Triomphe",
-    brand: "Celine",
-    category: "Handbags",
-    price: 2800,
-    originalPrice: 3200,
-    stock: 6,
-    status: "active",
-    images: [
-      "https://images.unsplash.com/photo-1594223274512-ad4803739b7c?w=100&h=100&fit=crop",
-    ],
-    condition: "Very Good",
-  },
-];
-
-function getStatusBadge(status: string) {
+function getStatusBadge(status: ProductStatus) {
   switch (status) {
-    case "active":
-      return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Active</Badge>;
+    case "published":
+      return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Published</Badge>;
     case "draft":
       return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">Draft</Badge>;
-    case "out_of_stock":
-      return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Out of Stock</Badge>;
+    case "proposed":
+      return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Proposed</Badge>;
+    case "rejected":
+      return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Rejected</Badge>;
     default:
       return <Badge variant="secondary">{status}</Badge>;
-  }
-}
-
-function getConditionBadge(condition: string) {
-  switch (condition) {
-    case "Like New":
-      return <Badge variant="outline" className="border-green-500 text-green-600">Like New</Badge>;
-    case "Excellent":
-      return <Badge variant="outline" className="border-blue-500 text-blue-600">Excellent</Badge>;
-    case "Very Good":
-      return <Badge variant="outline" className="border-purple-500 text-purple-600">Very Good</Badge>;
-    case "Good":
-      return <Badge variant="outline" className="border-yellow-500 text-yellow-600">Good</Badge>;
-    default:
-      return <Badge variant="outline">{condition}</Badge>;
   }
 }
 
@@ -223,10 +93,79 @@ function ProductsPageContent({ onOpenModal }: { onOpenModal: () => void }) {
 
 export default function ProductsPage() {
   const [addProductOpen, setAddProductOpen] = useState(false);
+  const [products, setProducts] = useState<ProductSummary[]>([]);
+  const [categories, setCategories] = useState<ProductCategory[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [pagination, setPagination] = useState({
+    start: 0,
+    end: 20,
+    totalElements: 0,
+    totalPages: 0,
+  });
+
+  const fetchProducts = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await getProducts({
+        start: pagination.start,
+        end: pagination.end,
+        q: searchQuery || undefined,
+        status: statusFilter !== "all" ? (statusFilter as ProductStatus) : undefined,
+      });
+      setProducts(response.content || []);
+      setPagination((prev) => ({
+        ...prev,
+        totalElements: response.totalElements || 0,
+        totalPages: response.totalPages || 0,
+      }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load products");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const response = await getCategories({ limit: 100 });
+      setCategories(response.categories || []);
+    } catch (err) {
+      console.error("Failed to load categories:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchProducts();
+    fetchCategories();
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchProducts();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery, statusFilter, pagination.start]);
 
   const handleProductSave = (data: any, isDraft: boolean) => {
     console.log("Product saved:", data, "Draft:", isDraft);
-    alert(`Product "${data.title}" ${isDraft ? "saved as draft" : "created"} successfully!`);
+    // Refresh the list after saving
+    fetchProducts();
+  };
+
+  const handleDeleteProduct = async (productId: string) => {
+    if (!confirm("Are you sure you want to delete this product?")) return;
+
+    try {
+      await deleteProduct(productId);
+      fetchProducts();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to delete product");
+    }
   };
 
   return (
@@ -267,35 +206,39 @@ export default function ProductsPage() {
                 <Input
                   placeholder="Search products..."
                   className="pl-9"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              <Select defaultValue="all">
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
                 <SelectTrigger className="w-[160px]">
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Categories</SelectItem>
-                  <SelectItem value="handbags">Handbags</SelectItem>
-                  <SelectItem value="shoes">Shoes</SelectItem>
-                  <SelectItem value="accessories">Accessories</SelectItem>
-                  <SelectItem value="clothing">Clothing</SelectItem>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-              <Select defaultValue="all">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-[140px]">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="published">Published</SelectItem>
                   <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="out_of_stock">Out of Stock</SelectItem>
+                  <SelectItem value="proposed">Proposed</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="icon">
-                <Filter className="h-4 w-4" />
+              <Button variant="outline" size="icon" onClick={fetchProducts} disabled={loading}>
+                <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
               </Button>
               <Button variant="outline" size="icon">
                 <Download className="h-4 w-4" />
@@ -310,94 +253,161 @@ export default function ProductsPage() {
         <CardHeader>
           <CardTitle>All Products</CardTitle>
           <CardDescription>
-            {products.length} products in your inventory
+            {pagination.totalElements} products in your inventory
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[100px]">Images</TableHead>
-                <TableHead>Product</TableHead>
-                <TableHead>Brand</TableHead>
-                <TableHead>Condition</TableHead>
-                <TableHead className="text-right">Price</TableHead>
-                <TableHead className="text-center">Stock</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-[50px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {products.map((product) => (
-                <TableRow key={product.id} className="cursor-pointer hover:bg-muted/50">
-                  <TableCell>
-                    <Link href={`/products/${product.slug}`}>
-                      <StackedThumbnails images={product.images} maxVisible={3} />
-                    </Link>
-                  </TableCell>
-                  <TableCell>
-                    <Link href={`/products/${product.slug}`} className="flex flex-col">
-                      <span className="font-medium hover:underline">{product.name}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {product.id} • {product.category}
-                      </span>
-                    </Link>
-                  </TableCell>
-                  <TableCell>{product.brand}</TableCell>
-                  <TableCell>{getConditionBadge(product.condition)}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex flex-col items-end">
-                      <span className="font-medium">
-                        ${product.price.toLocaleString()}
-                      </span>
-                      {product.originalPrice > product.price && (
-                        <span className="text-xs text-muted-foreground line-through">
-                          ${product.originalPrice.toLocaleString()}
-                        </span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <span className={product.stock === 0 ? "text-red-500" : ""}>
-                      {product.stock}
-                    </span>
-                  </TableCell>
-                  <TableCell>{getStatusBadge(product.status)}</TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Open menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem asChild>
-                          <Link href={`/products/${product.slug}`}>
-                            <Eye className="mr-2 h-4 w-4" />
-                            View
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link href={`/products/${product.slug}`}>
-                            <Pencil className="mr-2 h-4 w-4" />
-                            Edit
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-red-600">
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
+          {/* Error State */}
+          {error && (
+            <div className="flex items-center gap-2 p-4 mb-4 bg-red-50 text-red-700 rounded-lg">
+              <AlertCircle className="h-5 w-5" />
+              <span>{error}</span>
+              <Button variant="ghost" size="sm" onClick={fetchProducts} className="ml-auto">
+                Retry
+              </Button>
+            </div>
+          )}
+
+          {/* Loading State */}
+          {loading && products.length === 0 ? (
+            <div className="space-y-3">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <Skeleton className="h-12 w-12 rounded" />
+                  <Skeleton className="h-4 w-48" />
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-20 ml-auto" />
+                </div>
               ))}
-            </TableBody>
-          </Table>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[100px]">Image</TableHead>
+                  <TableHead>Product</TableHead>
+                  <TableHead>Handle</TableHead>
+                  <TableHead className="text-center">Variants</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-[50px]"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {products.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      No products found
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  products.map((product) => (
+                    <TableRow key={product.id} className="cursor-pointer hover:bg-muted/50">
+                      <TableCell>
+                        <Link href={`/products/${product.id}`}>
+                          {product.thumbnail ? (
+                            <img
+                              src={product.thumbnail}
+                              alt={product.title}
+                              className="h-12 w-12 rounded object-cover"
+                            />
+                          ) : (
+                            <div className="h-12 w-12 rounded bg-muted flex items-center justify-center">
+                              <span className="text-xs text-muted-foreground">No img</span>
+                            </div>
+                          )}
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        <Link href={`/products/${product.id}`} className="flex flex-col">
+                          <span className="font-medium hover:underline">{product.title}</span>
+                          {product.subtitle && (
+                            <span className="text-xs text-muted-foreground">
+                              {product.subtitle}
+                            </span>
+                          )}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">/{product.handle}</TableCell>
+                      <TableCell className="text-center">
+                        {product.variantCount ?? 0}
+                      </TableCell>
+                      <TableCell>{getStatusBadge(product.status)}</TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreHorizontal className="h-4 w-4" />
+                              <span className="sr-only">Open menu</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem asChild>
+                              <Link href={`/products/${product.id}`}>
+                                <Eye className="mr-2 h-4 w-4" />
+                                View
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <Link href={`/products/${product.id}`}>
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Edit
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-red-600"
+                              onClick={() => handleDeleteProduct(product.id)}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          )}
+
+          {/* Pagination */}
+          {pagination.totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
+              <span>
+                {pagination.start + 1} — {Math.min(pagination.end, pagination.totalElements)} of {pagination.totalElements} products
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={pagination.start === 0}
+                  onClick={() => setPagination((prev) => ({
+                    ...prev,
+                    start: Math.max(0, prev.start - 20),
+                    end: Math.max(20, prev.end - 20),
+                  }))}
+                >
+                  Prev
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={pagination.end >= pagination.totalElements}
+                  onClick={() => setPagination((prev) => ({
+                    ...prev,
+                    start: prev.start + 20,
+                    end: prev.end + 20,
+                  }))}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -28,12 +28,28 @@ import {
   Trash2,
   GripVertical,
   ImageIcon,
+  Loader2,
 } from "lucide-react";
+import {
+  getCategories,
+  getCollections,
+  createProduct,
+  type ProductCategory,
+  type ProductCollection,
+  type CreateProductInput,
+} from "@/lib/api";
 
 type Step = {
   id: string;
   label: string;
   status: "complete" | "current" | "upcoming";
+};
+
+type VariantPricing = {
+  optionValues: Record<string, string>; // e.g., { "Size": "M", "Color": "Red" }
+  price: string;
+  sku: string;
+  quantity: string;
 };
 
 type ProductFormData = {
@@ -51,6 +67,7 @@ type ProductFormData = {
   tags: string[];
   // Variants
   options: { name: string; values: string[] }[];
+  variantPrices: VariantPricing[]; // Pricing for each variant combination
   // Pricing (for simple product)
   price: string;
   compareAtPrice: string;
@@ -73,6 +90,7 @@ const initialFormData: ProductFormData = {
   collection: "",
   tags: [],
   options: [],
+  variantPrices: [],
   price: "",
   compareAtPrice: "",
   costPerItem: "",
@@ -81,6 +99,38 @@ const initialFormData: ProductFormData = {
   quantity: "",
   trackQuantity: true,
 };
+
+// Helper: Generate all variant combinations from options (cartesian product)
+function generateVariantCombinations(
+  options: { name: string; values: string[] }[]
+): Record<string, string>[] {
+  const validOptions = options.filter(o => o.name && o.values.some(v => v));
+  if (validOptions.length === 0) return [];
+
+  const cartesian = (arrays: string[][]): string[][] => {
+    if (arrays.length === 0) return [[]];
+    const [first, ...rest] = arrays;
+    const restCombinations = cartesian(rest);
+    return first.flatMap(val => restCombinations.map(combo => [val, ...combo]));
+  };
+
+  const optionNames = validOptions.map(o => o.name);
+  const optionValues = validOptions.map(o => o.values.filter(v => v));
+  const combinations = cartesian(optionValues);
+
+  return combinations.map(combo => {
+    const result: Record<string, string> = {};
+    optionNames.forEach((name, idx) => {
+      result[name] = combo[idx];
+    });
+    return result;
+  });
+}
+
+// Helper: Get display name for variant (e.g., "M / Red")
+function getVariantDisplayName(optionValues: Record<string, string>): string {
+  return Object.values(optionValues).join(" / ");
+}
 
 type AddProductModalProps = {
   isOpen: boolean;
@@ -95,6 +145,47 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
   const [newTag, setNewTag] = React.useState("");
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
+  // Backend data
+  const [categories, setCategories] = React.useState<ProductCategory[]>([]);
+  const [collections, setCollections] = React.useState<ProductCollection[]>([]);
+  const [loadingData, setLoadingData] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  // Fetch categories and collections on mount
+  React.useEffect(() => {
+    if (isOpen) {
+      fetchBackendData();
+    }
+  }, [isOpen]);
+
+  const fetchBackendData = async () => {
+    setLoadingData(true);
+    setError(null);
+    try {
+      const [categoriesRes, collectionsRes] = await Promise.allSettled([
+        getCategories({ limit: 100 }),
+        getCollections({ limit: 100 }),
+      ]);
+
+      if (categoriesRes.status === "fulfilled") {
+        setCategories(categoriesRes.value.categories || []);
+      } else {
+        console.error("Failed to fetch categories:", categoriesRes.reason);
+      }
+
+      if (collectionsRes.status === "fulfilled") {
+        setCollections(collectionsRes.value.collections || []);
+      } else {
+        console.error("Failed to fetch collections:", collectionsRes.reason);
+      }
+    } catch (err) {
+      console.error("Failed to fetch data:", err);
+    } finally {
+      setLoadingData(false);
+    }
+  };
+
   const steps: Step[] = [
     { id: "details", label: "Details", status: currentStep === 0 ? "current" : currentStep > 0 ? "complete" : "upcoming" },
     { id: "organize", label: "Organize", status: currentStep === 1 ? "current" : currentStep > 1 ? "complete" : "upcoming" },
@@ -107,19 +198,84 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
     onClose();
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (currentStep < steps.length - 1) {
       setCurrentStep(currentStep + 1);
     } else {
       // Final step - save product
-      onSave?.(formData, false);
-      handleClose();
+      await saveProduct(false);
     }
   };
 
-  const handleSaveAsDraft = () => {
-    onSave?.(formData, true);
-    handleClose();
+  const handleSaveAsDraft = async () => {
+    await saveProduct(true);
+  };
+
+  const saveProduct = async (isDraft: boolean) => {
+    setSaving(true);
+    setError(null);
+
+    try {
+      // Build the product input
+      const productInput: CreateProductInput = {
+        title: formData.title,
+        description: formData.description || undefined,
+        handle: formData.handle || formData.title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+        status: isDraft ? "draft" : "published",
+        shippingProfileId: "default", // TODO: Get from backend
+        categoryIds: formData.category ? [formData.category] : [],
+        options: formData.hasVariants
+          ? formData.options.filter(o => o.name && o.values.some(v => v)).map(o => ({
+              title: o.name,
+              values: o.values.filter(v => v),
+            }))
+          : [],
+        variants: formData.hasVariants
+          ? formData.variantPrices.map((vp) => ({
+              title: getVariantDisplayName(vp.optionValues),
+              sku: vp.sku || undefined,
+              barcode: undefined,
+              ean: undefined,
+              inventoryQuantity: parseInt(vp.quantity) || 0,
+              manageInventory: true,
+              allowBackorder: false,
+              options: vp.optionValues,
+              prices: [
+                {
+                  currencyCode: "GBP",
+                  amount: parseFloat(vp.price) || 0,
+                },
+              ],
+            }))
+          : [
+              {
+                title: formData.title,
+                sku: formData.sku || undefined,
+                barcode: formData.barcode || undefined,
+                ean: formData.barcode || undefined,
+                inventoryQuantity: parseInt(formData.quantity) || 0,
+                manageInventory: formData.trackQuantity,
+                allowBackorder: false,
+                options: {},
+                prices: [
+                  {
+                    currencyCode: "GBP",
+                    amount: parseFloat(formData.price) || 0,
+                  },
+                ],
+              },
+            ],
+      };
+
+      const product = await createProduct(productInput);
+      onSave?.(formData, isDraft);
+      handleClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create product");
+      console.error("Failed to create product:", err);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleBack = () => {
@@ -238,6 +394,57 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
       (_, i) => i !== valueIndex
     );
     updateFormData("options", newOptions);
+  };
+
+  // Generate variant combinations from current options
+  const variantCombinations = React.useMemo(
+    () => generateVariantCombinations(formData.options),
+    [formData.options]
+  );
+
+  // Sync variantPrices when options change
+  React.useEffect(() => {
+    if (!formData.hasVariants) return;
+
+    const newVariantPrices: VariantPricing[] = variantCombinations.map(combo => {
+      // Try to find existing pricing for this combination
+      const existing = formData.variantPrices.find(vp =>
+        JSON.stringify(vp.optionValues) === JSON.stringify(combo)
+      );
+      return existing || {
+        optionValues: combo,
+        price: "",
+        sku: "",
+        quantity: "0",
+      };
+    });
+
+    // Only update if actually changed
+    if (JSON.stringify(newVariantPrices) !== JSON.stringify(formData.variantPrices)) {
+      updateFormData("variantPrices", newVariantPrices);
+    }
+  }, [variantCombinations, formData.hasVariants]);
+
+  // Update a specific variant's pricing
+  const updateVariantPrice = (
+    index: number,
+    field: keyof VariantPricing,
+    value: string
+  ) => {
+    const newPrices = [...formData.variantPrices];
+    if (newPrices[index]) {
+      newPrices[index] = { ...newPrices[index], [field]: value };
+      updateFormData("variantPrices", newPrices);
+    }
+  };
+
+  // Set same price for all variants
+  const setAllVariantPrices = (price: string) => {
+    const newPrices = formData.variantPrices.map(vp => ({
+      ...vp,
+      price,
+    }));
+    updateFormData("variantPrices", newPrices);
   };
 
   return (
@@ -495,17 +702,20 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                         <Select
                           value={formData.category}
                           onValueChange={(value) => updateFormData("category", value)}
+                          disabled={loadingData}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Select a category" />
+                            <SelectValue placeholder={loadingData ? "Loading..." : "Select a category"} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="handbags">Handbags</SelectItem>
-                            <SelectItem value="shoes">Shoes</SelectItem>
-                            <SelectItem value="accessories">Accessories</SelectItem>
-                            <SelectItem value="clothing">Clothing</SelectItem>
-                            <SelectItem value="jewelry">Jewelry</SelectItem>
-                            <SelectItem value="watches">Watches</SelectItem>
+                            {categories.length === 0 && !loadingData && (
+                              <SelectItem value="_none" disabled>No categories available</SelectItem>
+                            )}
+                            {categories.map((cat) => (
+                              <SelectItem key={cat.id} value={cat.id}>
+                                {cat.name}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
@@ -515,15 +725,20 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                         <Select
                           value={formData.collection}
                           onValueChange={(value) => updateFormData("collection", value)}
+                          disabled={loadingData}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Select a collection" />
+                            <SelectValue placeholder={loadingData ? "Loading..." : "Select a collection"} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="new-arrivals">New Arrivals</SelectItem>
-                            <SelectItem value="best-sellers">Best Sellers</SelectItem>
-                            <SelectItem value="sale">Sale</SelectItem>
-                            <SelectItem value="featured">Featured</SelectItem>
+                            {collections.length === 0 && !loadingData && (
+                              <SelectItem value="_none" disabled>No collections available</SelectItem>
+                            )}
+                            {collections.map((col) => (
+                              <SelectItem key={col.id} value={col.id}>
+                                {col.title}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
@@ -579,7 +794,7 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                             <Label>Price</Label>
                             <div className="relative">
                               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                                $
+                                £
                               </span>
                               <Input
                                 type="number"
@@ -596,7 +811,7 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                             </Label>
                             <div className="relative">
                               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                                $
+                                £
                               </span>
                               <Input
                                 type="number"
@@ -613,7 +828,7 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                             </Label>
                             <div className="relative">
                               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                                $
+                                £
                               </span>
                               <Input
                                 type="number"
@@ -634,21 +849,24 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                         <h2 className="text-lg font-semibold">Inventory</h2>
                         <div className="grid grid-cols-3 gap-4">
                           <div className="space-y-2">
-                            <Label>SKU</Label>
+                            <Label className="text-muted-foreground">
+                              SKU <span className="text-xs">(Auto-generated if empty)</span>
+                            </Label>
                             <Input
-                              placeholder="SKU-001"
+                              placeholder="Auto-generated"
                               value={formData.sku}
                               onChange={(e) => updateFormData("sku", e.target.value)}
                             />
                           </div>
                           <div className="space-y-2">
                             <Label className="text-muted-foreground">
-                              Barcode <span className="text-xs">(Optional)</span>
+                              Barcode (EAN-13) <span className="text-xs">(Auto-generated if empty)</span>
                             </Label>
                             <Input
-                              placeholder="1234567890"
+                              placeholder="Auto-generated"
                               value={formData.barcode}
                               onChange={(e) => updateFormData("barcode", e.target.value)}
+                              maxLength={13}
                             />
                           </div>
                           <div className="space-y-2">
@@ -758,14 +976,99 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                         )}
                       </div>
 
-                      <Separator />
+                      {/* Variant Pricing Table */}
+                      {variantCombinations.length > 0 && (
+                        <>
+                          <Separator />
 
-                      <div className="bg-muted/50 rounded-lg p-6 text-center">
-                        <p className="text-sm text-muted-foreground">
-                          After creating the product, you'll be able to configure pricing and
-                          inventory for each variant combination.
-                        </p>
-                      </div>
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <h2 className="text-lg font-semibold">
+                                Variant Pricing ({variantCombinations.length} variants)
+                              </h2>
+                              <div className="flex items-center gap-2">
+                                <Label className="text-sm text-muted-foreground">Set all prices:</Label>
+                                <div className="relative w-32">
+                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
+                                    £
+                                  </span>
+                                  <Input
+                                    type="number"
+                                    placeholder="0.00"
+                                    className="pl-7 h-8 text-sm"
+                                    onChange={(e) => setAllVariantPrices(e.target.value)}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="border rounded-lg overflow-hidden">
+                              <table className="w-full text-sm">
+                                <thead className="bg-muted/50">
+                                  <tr>
+                                    <th className="text-left px-4 py-2 font-medium">Variant</th>
+                                    <th className="text-left px-4 py-2 font-medium w-32">Price (£)</th>
+                                    <th className="text-left px-4 py-2 font-medium w-32">SKU</th>
+                                    <th className="text-left px-4 py-2 font-medium w-24">Qty</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y">
+                                  {formData.variantPrices.map((variant, idx) => (
+                                    <tr key={idx} className="hover:bg-muted/30">
+                                      <td className="px-4 py-2 font-medium">
+                                        {getVariantDisplayName(variant.optionValues)}
+                                      </td>
+                                      <td className="px-4 py-2">
+                                        <div className="relative">
+                                          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">
+                                            £
+                                          </span>
+                                          <Input
+                                            type="number"
+                                            placeholder="0.00"
+                                            className="h-8 pl-5 text-sm"
+                                            value={variant.price}
+                                            onChange={(e) => updateVariantPrice(idx, "price", e.target.value)}
+                                          />
+                                        </div>
+                                      </td>
+                                      <td className="px-4 py-2">
+                                        <Input
+                                          placeholder="Auto"
+                                          className="h-8 text-sm"
+                                          value={variant.sku}
+                                          onChange={(e) => updateVariantPrice(idx, "sku", e.target.value)}
+                                        />
+                                      </td>
+                                      <td className="px-4 py-2">
+                                        <Input
+                                          type="number"
+                                          placeholder="0"
+                                          className="h-8 text-sm"
+                                          value={variant.quantity}
+                                          onChange={(e) => updateVariantPrice(idx, "quantity", e.target.value)}
+                                        />
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+
+                            <p className="text-xs text-muted-foreground">
+                              SKU and barcodes will be auto-generated if left empty.
+                            </p>
+                          </div>
+                        </>
+                      )}
+
+                      {variantCombinations.length === 0 && formData.options.length > 0 && (
+                        <div className="bg-muted/50 rounded-lg p-6 text-center">
+                          <p className="text-sm text-muted-foreground">
+                            Add option values above to generate variant combinations.
+                          </p>
+                        </div>
+                      )}
                     </>
                   ) : (
                     <div className="text-center py-12">
@@ -783,24 +1086,53 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between border-t px-6 py-4">
-            <div>
-              {currentStep > 0 && (
-                <Button type="button" variant="ghost" onClick={handleBack}>
-                  Back
+          <div className="flex flex-col border-t">
+            {error && (
+              <div className="flex items-center gap-2 px-6 py-2 bg-red-50 text-red-700 text-sm">
+                <span>{error}</span>
+                <button
+                  onClick={() => setError(null)}
+                  className="ml-auto text-red-500 hover:text-red-700"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+            <div className="flex items-center justify-between px-6 py-4">
+              <div>
+                {currentStep > 0 && (
+                  <Button type="button" variant="ghost" onClick={handleBack} disabled={saving}>
+                    Back
+                  </Button>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                <Button type="button" variant="ghost" onClick={handleClose} disabled={saving}>
+                  Cancel
                 </Button>
-              )}
-            </div>
-            <div className="flex items-center gap-3">
-              <Button type="button" variant="ghost" onClick={handleClose}>
-                Cancel
-              </Button>
-              <Button type="button" variant="outline" onClick={handleSaveAsDraft}>
-                Save as draft
-              </Button>
-              <Button type="button" onClick={handleContinue}>
-                {currentStep === steps.length - 1 ? "Create product" : "Continue"}
-              </Button>
+                <Button type="button" variant="outline" onClick={handleSaveAsDraft} disabled={saving}>
+                  {saving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save as draft"
+                  )}
+                </Button>
+                <Button type="button" onClick={handleContinue} disabled={saving}>
+                  {saving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating...
+                    </>
+                  ) : currentStep === steps.length - 1 ? (
+                    "Create product"
+                  ) : (
+                    "Continue"
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
         </DialogPrimitive.Content>
