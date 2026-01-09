@@ -1047,9 +1047,14 @@ export async function getProduct(id: string): Promise<Product> {
   return apiFetch<Product>(`/admin/products/${id}`);
 }
 
+// Create product response (includes workflow execution ID for progress tracking)
+export interface CreateProductResponse extends Product {
+  executionId?: string;
+}
+
 // Create product
-export async function createProduct(data: CreateProductInput): Promise<Product> {
-  return apiFetch<Product>("/admin/products", {
+export async function createProduct(data: CreateProductInput): Promise<CreateProductResponse> {
+  return apiFetch<CreateProductResponse>("/admin/products", {
     method: "POST",
     body: JSON.stringify(data),
   });
