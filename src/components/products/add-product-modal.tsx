@@ -23,7 +23,10 @@ import {
   GripVertical,
   ImageIcon,
   Loader2,
+  AlertCircle,
 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { useWebSocket } from "@/hooks/use-websocket";
 import {
   getCategories,
   getCollections,
@@ -146,12 +149,63 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
+  // Progress tracking
+  const [progress, setProgress] = React.useState<{
+    stepName: string;
+    current: number;
+    total: number;
+    message: string;
+    percent: number;
+  } | null>(null);
+  const [executionId, setExecutionId] = React.useState<string | null>(null);
+  const { isConnected, subscribe, unsubscribe } = useWebSocket({ autoConnect: true });
+
   // Fetch categories and collections on mount
   React.useEffect(() => {
     if (isOpen) {
       fetchBackendData();
     }
   }, [isOpen]);
+
+  // Subscribe to workflow events when we have an execution ID
+  React.useEffect(() => {
+    if (!executionId || !isConnected) return;
+
+    const topic = `/topic/workflow/${executionId}`;
+    const subscription = subscribe(topic, (message: any) => {
+      if (message.type === "STEP_PROGRESS") {
+        const totalSteps = message.totalSteps || 3;
+        const stepIndex = message.stepIndex || 0;
+        const progressCurrent = message.progressCurrent || 0;
+        const progressTotal = message.progressTotal || 1;
+
+        // Calculate overall percentage
+        const stepWeight = 100 / totalSteps;
+        const stepProgress = (progressCurrent / progressTotal) * stepWeight;
+        const overallPercent = Math.round(stepIndex * stepWeight + stepProgress);
+
+        setProgress({
+          stepName: message.stepName || "Processing",
+          current: progressCurrent,
+          total: progressTotal,
+          message: message.progressMessage || `Step ${stepIndex + 1} of ${totalSteps}`,
+          percent: Math.min(overallPercent, 99), // Cap at 99 until complete
+        });
+      } else if (message.type === "WORKFLOW_COMPLETED") {
+        setProgress(prev => prev ? { ...prev, percent: 100, message: "Complete!" } : null);
+      } else if (message.type === "WORKFLOW_FAILED") {
+        setError(message.error || "Product creation failed");
+        setSaving(false);
+        setProgress(null);
+      }
+    });
+
+    return () => {
+      if (subscription) {
+        unsubscribe(subscription);
+      }
+    };
+  }, [executionId, isConnected, subscribe, unsubscribe]);
 
   const fetchBackendData = async () => {
     setLoadingData(true);
@@ -189,6 +243,9 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
   const handleClose = () => {
     setCurrentStep(0);
     setFormData(initialFormData);
+    setProgress(null);
+    setExecutionId(null);
+    setError(null);
     onClose();
   };
 
@@ -208,6 +265,7 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
   const saveProduct = async (isDraft: boolean) => {
     setSaving(true);
     setError(null);
+    setProgress({ stepName: "Starting", current: 0, total: 1, message: "Initializing...", percent: 0 });
 
     try {
       // Build the product input
@@ -261,13 +319,25 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
             ],
       };
 
-      const product = await createProduct(productInput);
-      onSave?.(formData, isDraft);
-      handleClose();
+      const response = await createProduct(productInput);
+
+      // Set execution ID to subscribe to progress events
+      if (response.executionId) {
+        setExecutionId(response.executionId);
+      }
+
+      // Wait a brief moment for progress to complete, then close
+      setTimeout(() => {
+        setProgress({ stepName: "Complete", current: 1, total: 1, message: "Product created!", percent: 100 });
+        setTimeout(() => {
+          onSave?.(formData, isDraft);
+          handleClose();
+        }, 500);
+      }, 300);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create product");
+      setProgress(null);
       console.error("Failed to create product:", err);
-    } finally {
       setSaving(false);
     }
   };
@@ -1067,8 +1137,19 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
 
           {/* Footer */}
           <div className="flex flex-col border-t">
+            {/* Progress bar */}
+            {saving && progress && (
+              <div className="px-6 py-3 bg-muted/30 space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">{progress.message}</span>
+                  <span className="font-medium">{progress.percent}%</span>
+                </div>
+                <Progress value={progress.percent} className="h-2" />
+              </div>
+            )}
             {error && (
               <div className="flex items-center gap-2 px-6 py-2 bg-red-50 text-red-700 text-sm">
+                <AlertCircle className="h-4 w-4" />
                 <span>{error}</span>
                 <button
                   onClick={() => setError(null)}

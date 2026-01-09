@@ -73,12 +73,20 @@ function getStatusBadge(status: ProductStatus) {
   switch (status) {
     case "published":
       return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Published</Badge>;
+    case "ready":
+      return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Ready</Badge>;
     case "draft":
       return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">Draft</Badge>;
+    case "pending_assets":
+      return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Processing...</Badge>;
     case "proposed":
-      return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Proposed</Badge>;
+      return <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">Proposed</Badge>;
     case "rejected":
       return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Rejected</Badge>;
+    case "failed":
+      return <Badge className="bg-red-200 text-red-900 hover:bg-red-200">Failed</Badge>;
+    case "archived":
+      return <Badge className="bg-gray-200 text-gray-500 hover:bg-gray-200">Archived</Badge>;
     default:
       return <Badge variant="secondary">{status}</Badge>;
   }
@@ -241,15 +249,19 @@ export default function ProductsPage() {
                 </SelectContent>
               </Select>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[140px]">
+                <SelectTrigger className="w-[160px]">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="published">Published</SelectItem>
+                  <SelectItem value="ready">Ready</SelectItem>
                   <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="pending_assets">Processing</SelectItem>
                   <SelectItem value="proposed">Proposed</SelectItem>
                   <SelectItem value="rejected">Rejected</SelectItem>
+                  <SelectItem value="failed">Failed</SelectItem>
+                  <SelectItem value="archived">Archived</SelectItem>
                 </SelectContent>
               </Select>
             </div>

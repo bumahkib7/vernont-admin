@@ -848,7 +848,15 @@ export async function getDraftOrders(params?: {
 // Products API
 // =============================================================================
 
-export type ProductStatus = "draft" | "proposed" | "published" | "rejected";
+export type ProductStatus =
+  | "draft"
+  | "pending_assets"  // Waiting for image uploads
+  | "proposed"
+  | "ready"           // Ready to publish
+  | "published"
+  | "rejected"
+  | "failed"          // Creation failed
+  | "archived";       // Soft deleted
 
 export interface ProductVariantPrice {
   id: string;
@@ -3605,4 +3613,135 @@ export interface AnalyticsData {
 // Get analytics data for charts
 export async function getDashboardAnalytics(period: "7d" | "30d" | "90d" | "12m" = "30d"): Promise<AnalyticsData> {
   return apiFetch<AnalyticsData>(`/admin/dashboard/analytics?period=${period}`);
+}
+
+// =============================================================================
+// Human Intervention API
+// =============================================================================
+
+export type InterventionSeverity = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
+
+export type InterventionStatus = "PENDING" | "IN_PROGRESS" | "RESOLVED" | "IGNORED" | "AUTO_RETRYING";
+
+export interface HumanInterventionItem {
+  id: string;
+  interventionType: string;
+  entityType: string;
+  entityId: string;
+  title: string;
+  description: string;
+  errorMessage?: string;
+  severity: InterventionSeverity;
+  status: InterventionStatus;
+  contextData?: Record<string, unknown>;
+  assignedTo?: string;
+  resolvedBy?: string;
+  resolvedAt?: string;
+  resolution?: string;
+  autoRetryCount: number;
+  maxAutoRetries: number;
+  nextAutoRetryAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InterventionsResponse {
+  interventions: HumanInterventionItem[];
+  count: number;
+  offset: number;
+  limit: number;
+}
+
+export interface InterventionStats {
+  pending: number;
+  inProgress: number;
+  resolved: number;
+  ignored: number;
+  bySeverity: {
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+  };
+}
+
+// Get interventions list
+export async function getInterventions(params?: {
+  offset?: number;
+  limit?: number;
+  status?: InterventionStatus;
+  severity?: InterventionSeverity;
+  entityType?: string;
+}): Promise<InterventionsResponse> {
+  const query = new URLSearchParams();
+  if (params?.offset) query.set("offset", params.offset.toString());
+  if (params?.limit) query.set("limit", params.limit.toString());
+  if (params?.status) query.set("status", params.status);
+  if (params?.severity) query.set("severity", params.severity);
+  if (params?.entityType) query.set("entityType", params.entityType);
+  return apiFetch<InterventionsResponse>(`/admin/interventions${query.toString() ? `?${query}` : ""}`);
+}
+
+// Get intervention stats
+export async function getInterventionStats(): Promise<InterventionStats> {
+  return apiFetch<InterventionStats>("/admin/interventions/stats");
+}
+
+// Get single intervention
+export async function getIntervention(id: string): Promise<HumanInterventionItem> {
+  return apiFetch<HumanInterventionItem>(`/admin/interventions/${id}`);
+}
+
+// Resolve an intervention
+export async function resolveIntervention(id: string, resolution: string): Promise<HumanInterventionItem> {
+  return apiFetch<HumanInterventionItem>(`/admin/interventions/${id}/resolve`, {
+    method: "POST",
+    body: JSON.stringify({ resolution }),
+  });
+}
+
+// Ignore an intervention
+export async function ignoreIntervention(id: string, reason?: string): Promise<HumanInterventionItem> {
+  return apiFetch<HumanInterventionItem>(`/admin/interventions/${id}/ignore`, {
+    method: "POST",
+    body: JSON.stringify({ reason }),
+  });
+}
+
+// Assign intervention to user
+export async function assignIntervention(id: string, userId: string): Promise<HumanInterventionItem> {
+  return apiFetch<HumanInterventionItem>(`/admin/interventions/${id}/assign`, {
+    method: "POST",
+    body: JSON.stringify({ userId }),
+  });
+}
+
+// Retry intervention
+export async function retryIntervention(id: string): Promise<HumanInterventionItem> {
+  return apiFetch<HumanInterventionItem>(`/admin/interventions/${id}/retry`, {
+    method: "POST",
+  });
+}
+
+// Intervention severity display helper
+export function getInterventionSeverityDisplay(severity: InterventionSeverity): { label: string; color: string } {
+  const config: Record<InterventionSeverity, { label: string; color: string }> = {
+    CRITICAL: { label: "Critical", color: "bg-red-600 text-white" },
+    HIGH: { label: "High", color: "bg-orange-500 text-white" },
+    MEDIUM: { label: "Medium", color: "bg-yellow-500 text-white" },
+    LOW: { label: "Low", color: "bg-blue-500 text-white" },
+  };
+  return config[severity] || { label: severity, color: "bg-gray-500 text-white" };
+}
+
+// Intervention status display helper
+export function getInterventionStatusDisplay(status: InterventionStatus): { label: string; color: string } {
+  const config: Record<InterventionStatus, { label: string; color: string }> = {
+    PENDING: { label: "Pending", color: "bg-yellow-100 text-yellow-800" },
+    IN_PROGRESS: { label: "In Progress", color: "bg-blue-100 text-blue-800" },
+    RESOLVED: { label: "Resolved", color: "bg-green-100 text-green-800" },
+    IGNORED: { label: "Ignored", color: "bg-gray-100 text-gray-800" },
+    AUTO_RETRYING: { label: "Auto Retrying", color: "bg-purple-100 text-purple-800" },
+  };
+  return config[status] || { label: status, color: "bg-gray-100 text-gray-800" };
 }
