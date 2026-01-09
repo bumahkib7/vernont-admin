@@ -17,6 +17,7 @@ import {
   AuthResponse,
   AuthError,
 } from "./auth";
+import { startTokenRefreshInterval, stopTokenRefreshInterval } from "./api";
 
 type AuthState = {
   user: InternalUserInfo | null;
@@ -150,6 +151,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           isAuthenticated: true,
         });
 
+        // Start proactive token refresh
+        startTokenRefreshInterval();
+
         console.log("[AuthContext] State updated, returning success");
         return { success: true };
       } catch (error) {
@@ -162,6 +166,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Logout
   const logout = useCallback(async () => {
+    // Stop proactive token refresh
+    stopTokenRefreshInterval();
+
     try {
       await fetch(`${AUTH_CONFIG.apiUrl}${AUTH_CONFIG.endpoints.logout}`, {
         method: "POST",
@@ -227,6 +234,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: !!user,
       });
 
+      // Start proactive token refresh if authenticated
+      if (user) {
+        startTokenRefreshInterval();
+      }
+
       // Redirect to login if not authenticated and not on public route
       if (!user && !isPublicRoute) {
         console.log("[AuthContext] No user, redirecting to login");
@@ -235,6 +247,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     initAuth();
+
+    // Cleanup refresh interval on unmount
+    return () => {
+      stopTokenRefreshInterval();
+    };
   }, [fetchUser, isPublicRoute, router]);
 
   // Redirect authenticated users away from login page

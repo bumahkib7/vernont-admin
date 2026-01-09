@@ -1,6 +1,75 @@
 // Admin API client
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+const AUTH_REFRESH_ENDPOINT = "/api/v1/internal/auth/refresh";
+
+// Token refresh state management
+let isRefreshing = false;
+let refreshPromise: Promise<boolean> | null = null;
+let refreshInterval: ReturnType<typeof setInterval> | null = null;
+
+/**
+ * Attempt to refresh the authentication token.
+ * Returns true if refresh was successful, false otherwise.
+ */
+async function refreshAuthToken(): Promise<boolean> {
+  // If already refreshing, wait for that to complete
+  if (isRefreshing && refreshPromise) {
+    return refreshPromise;
+  }
+
+  isRefreshing = true;
+  refreshPromise = (async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}${AUTH_REFRESH_ENDPOINT}`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      return response.ok;
+    } catch (error) {
+      console.error("[API] Token refresh failed:", error);
+      return false;
+    } finally {
+      isRefreshing = false;
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
+}
+
+/**
+ * Start proactive token refresh interval.
+ * Refreshes the token every 10 minutes to prevent expiration during active sessions.
+ */
+export function startTokenRefreshInterval(): void {
+  if (refreshInterval) {
+    return; // Already running
+  }
+
+  // Refresh every 10 minutes (tokens typically expire in 15-30 minutes)
+  refreshInterval = setInterval(async () => {
+    if (typeof window !== "undefined") {
+      const refreshed = await refreshAuthToken();
+      if (!refreshed) {
+        console.warn("[API] Proactive token refresh failed - session may expire soon");
+      }
+    }
+  }, 10 * 60 * 1000); // 10 minutes
+}
+
+/**
+ * Stop proactive token refresh interval.
+ */
+export function stopTokenRefreshInterval(): void {
+  if (refreshInterval) {
+    clearInterval(refreshInterval);
+    refreshInterval = null;
+  }
+}
 
 /**
  * Standardized API error response from backend.
@@ -109,10 +178,11 @@ async function parseErrorResponse(response: Response): Promise<ApiError> {
   }
 }
 
-// Generic API fetch with auth
+// Generic API fetch with auth and automatic token refresh
 async function apiFetch<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  _isRetry: boolean = false
 ): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
@@ -124,6 +194,18 @@ async function apiFetch<T>(
   });
 
   if (!response.ok) {
+    // On 401, attempt to refresh token and retry (once)
+    if (response.status === 401 && !_isRetry) {
+      const refreshed = await refreshAuthToken();
+      if (refreshed) {
+        // Retry the original request
+        return apiFetch<T>(endpoint, options, true);
+      }
+      // Refresh failed - redirect to login
+      if (typeof window !== "undefined") {
+        window.location.href = "/login";
+      }
+    }
     throw await parseErrorResponse(response);
   }
 
