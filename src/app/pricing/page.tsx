@@ -23,6 +23,14 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Search,
   RefreshCw,
   AlertCircle,
@@ -101,6 +109,8 @@ export default function PricingPage() {
   // Rule dialog state
   const [ruleDialogOpen, setRuleDialogOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<PricingRuleDto | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [ruleToDelete, setRuleToDelete] = useState<PricingRuleDto | null>(null);
 
   // WebSocket for real-time updates
   const { isConnected, events } = usePricingEvents({
@@ -170,13 +180,18 @@ export default function PricingPage() {
     }
   };
 
-  const handleDeleteRule = async (rule: PricingRuleDto) => {
-    if (!window.confirm(`Are you sure you want to delete "${rule.name}"?`)) {
-      return;
-    }
+  const handleDeleteRule = (rule: PricingRuleDto) => {
+    setRuleToDelete(rule);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteRule = async () => {
+    if (!ruleToDelete) return;
     try {
-      await deletePricingRule(rule.id);
+      await deletePricingRule(ruleToDelete.id);
       await fetchRules();
+      setDeleteDialogOpen(false);
+      setRuleToDelete(null);
     } catch (err) {
       console.error("Failed to delete rule:", err);
       setError(err instanceof Error ? err.message : "Failed to delete rule");
@@ -905,6 +920,26 @@ export default function PricingPage() {
         rule={editingRule}
         onSuccess={handleRuleDialogSuccess}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Pricing Rule</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete &quot;{ruleToDelete?.name}&quot;? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDeleteRule}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

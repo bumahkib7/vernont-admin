@@ -8,13 +8,14 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 
-const chartData = [
-  { category: "Handbags", sales: 156000 },
-  { category: "Shoes", sales: 98000 },
-  { category: "Accessories", sales: 72000 },
-  { category: "Clothing", sales: 54000 },
-  { category: "Jewelry", sales: 42000 },
-];
+interface TopCategorySummary {
+  category: string;
+  sales: number;
+}
+
+interface TopCategoriesChartProps {
+  data?: TopCategorySummary[];
+}
 
 const chartConfig = {
   sales: {
@@ -23,7 +24,21 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-export function TopCategoriesChart() {
+export function TopCategoriesChart({ data = [] }: TopCategoriesChartProps) {
+  // Convert cents to dollars for display
+  const chartData = data.map(item => ({
+    category: item.category,
+    sales: item.sales / 100,
+  }));
+
+  if (chartData.length === 0) {
+    return (
+      <div className="h-[300px] w-full flex items-center justify-center text-muted-foreground">
+        No category data available
+      </div>
+    );
+  }
+
   return (
     <ChartContainer config={chartConfig} className="h-[300px] w-full">
       <BarChart
@@ -43,7 +58,7 @@ export function TopCategoriesChart() {
           type="category"
           tickLine={false}
           axisLine={false}
-          width={80}
+          width={100}
         />
         <ChartTooltip
           cursor={false}

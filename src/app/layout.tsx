@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/lib/auth-context";
 import { AppShell } from "@/components/app-shell";
 import { KeyboardShortcutsProvider } from "@/contexts/keyboard-shortcuts-context";
+import { Providers } from "@/components/providers";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -25,13 +26,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased`}>
-        <AuthProvider>
-          <KeyboardShortcutsProvider>
-            <AppShell>{children}</AppShell>
-          </KeyboardShortcutsProvider>
-        </AuthProvider>
+        <Providers>
+          <AuthProvider>
+            <KeyboardShortcutsProvider>
+              <AppShell>{children}</AppShell>
+            </KeyboardShortcutsProvider>
+          </AuthProvider>
+        </Providers>
         <Toaster />
       </body>
     </html>

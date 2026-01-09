@@ -38,6 +38,14 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Plus,
   Search,
   MoreHorizontal,
@@ -106,6 +114,8 @@ export default function ProductsPage() {
     totalElements: 0,
     totalPages: 0,
   });
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<ProductSummary | null>(null);
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -157,14 +167,21 @@ export default function ProductsPage() {
     fetchProducts();
   };
 
-  const handleDeleteProduct = async (productId: string) => {
-    if (!confirm("Are you sure you want to delete this product?")) return;
+  const handleDeleteProduct = (product: ProductSummary) => {
+    setProductToDelete(product);
+    setDeleteDialogOpen(true);
+  };
 
+  const confirmDeleteProduct = async () => {
+    if (!productToDelete) return;
     try {
-      await deleteProduct(productId);
+      await deleteProduct(productToDelete.id);
+      setDeleteDialogOpen(false);
+      setProductToDelete(null);
       fetchProducts();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to delete product");
+      setError(err instanceof Error ? err.message : "Failed to delete product");
+      setDeleteDialogOpen(false);
     }
   };
 
@@ -359,7 +376,7 @@ export default function ProductsPage() {
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               className="text-red-600"
-                              onClick={() => handleDeleteProduct(product.id)}
+                              onClick={() => handleDeleteProduct(product)}
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
                               Delete
@@ -410,6 +427,26 @@ export default function ProductsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Product</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete &quot;{productToDelete?.title}&quot;? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDeleteProduct}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -215,3 +215,62 @@
     @apply inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-mono font-medium rounded border bg-muted shadow-sm min-w-[1.5rem];
   }
 }
+
+/* React Flow custom styles */
+.react-flow__node {
+  cursor: pointer;
+}
+
+.react-flow__node.selected {
+  z-index: 10;
+}
+
+.react-flow__controls {
+  @apply shadow-md;
+}
+
+.react-flow__controls button {
+  @apply bg-background border-border hover:bg-accent;
+}
+
+.react-flow__controls button svg {
+  @apply fill-foreground;
+}
+
+.react-flow__minimap {
+  @apply shadow-md;
+}
+
+/* Indeterminate progress bar animation */
+@keyframes progress-indeterminate {
+  0% {
+    transform: translateX(-100%);
+    width: 50%;
+  }
+  50% {
+    transform: translateX(50%);
+    width: 50%;
+  }
+  100% {
+    transform: translateX(200%);
+    width: 50%;
+  }
+}
+
+.animate-progress-indeterminate {
+  animation: progress-indeterminate 1.5s ease-in-out infinite;
+}
+
+/* Workflow node pulse animation */
+@keyframes node-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(59, 130, 246, 0);
+  }
+}
+
+.animate-node-pulse {
+  animation: node-pulse 2s ease-in-out infinite;
+}

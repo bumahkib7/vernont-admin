@@ -6,6 +6,7 @@ import {
   Package,
   ShoppingCart,
   Users,
+  Users2,
   Settings,
   Tag,
   LogOut,
@@ -131,11 +132,6 @@ const navItems: NavItem[] = [
     title: "Pricing",
     url: "/pricing",
     icon: CreditCard,
-  },
-  {
-    title: "Settings",
-    url: "/settings",
-    icon: Settings,
   },
 ];
 
@@ -380,6 +376,24 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter>
+        <SidebarMenu className="px-2">
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={isActive("/settings/users")}>
+              <Link href="/settings/users">
+                <Users2 className="size-4" />
+                <span>Team</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={isActive("/settings") && !isActive("/settings/users")}>
+              <Link href="/settings">
+                <Settings className="size-4" />
+                <span>Settings</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
         <SidebarSeparator />
         <SidebarMenu>
           <SidebarMenuItem>

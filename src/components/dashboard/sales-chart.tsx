@@ -8,22 +8,14 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 
-const chartData = [
-  { date: "Jan 1", revenue: 12400 },
-  { date: "Jan 5", revenue: 15600 },
-  { date: "Jan 10", revenue: 14200 },
-  { date: "Jan 15", revenue: 18900 },
-  { date: "Jan 20", revenue: 22100 },
-  { date: "Jan 25", revenue: 19800 },
-  { date: "Jan 30", revenue: 24500 },
-  { date: "Feb 5", revenue: 21300 },
-  { date: "Feb 10", revenue: 26800 },
-  { date: "Feb 15", revenue: 23400 },
-  { date: "Feb 20", revenue: 28900 },
-  { date: "Feb 25", revenue: 31200 },
-  { date: "Mar 1", revenue: 27600 },
-  { date: "Mar 5", revenue: 34100 },
-];
+interface SalesDataPoint {
+  date: string;
+  revenue: number;
+}
+
+interface SalesChartProps {
+  data?: SalesDataPoint[];
+}
 
 const chartConfig = {
   revenue: {
@@ -32,7 +24,21 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-export function SalesChart() {
+export function SalesChart({ data = [] }: SalesChartProps) {
+  // Convert cents to dollars for display
+  const chartData = data.map(point => ({
+    date: point.date,
+    revenue: point.revenue / 100,
+  }));
+
+  if (chartData.length === 0) {
+    return (
+      <div className="h-[300px] w-full flex items-center justify-center text-muted-foreground">
+        No sales data available
+      </div>
+    );
+  }
+
   return (
     <ChartContainer config={chartConfig} className="h-[300px] w-full">
       <AreaChart data={chartData} accessibilityLayer>

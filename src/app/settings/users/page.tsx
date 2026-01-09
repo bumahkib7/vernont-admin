@@ -70,6 +70,8 @@ import {
   Mail,
   Pencil,
   Trash2,
+  Archive,
+  AlertTriangle,
   UserPlus,
   Shield,
   AlertCircle,
@@ -78,7 +80,9 @@ import {
   getInternalUsers,
   inviteInternalUser,
   updateInternalUser,
-  deleteInternalUser,
+  archiveInternalUser,
+  hardDeleteInternalUser,
+  ApiError,
   type InternalUser,
   type InternalUserRole,
 } from "@/lib/api";
@@ -116,10 +120,28 @@ export default function UsersSettingsPage() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
-  // Delete confirmation state
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [deletingUser, setDeletingUser] = useState<InternalUser | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
+  // Archive confirmation state
+  const [isArchiveOpen, setIsArchiveOpen] = useState(false);
+  const [archivingUser, setArchivingUser] = useState<InternalUser | null>(null);
+  const [isArchiving, setIsArchiving] = useState(false);
+
+  // Hard delete confirmation state (permanent)
+  const [isHardDeleteOpen, setIsHardDeleteOpen] = useState(false);
+  const [hardDeletingUser, setHardDeletingUser] = useState<InternalUser | null>(null);
+  const [isHardDeleting, setIsHardDeleting] = useState(false);
+  const [hardDeleteConfirmText, setHardDeleteConfirmText] = useState("");
+
+  // Extract error message from API error
+  const getErrorMessage = (err: unknown): string => {
+    if (err instanceof ApiError) {
+      // Use the human-readable message from the backend
+      return err.message;
+    }
+    if (err instanceof Error) {
+      return err.message;
+    }
+    return "An unexpected error occurred";
+  };
 
   // Fetch users
   const fetchUsers = async () => {
@@ -129,7 +151,7 @@ export default function UsersSettingsPage() {
       const response = await getInternalUsers({ limit: 100 });
       setUsers(response.users || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load users");
+      setError(getErrorMessage(err));
     } finally {
       setIsLoading(false);
     }
@@ -171,7 +193,7 @@ export default function UsersSettingsPage() {
       resetInviteForm();
       fetchUsers();
     } catch (err) {
-      setInviteError(err instanceof Error ? err.message : "Failed to invite user");
+      setInviteError(getErrorMessage(err));
     } finally {
       setIsInviting(false);
     }
@@ -215,31 +237,55 @@ export default function UsersSettingsPage() {
       setEditingUser(null);
       fetchUsers();
     } catch (err) {
-      setEditError(err instanceof Error ? err.message : "Failed to update user");
+      setEditError(getErrorMessage(err));
     } finally {
       setIsUpdating(false);
     }
   };
 
-  // Handle delete
-  const openDeleteConfirm = (user: InternalUser) => {
-    setDeletingUser(user);
-    setIsDeleteOpen(true);
+  // Handle archive (soft delete)
+  const openArchiveConfirm = (user: InternalUser) => {
+    setArchivingUser(user);
+    setIsArchiveOpen(true);
   };
 
-  const handleDelete = async () => {
-    if (!deletingUser) return;
+  const handleArchive = async () => {
+    if (!archivingUser) return;
 
     try {
-      setIsDeleting(true);
-      await deleteInternalUser(deletingUser.id);
-      setIsDeleteOpen(false);
-      setDeletingUser(null);
+      setIsArchiving(true);
+      await archiveInternalUser(archivingUser.id);
+      setIsArchiveOpen(false);
+      setArchivingUser(null);
       fetchUsers();
     } catch (err) {
-      console.error("Failed to delete user:", err);
+      console.error("Failed to archive user:", err);
     } finally {
-      setIsDeleting(false);
+      setIsArchiving(false);
+    }
+  };
+
+  // Handle hard delete (permanent)
+  const openHardDeleteConfirm = (user: InternalUser) => {
+    setHardDeletingUser(user);
+    setHardDeleteConfirmText("");
+    setIsHardDeleteOpen(true);
+  };
+
+  const handleHardDelete = async () => {
+    if (!hardDeletingUser) return;
+
+    try {
+      setIsHardDeleting(true);
+      await hardDeleteInternalUser(hardDeletingUser.id);
+      setIsHardDeleteOpen(false);
+      setHardDeletingUser(null);
+      setHardDeleteConfirmText("");
+      fetchUsers();
+    } catch (err) {
+      console.error("Failed to permanently delete user:", err);
+    } finally {
+      setIsHardDeleting(false);
     }
   };
 
@@ -377,9 +423,23 @@ export default function UsersSettingsPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={user.isActive ? "default" : "secondary"}>
-                            {user.isActive ? "Active" : "Inactive"}
-                          </Badge>
+                          {user.inviteStatus === "PENDING" ? (
+                            <Badge variant="outline" className="border-yellow-500 text-yellow-600">
+                              Pending Invite
+                            </Badge>
+                          ) : user.inviteStatus === "ACCEPTED" ? (
+                            <Badge variant="default" className="bg-green-600">
+                              Active
+                            </Badge>
+                          ) : user.inviteStatus === "EXPIRED" ? (
+                            <Badge variant="secondary" className="text-red-500">
+                              Expired
+                            </Badge>
+                          ) : user.isActive ? (
+                            <Badge variant="default">Active</Badge>
+                          ) : (
+                            <Badge variant="secondary">Inactive</Badge>
+                          )}
                         </TableCell>
                         <TableCell className="text-muted-foreground">
                           {user.lastLoginAt
@@ -400,11 +460,18 @@ export default function UsersSettingsPage() {
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
-                                onClick={() => openDeleteConfirm(user)}
+                                onClick={() => openArchiveConfirm(user)}
+                                className="text-amber-600"
+                              >
+                                <Archive className="h-4 w-4 mr-2" />
+                                Archive User
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => openHardDeleteConfirm(user)}
                                 className="text-red-600"
                               >
                                 <Trash2 className="h-4 w-4 mr-2" />
-                                Delete User
+                                Delete Permanently
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -641,30 +708,94 @@ export default function UsersSettingsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+      {/* Archive Confirmation Dialog */}
+      <AlertDialog open={isArchiveOpen} onOpenChange={setIsArchiveOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete User</AlertDialogTitle>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Archive className="h-5 w-5 text-amber-600" />
+              Archive User
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete <strong>{deletingUser?.email}</strong>?
-              This action cannot be undone. The user will no longer be able to access the admin dashboard.
+              Are you sure you want to archive <strong>{archivingUser?.email}</strong>?
+              The user will no longer be able to access the admin dashboard, but their data will be preserved and they can be restored later.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-red-600 hover:bg-red-700"
-              disabled={isDeleting}
+              onClick={handleArchive}
+              className="bg-amber-600 hover:bg-amber-700"
+              disabled={isArchiving}
             >
-              {isDeleting ? (
+              {isArchiving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Archiving...
+                </>
+              ) : (
+                "Archive User"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Hard Delete Confirmation Dialog - with type-to-confirm */}
+      <AlertDialog open={isHardDeleteOpen} onOpenChange={(open) => {
+        setIsHardDeleteOpen(open);
+        if (!open) setHardDeleteConfirmText("");
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="h-5 w-5" />
+              Permanently Delete User
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>
+                You are about to <strong className="text-red-600">permanently delete</strong>{" "}
+                <strong>{hardDeletingUser?.email}</strong>.
+              </p>
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">
+                <p className="font-semibold mb-1">This action cannot be undone!</p>
+                <ul className="list-disc list-inside space-y-1">
+                  <li>All user data will be permanently removed</li>
+                  <li>All role associations will be deleted</li>
+                  <li>This user cannot be restored</li>
+                </ul>
+              </div>
+              <div className="pt-2">
+                <Label htmlFor="confirm-delete" className="text-sm font-medium">
+                  Type <strong>DELETE</strong> to confirm:
+                </Label>
+                <Input
+                  id="confirm-delete"
+                  value={hardDeleteConfirmText}
+                  onChange={(e) => setHardDeleteConfirmText(e.target.value)}
+                  placeholder="DELETE"
+                  className="mt-2"
+                />
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleHardDelete}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={isHardDeleting || hardDeleteConfirmText !== "DELETE"}
+            >
+              {isHardDeleting ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   Deleting...
                 </>
               ) : (
-                "Delete User"
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Permanently
+                </>
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -66,6 +66,8 @@ export default function ReturnDetailPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [refundDialogOpen, setRefundDialogOpen] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const returnId = params.id as string;
 
@@ -88,25 +90,26 @@ export default function ReturnDetailPage() {
 
   const handleReceive = async () => {
     setActionLoading("receive");
+    setActionError(null);
     try {
       await receiveReturn(returnId);
       await fetchReturn();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to mark as received");
+      setActionError(err instanceof Error ? err.message : "Failed to mark as received");
     } finally {
       setActionLoading(null);
     }
   };
 
   const handleRefund = async () => {
-    if (!confirm("Are you sure you want to process this refund?")) return;
-
     setActionLoading("refund");
+    setActionError(null);
     try {
       await processReturnRefund(returnId);
+      setRefundDialogOpen(false);
       await fetchReturn();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to process refund");
+      setActionError(err instanceof Error ? err.message : "Failed to process refund");
     } finally {
       setActionLoading(null);
     }
@@ -114,18 +117,19 @@ export default function ReturnDetailPage() {
 
   const handleReject = async () => {
     if (!rejectReason.trim()) {
-      alert("Please provide a reason for rejection");
+      setActionError("Please provide a reason for rejection");
       return;
     }
 
     setActionLoading("reject");
+    setActionError(null);
     try {
       await rejectReturn(returnId, { reason: rejectReason });
       setRejectDialogOpen(false);
       setRejectReason("");
       await fetchReturn();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to reject return");
+      setActionError(err instanceof Error ? err.message : "Failed to reject return");
     } finally {
       setActionLoading(null);
     }
@@ -198,14 +202,33 @@ export default function ReturnDetailPage() {
             </Button>
           )}
           {returnData.canRefund && (
-            <Button onClick={handleRefund} disabled={actionLoading === "refund"}>
-              {actionLoading === "refund" ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <DollarSign className="h-4 w-4 mr-2" />
-              )}
-              Process Refund
-            </Button>
+            <Dialog open={refundDialogOpen} onOpenChange={setRefundDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <DollarSign className="h-4 w-4 mr-2" />
+                  Process Refund
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Process Refund</DialogTitle>
+                  <DialogDescription>
+                    Are you sure you want to process a refund of{" "}
+                    {formatPrice(returnData.refundAmount / 100, returnData.currencyCode)}? This action
+                    cannot be undone.
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <Button variant="ghost" onClick={() => setRefundDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleRefund} disabled={actionLoading === "refund"}>
+                    {actionLoading === "refund" && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    Confirm Refund
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           )}
           {returnData.canReject && (
             <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
@@ -247,6 +270,17 @@ export default function ReturnDetailPage() {
           )}
         </div>
       </div>
+
+      {/* Action Error Display */}
+      {actionError && (
+        <div className="flex items-center gap-2 p-4 bg-red-50 text-red-700 rounded-lg">
+          <AlertCircle className="h-5 w-5" />
+          <span>{actionError}</span>
+          <Button variant="ghost" size="sm" onClick={() => setActionError(null)} className="ml-auto">
+            Dismiss
+          </Button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content */}

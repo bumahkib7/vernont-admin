@@ -5,6 +5,7 @@ import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/s
 import { ConditionalSidebar } from "@/components/conditional-sidebar";
 import { Separator } from "@/components/ui/separator";
 import { CommandPalette } from "@/components/command-palette";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/lib/auth-context";
 import { Loader2 } from "lucide-react";
 import {
@@ -69,7 +70,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </BreadcrumbList>
             </Breadcrumb>
           </div>
-          <CommandPalette />
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <CommandPalette />
+          </div>
         </header>
         <main className="flex-1 overflow-auto">
           {children}

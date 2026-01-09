@@ -2,6 +2,113 @@
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
+/**
+ * Standardized API error response from backend.
+ */
+export interface ApiErrorResponse {
+  error: string;
+  message: string;
+  details?: Record<string, unknown>;
+  timestamp?: string;
+  requestId?: string;
+}
+
+/**
+ * Custom API error class that captures full error details from backend.
+ */
+export class ApiError extends Error {
+  public readonly code: string;
+  public readonly status: number;
+  public readonly details?: Record<string, unknown>;
+  public readonly requestId?: string;
+  public readonly timestamp?: string;
+
+  constructor(
+    message: string,
+    code: string,
+    status: number,
+    details?: Record<string, unknown>,
+    requestId?: string,
+    timestamp?: string
+  ) {
+    super(message);
+    this.name = "ApiError";
+    this.code = code;
+    this.status = status;
+    this.details = details;
+    this.requestId = requestId;
+    this.timestamp = timestamp;
+  }
+
+  /**
+   * Get field-specific validation errors if available.
+   */
+  getFieldErrors(): Record<string, string> | undefined {
+    if (this.details?.fields) {
+      return this.details.fields as Record<string, string>;
+    }
+    return undefined;
+  }
+
+  /**
+   * Check if this is an authentication error.
+   */
+  isAuthError(): boolean {
+    return this.status === 401 || this.code === "UNAUTHORIZED" || this.code === "INVALID_CREDENTIALS";
+  }
+
+  /**
+   * Check if this is a validation error.
+   */
+  isValidationError(): boolean {
+    return this.code === "VALIDATION_ERROR" || this.code === "INVALID_ARGUMENT" || this.status === 400;
+  }
+
+  /**
+   * Check if this is a not found error.
+   */
+  isNotFoundError(): boolean {
+    return this.status === 404 || this.code.includes("NOT_FOUND");
+  }
+
+  /**
+   * Check if this is a conflict/duplicate error.
+   */
+  isConflictError(): boolean {
+    return this.status === 409 || this.code.includes("ALREADY_EXISTS") || this.code === "DUPLICATE_SKU";
+  }
+}
+
+/**
+ * Parse error response from backend.
+ */
+async function parseErrorResponse(response: Response): Promise<ApiError> {
+  const status = response.status;
+
+  try {
+    const errorData = await response.json() as ApiErrorResponse;
+    return new ApiError(
+      errorData.message || `Request failed with status ${status}`,
+      errorData.error || `HTTP_${status}`,
+      status,
+      errorData.details,
+      errorData.requestId,
+      errorData.timestamp
+    );
+  } catch {
+    // JSON parsing failed, create basic error
+    const message = status === 401
+      ? "Authentication required"
+      : status === 403
+        ? "Access denied"
+        : status === 404
+          ? "Resource not found"
+          : `Request failed with status ${status}`;
+
+    return new ApiError(message, `HTTP_${status}`, status);
+  }
+}
+
 // Generic API fetch with auth
 async function apiFetch<T>(
   endpoint: string,
@@ -17,8 +124,7 @@ async function apiFetch<T>(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: "Request failed" }));
-    throw new Error(error.message || error.error || `HTTP ${response.status}`);
+    throw await parseErrorResponse(response);
   }
 
   return response.json();
@@ -196,7 +302,7 @@ export async function completeOrder(id: string): Promise<CompleteOrderResponse> 
   });
 }
 
-// Format price helper
+// Format price helper - amounts are in pounds/dollars (major currency unit)
 export function formatPrice(amount: number, currencyCode: string = "GBP"): string {
   return new Intl.NumberFormat("en-GB", {
     style: "currency",
@@ -3218,6 +3324,8 @@ export async function deleteStore(storeId: string): Promise<void> {
 
 export type InternalUserRole = "ADMIN" | "DEVELOPER" | "CUSTOMER_SERVICE" | "WAREHOUSE_MANAGER";
 
+export type InviteStatus = "NONE" | "PENDING" | "ACCEPTED" | "EXPIRED";
+
 export interface InternalUser {
   id: string;
   email: string;
@@ -3227,6 +3335,9 @@ export interface InternalUser {
   isActive: boolean;
   emailVerified: boolean;
   roles: string[];
+  inviteStatus: InviteStatus;
+  invitedAt: string | null;
+  inviteAcceptedAt: string | null;
   lastLoginAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -3309,10 +3420,27 @@ export async function updateInternalUser(
   });
 }
 
-// Delete internal user (soft delete)
-export async function deleteInternalUser(userId: string): Promise<void> {
+// Archive internal user (soft delete - can be restored)
+export async function archiveInternalUser(userId: string): Promise<void> {
   await apiFetch<void>(`/api/admin/internal-users/${userId}`, {
     method: "DELETE",
+  });
+}
+
+// Alias for backwards compatibility
+export const deleteInternalUser = archiveInternalUser;
+
+// Permanently delete internal user (CANNOT BE UNDONE)
+export async function hardDeleteInternalUser(userId: string): Promise<void> {
+  await apiFetch<void>(`/api/admin/internal-users/${userId}/permanent`, {
+    method: "DELETE",
+  });
+}
+
+// Restore an archived user
+export async function restoreInternalUser(userId: string): Promise<InternalUserResponse> {
+  return apiFetch<InternalUserResponse>(`/api/admin/internal-users/${userId}/restore`, {
+    method: "POST",
   });
 }
 
@@ -3322,4 +3450,159 @@ export async function inviteInternalUser(data: InviteInternalUserRequest): Promi
     method: "POST",
     body: JSON.stringify(data),
   });
+}
+
+// ============================================================================
+// Dashboard API
+// ============================================================================
+
+export interface RevenueStats {
+  today: number;
+  yesterday: number;
+  changePercent: number;
+  trend: "up" | "down";
+}
+
+export interface OrderStats {
+  today: number;
+  pending: number;
+  processing: number;
+  requiresAction: number;
+}
+
+export interface CustomerOverview {
+  total: number;
+  newThisWeek: number;
+}
+
+export interface ProductOverview {
+  total: number;
+  lowStock: number;
+}
+
+export interface OrderItemSummary {
+  name: string;
+  image: string | null;
+}
+
+export interface RecentOrderSummary {
+  id: string;
+  displayId: string;
+  customerName: string;
+  customerEmail: string | null;
+  date: string;
+  total: number;
+  status: string;
+  paymentStatus: string;
+  fulfillmentStatus: string;
+  itemCount: number;
+  items: OrderItemSummary[];
+}
+
+export interface ActivityItem {
+  id: string;
+  type: string;
+  message: string;
+  entityType: string | null;
+  entityId: string | null;
+  timestamp: string;
+  userId: string | null;
+  userName: string | null;
+}
+
+export interface DashboardStats {
+  revenue: RevenueStats;
+  orders: OrderStats;
+  customers: CustomerOverview;
+  products: ProductOverview;
+  recentOrders: RecentOrderSummary[];
+  activityFeed: ActivityItem[];
+}
+
+export interface KpiItem {
+  value: number;
+  change: number;
+  trend: "up" | "down" | "neutral";
+}
+
+export interface KpiData {
+  totalRevenue: KpiItem;
+  totalOrders: KpiItem;
+  newCustomers: KpiItem;
+  conversionRate: KpiItem;
+  period: string;
+}
+
+// Get comprehensive dashboard statistics
+export async function getDashboardStats(): Promise<DashboardStats> {
+  return apiFetch<DashboardStats>("/admin/dashboard/stats");
+}
+
+// Get recent orders
+export async function getDashboardRecentOrders(limit: number = 10): Promise<RecentOrderSummary[]> {
+  return apiFetch<RecentOrderSummary[]>(`/admin/dashboard/recent-orders?limit=${limit}`);
+}
+
+// Get activity feed
+export async function getDashboardActivity(limit: number = 20): Promise<ActivityItem[]> {
+  return apiFetch<ActivityItem[]>(`/admin/dashboard/activity?limit=${limit}`);
+}
+
+// Activity list response for live activity endpoint
+export interface ActivityListResponse {
+  items: ActivityItem[];
+  count: number;
+  hasMore: boolean;
+}
+
+// Get live activity feed (for HTTP polling fallback)
+export async function getRecentActivity(limit: number = 50, since?: string): Promise<ActivityListResponse> {
+  const params = new URLSearchParams({ limit: limit.toString() });
+  if (since) {
+    params.append("since", since);
+  }
+  return apiFetch<ActivityListResponse>(`/admin/activity?${params.toString()}`);
+}
+
+// Poll for new activity since timestamp
+export async function pollActivity(since: string, limit: number = 100): Promise<ActivityListResponse> {
+  const params = new URLSearchParams({
+    since,
+    limit: limit.toString(),
+  });
+  return apiFetch<ActivityListResponse>(`/admin/activity/poll?${params.toString()}`);
+}
+
+// Get KPIs for analytics
+export async function getDashboardKpis(period: "7d" | "30d" | "90d" | "12m" = "30d"): Promise<KpiData> {
+  return apiFetch<KpiData>(`/admin/dashboard/kpis?period=${period}`);
+}
+
+// Analytics types
+export interface SalesDataPoint {
+  date: string;
+  revenue: number;
+}
+
+export interface TopProductSummary {
+  name: string;
+  revenue: number;
+  orders: number;
+  growth: number;
+}
+
+export interface TopCategorySummary {
+  category: string;
+  sales: number;
+}
+
+export interface AnalyticsData {
+  salesOverTime: SalesDataPoint[];
+  topProducts: TopProductSummary[];
+  topCategories: TopCategorySummary[];
+}
+
+// Get analytics data for charts
+export async function getDashboardAnalytics(period: "7d" | "30d" | "90d" | "12m" = "30d"): Promise<AnalyticsData> {
+  return apiFetch<AnalyticsData>(`/admin/dashboard/analytics?period=${period}`);
 }
