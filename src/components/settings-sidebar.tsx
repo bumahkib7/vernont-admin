@@ -47,6 +47,7 @@ const settingsNav: NavSection[] = [
       { title: "Publishable API Keys", href: "/settings/publishable-api-keys" },
       { title: "Secret API Keys", href: "/settings/secret-api-keys" },
       { title: "Workflows", href: "/settings/workflows" },
+      { title: "Human Interventions", href: "/settings/interventions" },
     ],
   },
   {
