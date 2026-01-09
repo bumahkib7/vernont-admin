@@ -11,13 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Autocomplete } from "@/components/ui/autocomplete";
 import {
   X,
   Upload,
@@ -699,48 +693,34 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Category</Label>
-                        <Select
+                        <Autocomplete
+                          options={categories.map((cat) => ({
+                            value: cat.id,
+                            label: cat.name,
+                          }))}
                           value={formData.category}
                           onValueChange={(value) => updateFormData("category", value)}
-                          disabled={loadingData}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder={loadingData ? "Loading..." : "Select a category"} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {categories.length === 0 && !loadingData && (
-                              <SelectItem value="_none" disabled>No categories available</SelectItem>
-                            )}
-                            {categories.map((cat) => (
-                              <SelectItem key={cat.id} value={cat.id}>
-                                {cat.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          placeholder="Select a category"
+                          searchPlaceholder="Search categories..."
+                          emptyMessage="No categories found."
+                          loading={loadingData}
+                        />
                       </div>
 
                       <div className="space-y-2">
                         <Label>Collection</Label>
-                        <Select
+                        <Autocomplete
+                          options={collections.map((col) => ({
+                            value: col.id,
+                            label: col.title,
+                          }))}
                           value={formData.collection}
                           onValueChange={(value) => updateFormData("collection", value)}
-                          disabled={loadingData}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder={loadingData ? "Loading..." : "Select a collection"} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {collections.length === 0 && !loadingData && (
-                              <SelectItem value="_none" disabled>No collections available</SelectItem>
-                            )}
-                            {collections.map((col) => (
-                              <SelectItem key={col.id} value={col.id}>
-                                {col.title}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          placeholder="Select a collection"
+                          searchPlaceholder="Search collections..."
+                          emptyMessage="No collections found."
+                          loading={loadingData}
+                        />
                       </div>
                     </div>
                   </div>
