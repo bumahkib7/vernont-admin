@@ -96,6 +96,7 @@ import {
   type UpdateOptionInput,
 } from "@/lib/api";
 import { useRef } from "react";
+import { FragranceMetadataEditor, type FragranceMetadata } from "@/components/products/FragranceMetadataEditor";
 
 function getStatusBadge(status: ProductStatus) {
   switch (status) {
@@ -175,6 +176,9 @@ export default function ProductDetailPage() {
     categoryId: "",
   });
 
+  // Fragrance metadata state
+  const [fragranceMetadata, setFragranceMetadata] = useState<FragranceMetadata>({});
+
   // New tag input
   const [newTag, setNewTag] = useState("");
 
@@ -205,6 +209,13 @@ export default function ProductDetailPage() {
         tags: data.tags || [],
         categoryId: data.categories?.[0] || "",
       });
+      // Load fragrance metadata from product.metadata.fragrance
+      const metadata = data.metadata as Record<string, unknown> | undefined;
+      if (metadata?.fragrance) {
+        setFragranceMetadata(metadata.fragrance as FragranceMetadata);
+      } else {
+        setFragranceMetadata({});
+      }
       setHasChanges(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load product");
@@ -230,6 +241,11 @@ export default function ProductDetailPage() {
     setHasChanges(true);
   };
 
+  const updateFragranceMetadata = (metadata: FragranceMetadata) => {
+    setFragranceMetadata(metadata);
+    setHasChanges(true);
+  };
+
   const handleSave = async () => {
     if (!product) return;
     setSaving(true);
@@ -237,6 +253,12 @@ export default function ProductDetailPage() {
     setSuccess(null);
 
     try {
+      // Build metadata with fragrance data
+      const existingMetadata = (product.metadata as Record<string, unknown>) || {};
+      const hasFragranceData = Object.keys(fragranceMetadata).some(
+        (key) => fragranceMetadata[key as keyof FragranceMetadata] !== undefined
+      );
+
       const updateData: UpdateProductInput = {
         title: formData.title,
         handle: formData.handle,
@@ -247,6 +269,9 @@ export default function ProductDetailPage() {
         originCountry: formData.originCountry || undefined,
         tags: formData.tags.length > 0 ? formData.tags : undefined,
         categories: formData.categoryId ? [formData.categoryId] : undefined,
+        metadata: hasFragranceData
+          ? { ...existingMetadata, fragrance: fragranceMetadata }
+          : existingMetadata,
       };
 
       await updateProduct(product.id, updateData);
@@ -1180,6 +1205,12 @@ export default function ProductDetailPage() {
               </Tabs>
             </CardContent>
           </Card>
+
+          {/* Fragrance Details */}
+          <FragranceMetadataEditor
+            value={fragranceMetadata}
+            onChange={updateFragranceMetadata}
+          />
         </div>
 
         {/* Sidebar */}
