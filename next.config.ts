@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+const isDev = process.env.NODE_ENV === "development";
+
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
@@ -12,7 +14,14 @@ const nextConfig: NextConfig = {
         hostname: "localhost",
         port: "9000",
       },
+      {
+        protocol: "http",
+        hostname: "127.0.0.1",
+        port: "9000",
+      },
     ],
+    // Disable image optimization in development to avoid private IP blocking
+    unoptimized: isDev,
   },
 };
 

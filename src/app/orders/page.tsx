@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import {
   Card,
   CardContent,
@@ -29,6 +28,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Search,
@@ -38,10 +38,10 @@ import {
   ChevronDown,
   AlertCircle,
   RefreshCw,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
 import {
-  getOrders,
-  OrderSummary,
   PaymentStatus,
   FulfillmentStatus,
   formatPrice,
@@ -49,6 +49,7 @@ import {
   getPaymentStatusDisplay,
   getFulfillmentStatusDisplay,
 } from "@/lib/api";
+import { useOrdersStore, useWebSocketStore } from "@/stores";
 
 function PaymentStatusBadge({ status }: { status: PaymentStatus }) {
   const { label, color } = getPaymentStatusDisplay(status);
@@ -77,53 +78,41 @@ type Filter = {
 };
 
 export default function OrdersPage() {
-  const [orders, setOrders] = useState<OrderSummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Use Zustand store instead of local state
+  const {
+    orders,
+    count,
+    isLoading,
+    error,
+    filters,
+    fetchOrders,
+    setFilters,
+    subscribeToOrders,
+  } = useOrdersStore();
+
+  const { isConnected } = useWebSocketStore();
+
   const [activeFilters, setActiveFilters] = useState<Filter[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [pagination, setPagination] = useState({
-    limit: 20,
-    offset: 0,
-    count: 0,
-  });
 
-  const fetchOrders = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await getOrders({
-        limit: pagination.limit,
-        offset: pagination.offset,
-        q: searchQuery || undefined,
-      });
-      setOrders(response.orders);
-      setPagination((prev) => ({
-        ...prev,
-        count: response.count,
-      }));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load orders");
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Subscribe to WebSocket updates on mount
+  useEffect(() => {
+    const unsubscribe = subscribeToOrders();
+    return unsubscribe;
+  }, [subscribeToOrders]);
 
+  // Initial fetch
   useEffect(() => {
     fetchOrders();
-  }, [pagination.offset, pagination.limit]);
+  }, [fetchOrders]);
 
   // Debounced search
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (pagination.offset === 0) {
-        fetchOrders();
-      } else {
-        setPagination((prev) => ({ ...prev, offset: 0 }));
-      }
+      fetchOrders({ q: searchQuery || undefined, offset: 0 });
     }, 300);
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [searchQuery, fetchOrders]);
 
   const addFilter = (filter: Filter) => {
     if (!activeFilters.find((f) => f.id === filter.id && f.value === filter.value)) {
@@ -160,7 +149,7 @@ export default function OrdersPage() {
     URL.revokeObjectURL(url);
   };
 
-  // Filter orders based on active filters (API already handles search)
+  // Filter orders based on active filters
   const filteredOrders = orders.filter((order) => {
     for (const filter of activeFilters) {
       if (filter.id === "payment" && order.paymentStatus !== filter.value) {
@@ -173,24 +162,37 @@ export default function OrdersPage() {
     return true;
   });
 
-  const totalPages = Math.ceil(pagination.count / pagination.limit);
-  const currentPage = Math.floor(pagination.offset / pagination.limit) + 1;
+  const limit = filters.limit || 20;
+  const offset = filters.offset || 0;
+  const totalPages = Math.ceil(count / limit);
+  const currentPage = Math.floor(offset / limit) + 1;
 
   const goToPage = (page: number) => {
-    setPagination((prev) => ({
-      ...prev,
-      offset: (page - 1) * prev.limit,
-    }));
+    fetchOrders({ offset: (page - 1) * limit });
   };
 
   return (
     <div className="flex flex-col gap-6 p-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-4">
-          <CardTitle className="text-xl font-semibold">Orders</CardTitle>
+          <div className="flex items-center gap-3">
+            <CardTitle className="text-xl font-semibold">Orders</CardTitle>
+            {/* Live indicator */}
+            {isConnected ? (
+              <Badge variant="outline" className="gap-1 text-green-600 border-green-200 bg-green-50">
+                <Wifi className="h-3 w-3" />
+                Live
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="gap-1 text-gray-500 border-gray-200">
+                <WifiOff className="h-3 w-3" />
+                Offline
+              </Badge>
+            )}
+          </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={fetchOrders} disabled={loading}>
-              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            <Button variant="outline" size="icon" onClick={() => fetchOrders()} disabled={isLoading}>
+              <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
             </Button>
             <Button variant="outline" onClick={handleExport} disabled={orders.length === 0}>
               Export
@@ -309,14 +311,14 @@ export default function OrdersPage() {
             <div className="flex items-center gap-2 p-4 mb-4 bg-red-50 text-red-700 rounded-lg">
               <AlertCircle className="h-5 w-5" />
               <span>{error}</span>
-              <Button variant="ghost" size="sm" onClick={fetchOrders} className="ml-auto">
+              <Button variant="ghost" size="sm" onClick={() => fetchOrders()} className="ml-auto">
                 Retry
               </Button>
             </div>
           )}
 
           {/* Loading State */}
-          {loading && orders.length === 0 ? (
+          {isLoading && orders.length === 0 ? (
             <div className="space-y-3">
               {[...Array(5)].map((_, i) => (
                 <div key={i} className="flex items-center gap-4">
@@ -361,10 +363,10 @@ export default function OrdersPage() {
                         <TableCell>{formatDate(order.createdAt)}</TableCell>
                         <TableCell>{order.email}</TableCell>
                         <TableCell>
-                          <PaymentStatusBadge status={order.paymentStatus} />
+                          <PaymentStatusBadge status={order.paymentStatus as PaymentStatus} />
                         </TableCell>
                         <TableCell>
-                          <FulfillmentStatusBadge status={order.fulfillmentStatus} />
+                          <FulfillmentStatusBadge status={order.fulfillmentStatus as FulfillmentStatus} />
                         </TableCell>
                         <TableCell className="text-right">
                           {formatPrice(order.total, order.currencyCode)}
@@ -378,7 +380,7 @@ export default function OrdersPage() {
               {/* Pagination */}
               <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
                 <span>
-                  {pagination.offset + 1} — {Math.min(pagination.offset + pagination.limit, pagination.count)} of {pagination.count} results
+                  {offset + 1} — {Math.min(offset + limit, count)} of {count} results
                 </span>
                 <div className="flex items-center gap-2">
                   <span>

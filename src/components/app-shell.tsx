@@ -6,6 +6,8 @@ import { ConditionalSidebar } from "@/components/conditional-sidebar";
 import { Separator } from "@/components/ui/separator";
 import { CommandPalette } from "@/components/command-palette";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { NotificationBell } from "@/components/notification-bell";
+import { NotificationHandlerProvider } from "@/hooks/use-notification-handler";
 import { useAuth } from "@/lib/auth-context";
 import { Loader2 } from "lucide-react";
 import {
@@ -55,30 +57,33 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   // Authenticated: render with sidebar
   return (
-    <SidebarProvider>
-      <ConditionalSidebar />
-      <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b px-4">
-          <div className="flex items-center gap-2">
-            <SidebarTrigger className="-ml-1" />
-            <Separator orientation="vertical" className="mr-2 h-4" />
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem>
-                  <BreadcrumbPage>Dashboard</BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
-          </div>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <CommandPalette />
-          </div>
-        </header>
-        <main className="flex-1 overflow-auto">
-          {children}
-        </main>
-      </SidebarInset>
-    </SidebarProvider>
+    <NotificationHandlerProvider>
+      <SidebarProvider>
+        <ConditionalSidebar />
+        <SidebarInset>
+          <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b px-4">
+            <div className="flex items-center gap-2">
+              <SidebarTrigger className="-ml-1" />
+              <Separator orientation="vertical" className="mr-2 h-4" />
+              <Breadcrumb>
+                <BreadcrumbList>
+                  <BreadcrumbItem>
+                    <BreadcrumbPage>Dashboard</BreadcrumbPage>
+                  </BreadcrumbItem>
+                </BreadcrumbList>
+              </Breadcrumb>
+            </div>
+            <div className="flex items-center gap-2">
+              <NotificationBell />
+              <ThemeToggle />
+              <CommandPalette />
+            </div>
+          </header>
+          <main className="flex-1 overflow-auto">
+            {children}
+          </main>
+        </SidebarInset>
+      </SidebarProvider>
+    </NotificationHandlerProvider>
   );
 }

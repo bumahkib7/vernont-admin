@@ -625,7 +625,7 @@ export interface InventoryLevelsResponse {
   limit: number;
 }
 
-export interface StockLocation {
+export interface InventoryStockLocation {
   id: string;
   name: string;
   address1?: string;
@@ -641,8 +641,8 @@ export interface StockLocation {
   createdAt: string;
 }
 
-export interface StockLocationsResponse {
-  stock_locations: StockLocation[];
+export interface InventoryStockLocationsResponse {
+  stock_locations: InventoryStockLocation[];
   count: number;
   offset: number;
   limit: number;
@@ -670,7 +670,7 @@ export interface AdjustInventoryResponse {
   message: string;
 }
 
-export interface CreateStockLocationRequest {
+export interface CreateInventoryStockLocationRequest {
   name: string;
   address1?: string;
   address2?: string;
@@ -711,36 +711,36 @@ export async function adjustInventory(data: AdjustInventoryRequest): Promise<Adj
   });
 }
 
-// List stock locations
-export async function getStockLocations(params?: {
+// List inventory stock locations (for inventory management)
+export async function getInventoryStockLocations(params?: {
   limit?: number;
   offset?: number;
-}): Promise<StockLocationsResponse> {
+}): Promise<InventoryStockLocationsResponse> {
   const searchParams = new URLSearchParams();
   if (params?.limit) searchParams.set("limit", params.limit.toString());
   if (params?.offset) searchParams.set("offset", params.offset.toString());
 
   const query = searchParams.toString();
-  return apiFetch<StockLocationsResponse>(`/admin/inventory/locations${query ? `?${query}` : ""}`);
+  return apiFetch<InventoryStockLocationsResponse>(`/admin/inventory/locations${query ? `?${query}` : ""}`);
 }
 
-// Get single stock location
-export async function getStockLocation(id: string): Promise<{ stock_location: StockLocation }> {
-  return apiFetch<{ stock_location: StockLocation }>(`/admin/inventory/locations/${id}`);
+// Get single inventory stock location
+export async function getInventoryStockLocation(id: string): Promise<{ stock_location: InventoryStockLocation }> {
+  return apiFetch<{ stock_location: InventoryStockLocation }>(`/admin/inventory/locations/${id}`);
 }
 
-// Create stock location
-export async function createStockLocation(
-  data: CreateStockLocationRequest
-): Promise<{ stock_location: StockLocation; message: string }> {
-  return apiFetch<{ stock_location: StockLocation; message: string }>("/admin/inventory/locations", {
+// Create inventory stock location
+export async function createInventoryStockLocation(
+  data: CreateInventoryStockLocationRequest
+): Promise<{ stock_location: InventoryStockLocation; message: string }> {
+  return apiFetch<{ stock_location: InventoryStockLocation; message: string }>("/admin/inventory/locations", {
     method: "POST",
     body: JSON.stringify(data),
   });
 }
 
-// Delete stock location
-export async function deleteStockLocation(id: string): Promise<{ message: string; id: string }> {
+// Delete inventory stock location
+export async function deleteInventoryStockLocation(id: string): Promise<{ message: string; id: string }> {
   return apiFetch<{ message: string; id: string }>(`/admin/inventory/locations/${id}`, {
     method: "DELETE",
   });
@@ -1094,13 +1094,20 @@ export interface CreateProductVariantInput {
   prices: { currencyCode: string; amount: number }[];
 }
 
+// Image input for product creation - matches backend ImageInput
+export interface ImageInput {
+  url: string;
+  altText?: string;
+  position?: number;
+}
+
 export interface CreateProductInput {
   title: string;
   description?: string;
   handle: string;
   status?: ProductStatus;
   shippingProfileId: string;
-  images?: string[];
+  images?: ImageInput[];
   thumbnail?: string;
   options?: { title: string; values: string[] }[];
   variants?: CreateProductVariantInput[];
@@ -1584,7 +1591,8 @@ export interface AddProductImageInput {
 // Upload image to storage (MinIO/S3)
 export async function uploadProductImage(
   file: File,
-  productId?: string
+  productId?: string,
+  _isRetry: boolean = false
 ): Promise<UploadImageResponse> {
   const formData = new FormData();
   formData.append("file", file);
@@ -1599,6 +1607,18 @@ export async function uploadProductImage(
   });
 
   if (!response.ok) {
+    // On 401, attempt to refresh token and retry (once)
+    if (response.status === 401 && !_isRetry) {
+      const refreshed = await refreshAuthToken();
+      if (refreshed) {
+        // Retry the upload
+        return uploadProductImage(file, productId, true);
+      }
+      // Refresh failed - redirect to login
+      if (typeof window !== "undefined") {
+        window.location.href = "/login";
+      }
+    }
     const error = await response.text();
     throw new Error(error || "Failed to upload image");
   }
@@ -3831,4 +3851,1024 @@ export function getInterventionStatusDisplay(status: InterventionStatus): { labe
     AUTO_RETRYING: { label: "Auto Retrying", color: "bg-purple-100 text-purple-800" },
   };
   return config[status] || { label: status, color: "bg-gray-100 text-gray-800" };
+}
+
+// =========================================================================
+// Regions API
+// =========================================================================
+
+export interface Country {
+  iso_2: string;
+  iso_3: string;
+  num_code: number;
+  name: string;
+  display_name: string;
+}
+
+export interface Region {
+  id: string;
+  name: string;
+  currency_code: string;
+  automatic_taxes: boolean;
+  tax_code: string | null;
+  gift_cards_taxable: boolean;
+  tax_rate: number;
+  tax_inclusive: boolean;
+  countries: Country[];
+  payment_providers: string[];
+  fulfillment_providers: string[];
+  created_at: string;
+  updated_at: string;
+  metadata: Record<string, unknown> | null;
+}
+
+export interface RegionsResponse {
+  regions: Region[];
+  count: number;
+  offset: number;
+  limit: number;
+}
+
+export interface RegionResponse {
+  region: Region;
+}
+
+export interface CreateRegionInput {
+  name: string;
+  currencyCode: string;
+  automaticTaxes?: boolean;
+  taxCode?: string;
+  giftCardsTaxable?: boolean;
+  taxRate?: number;
+  taxInclusive?: boolean;
+  countryCodes?: string[];
+  paymentProviderIds?: string[];
+  fulfillmentProviderIds?: string[];
+  metadata?: Record<string, unknown>;
+}
+
+export interface UpdateRegionInput {
+  name?: string;
+  currencyCode?: string;
+  automaticTaxes?: boolean;
+  taxCode?: string;
+  giftCardsTaxable?: boolean;
+  taxRate?: number;
+  taxInclusive?: boolean;
+  countryCodes?: string[];
+  paymentProviderIds?: string[];
+  fulfillmentProviderIds?: string[];
+  metadata?: Record<string, unknown>;
+}
+
+// Get all regions
+export async function getRegions(params?: {
+  limit?: number;
+  offset?: number;
+  q?: string;
+}): Promise<RegionsResponse> {
+  const query = new URLSearchParams();
+  if (params?.limit) query.set("limit", params.limit.toString());
+  if (params?.offset) query.set("offset", params.offset.toString());
+  if (params?.q) query.set("q", params.q);
+  return apiFetch<RegionsResponse>(`/admin/regions${query.toString() ? `?${query}` : ""}`);
+}
+
+// Get single region by ID
+export async function getRegion(id: string): Promise<RegionResponse> {
+  return apiFetch<RegionResponse>(`/admin/regions/${id}`);
+}
+
+// Create regions (can create multiple at once)
+export async function createRegions(regions: CreateRegionInput[]): Promise<{ regions: Region[]; count: number }> {
+  return apiFetch<{ regions: Region[]; count: number }>("/admin/regions", {
+    method: "POST",
+    body: JSON.stringify({ regions }),
+  });
+}
+
+// Create a single region (convenience function)
+export async function createRegion(data: CreateRegionInput): Promise<Region> {
+  const response = await createRegions([data]);
+  return response.regions[0];
+}
+
+// Update a region
+export async function updateRegion(id: string, data: UpdateRegionInput): Promise<RegionResponse> {
+  return apiFetch<RegionResponse>(`/admin/regions/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+// Delete a region (soft delete)
+export async function deleteRegion(id: string): Promise<{ id: string; deleted: boolean }> {
+  return apiFetch<{ id: string; deleted: boolean }>(`/admin/regions/${id}`, {
+    method: "DELETE",
+  });
+}
+
+// =========================================================================
+// Tax Regions API
+// =========================================================================
+
+export interface TaxRate {
+  id: string;
+  name: string;
+  code: string | null;
+  rate: number;
+  region_id: string;
+  region_name: string | null;
+  product_types: string | null;
+  product_categories: string | null;
+  shipping_option_id: string | null;
+  created_at: string;
+  updated_at: string;
+  metadata: Record<string, unknown> | null;
+}
+
+export interface TaxRegion {
+  region_id: string;
+  region_name: string;
+  currency_code: string;
+  default_tax_rate: number;
+  tax_rates: TaxRate[];
+  tax_rate_count: number;
+}
+
+export interface TaxRegionsResponse {
+  tax_regions: TaxRegion[];
+  count: number;
+  offset: number;
+  limit: number;
+}
+
+export interface TaxRatesResponse {
+  tax_rates: TaxRate[];
+  count: number;
+  offset: number;
+  limit: number;
+}
+
+export interface TaxRateResponse {
+  tax_rate: TaxRate;
+}
+
+export interface CreateTaxRateInput {
+  name: string;
+  code?: string;
+  rate: number;
+  regionId: string;
+  productTypes?: string;
+  productCategories?: string;
+  shippingOptionId?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface UpdateTaxRateInput {
+  name?: string;
+  code?: string;
+  rate?: number;
+  productTypes?: string;
+  productCategories?: string;
+  shippingOptionId?: string;
+  metadata?: Record<string, unknown>;
+}
+
+// Get all tax regions (regions with their tax rates)
+export async function getTaxRegions(params?: {
+  limit?: number;
+  offset?: number;
+  q?: string;
+}): Promise<TaxRegionsResponse> {
+  const query = new URLSearchParams();
+  if (params?.limit) query.set("limit", params.limit.toString());
+  if (params?.offset) query.set("offset", params.offset.toString());
+  if (params?.q) query.set("q", params.q);
+  return apiFetch<TaxRegionsResponse>(`/admin/tax-regions${query.toString() ? `?${query}` : ""}`);
+}
+
+// Get all tax rates
+export async function getTaxRates(params?: {
+  limit?: number;
+  offset?: number;
+  regionId?: string;
+  q?: string;
+}): Promise<TaxRatesResponse> {
+  const query = new URLSearchParams();
+  if (params?.limit) query.set("limit", params.limit.toString());
+  if (params?.offset) query.set("offset", params.offset.toString());
+  if (params?.regionId) query.set("regionId", params.regionId);
+  if (params?.q) query.set("q", params.q);
+  return apiFetch<TaxRatesResponse>(`/admin/tax-regions/rates${query.toString() ? `?${query}` : ""}`);
+}
+
+// Get single tax rate by ID
+export async function getTaxRate(id: string): Promise<TaxRateResponse> {
+  return apiFetch<TaxRateResponse>(`/admin/tax-regions/rates/${id}`);
+}
+
+// Create a tax rate
+export async function createTaxRate(data: CreateTaxRateInput): Promise<TaxRateResponse> {
+  return apiFetch<TaxRateResponse>("/admin/tax-regions/rates", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+// Update a tax rate
+export async function updateTaxRate(id: string, data: UpdateTaxRateInput): Promise<TaxRateResponse> {
+  return apiFetch<TaxRateResponse>(`/admin/tax-regions/rates/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+// Delete a tax rate (soft delete)
+export async function deleteTaxRate(id: string): Promise<{ id: string; deleted: boolean }> {
+  return apiFetch<{ id: string; deleted: boolean }>(`/admin/tax-regions/rates/${id}`, {
+    method: "DELETE",
+  });
+}
+
+// =========================================================================
+// Stock Locations API
+// =========================================================================
+
+export interface StockLocation {
+  id: string;
+  name: string;
+  address: string | null;
+  address_1: string | null;
+  address_2: string | null;
+  city: string | null;
+  country_code: string | null;
+  province: string | null;
+  postal_code: string | null;
+  phone: string | null;
+  priority: number;
+  fulfillment_enabled: boolean;
+  created_at: string;
+  updated_at: string;
+  metadata: Record<string, unknown> | null;
+}
+
+export interface StockLocationsResponse {
+  locations: StockLocation[];
+  count: number;
+  offset: number;
+  limit: number;
+}
+
+export interface StockLocationResponse {
+  location: StockLocation;
+}
+
+export interface CreateStockLocationInput {
+  name: string;
+  address?: string;
+  address1?: string;
+  address2?: string;
+  city?: string;
+  countryCode?: string;
+  province?: string;
+  postalCode?: string;
+  phone?: string;
+  priority?: number;
+  fulfillmentEnabled?: boolean;
+  metadata?: Record<string, unknown>;
+}
+
+export interface UpdateStockLocationInput {
+  name?: string;
+  address?: string;
+  address1?: string;
+  address2?: string;
+  city?: string;
+  countryCode?: string;
+  province?: string;
+  postalCode?: string;
+  phone?: string;
+  priority?: number;
+  fulfillmentEnabled?: boolean;
+  metadata?: Record<string, unknown>;
+}
+
+// Get all stock locations
+export async function getStockLocations(params?: {
+  limit?: number;
+  offset?: number;
+  q?: string;
+}): Promise<StockLocationsResponse> {
+  const query = new URLSearchParams();
+  if (params?.limit) query.set("limit", params.limit.toString());
+  if (params?.offset) query.set("offset", params.offset.toString());
+  if (params?.q) query.set("q", params.q);
+  return apiFetch<StockLocationsResponse>(`/admin/locations${query.toString() ? `?${query}` : ""}`);
+}
+
+// Get single stock location by ID
+export async function getStockLocation(id: string): Promise<StockLocationResponse> {
+  return apiFetch<StockLocationResponse>(`/admin/locations/${id}`);
+}
+
+// Create a stock location
+export async function createStockLocation(data: CreateStockLocationInput): Promise<StockLocationResponse> {
+  return apiFetch<StockLocationResponse>("/admin/locations", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+// Update a stock location
+export async function updateStockLocation(id: string, data: UpdateStockLocationInput): Promise<StockLocationResponse> {
+  return apiFetch<StockLocationResponse>(`/admin/locations/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+// Delete a stock location (soft delete)
+export async function deleteStockLocation(id: string): Promise<{ id: string; deleted: boolean }> {
+  return apiFetch<{ id: string; deleted: boolean }>(`/admin/locations/${id}`, {
+    method: "DELETE",
+  });
+}
+
+// =========================================================================
+// Shipping Profiles API
+// =========================================================================
+
+export interface ShippingProfile {
+  id: string;
+  name: string;
+  type: string;
+  product_count: number;
+  created_at: string;
+  updated_at: string;
+  metadata: Record<string, unknown> | null;
+}
+
+export interface ShippingProfilesResponse {
+  profiles: ShippingProfile[];
+  count: number;
+  offset: number;
+  limit: number;
+}
+
+export interface ShippingProfileResponse {
+  profile: ShippingProfile;
+}
+
+export interface CreateShippingProfileInput {
+  name: string;
+  type?: string;
+  productIds?: string[];
+  metadata?: Record<string, unknown>;
+}
+
+export interface UpdateShippingProfileInput {
+  name?: string;
+  type?: string;
+  productIds?: string[];
+  metadata?: Record<string, unknown>;
+}
+
+// Get all shipping profiles
+export async function getShippingProfiles(params?: {
+  limit?: number;
+  offset?: number;
+  q?: string;
+  type?: string;
+}): Promise<ShippingProfilesResponse> {
+  const query = new URLSearchParams();
+  if (params?.limit) query.set("limit", params.limit.toString());
+  if (params?.offset) query.set("offset", params.offset.toString());
+  if (params?.q) query.set("q", params.q);
+  if (params?.type) query.set("type", params.type);
+  return apiFetch<ShippingProfilesResponse>(`/admin/locations/shipping-profiles${query.toString() ? `?${query}` : ""}`);
+}
+
+// Get single shipping profile by ID
+export async function getShippingProfile(id: string): Promise<ShippingProfileResponse> {
+  return apiFetch<ShippingProfileResponse>(`/admin/locations/shipping-profiles/${id}`);
+}
+
+// Create a shipping profile
+export async function createShippingProfile(data: CreateShippingProfileInput): Promise<ShippingProfileResponse> {
+  return apiFetch<ShippingProfileResponse>("/admin/locations/shipping-profiles", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+// Update a shipping profile
+export async function updateShippingProfile(id: string, data: UpdateShippingProfileInput): Promise<ShippingProfileResponse> {
+  return apiFetch<ShippingProfileResponse>(`/admin/locations/shipping-profiles/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+// Delete a shipping profile (soft delete)
+export async function deleteShippingProfile(id: string): Promise<{ id: string; deleted: boolean }> {
+  return apiFetch<{ id: string; deleted: boolean }>(`/admin/locations/shipping-profiles/${id}`, {
+    method: "DELETE",
+  });
+}
+
+// =========================================================================
+// Return Reasons API
+// =========================================================================
+
+export interface ReturnReason {
+  id: string;
+  value: string;
+  label: string;
+  description: string | null;
+  display_order: number;
+  is_active: boolean;
+  requires_note: boolean;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface ReturnReasonsResponse {
+  return_reasons: ReturnReason[];
+  count: number;
+  offset: number;
+  limit: number;
+}
+
+export interface ReturnReasonResponse {
+  return_reason: ReturnReason;
+}
+
+export interface CreateReturnReasonInput {
+  value: string;
+  label: string;
+  description?: string;
+  displayOrder?: number;
+  isActive?: boolean;
+  requiresNote?: boolean;
+}
+
+export interface UpdateReturnReasonInput {
+  value?: string;
+  label?: string;
+  description?: string;
+  displayOrder?: number;
+  isActive?: boolean;
+  requiresNote?: boolean;
+}
+
+// Get all return reasons
+export async function getReturnReasons(params?: {
+  limit?: number;
+  offset?: number;
+  q?: string;
+  active?: boolean;
+}): Promise<ReturnReasonsResponse> {
+  const query = new URLSearchParams();
+  if (params?.limit) query.set("limit", params.limit.toString());
+  if (params?.offset) query.set("offset", params.offset.toString());
+  if (params?.q) query.set("q", params.q);
+  if (params?.active !== undefined) query.set("active", params.active.toString());
+
+  return apiFetch<ReturnReasonsResponse>(`/admin/return-reasons${query.toString() ? `?${query}` : ""}`);
+}
+
+// Get single return reason by ID
+export async function getReturnReason(id: string): Promise<ReturnReasonResponse> {
+  return apiFetch<ReturnReasonResponse>(`/admin/return-reasons/${id}`);
+}
+
+// Create a return reason
+export async function createReturnReason(data: CreateReturnReasonInput): Promise<ReturnReasonResponse> {
+  return apiFetch<ReturnReasonResponse>("/admin/return-reasons", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+// Update a return reason
+export async function updateReturnReason(id: string, data: UpdateReturnReasonInput): Promise<ReturnReasonResponse> {
+  return apiFetch<ReturnReasonResponse>(`/admin/return-reasons/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+// Delete a return reason (soft delete)
+export async function deleteReturnReason(id: string): Promise<{ id: string; deleted: boolean }> {
+  return apiFetch<{ id: string; deleted: boolean }>(`/admin/return-reasons/${id}`, {
+    method: "DELETE",
+  });
+}
+
+// Reorder return reasons
+export async function reorderReturnReasons(ids: string[]): Promise<{ message: string }> {
+  return apiFetch<{ message: string }>("/admin/return-reasons/reorder", {
+    method: "POST",
+    body: JSON.stringify(ids),
+  });
+}
+
+// Seed default return reasons
+export async function seedReturnReasons(): Promise<{ message: string; count: number }> {
+  return apiFetch<{ message: string; count: number }>("/admin/return-reasons/seed", {
+    method: "POST",
+  });
+}
+
+// ============================================================================
+// REFUND REASONS
+// ============================================================================
+
+export interface RefundReason {
+  id: string;
+  value: string;
+  label: string;
+  description: string | null;
+  display_order: number;
+  is_active: boolean;
+  requires_note: boolean;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface RefundReasonsResponse {
+  refund_reasons: RefundReason[];
+  count: number;
+  offset: number;
+  limit: number;
+}
+
+export interface RefundReasonResponse {
+  refund_reason: RefundReason;
+}
+
+export interface CreateRefundReasonInput {
+  value: string;
+  label: string;
+  description?: string | null;
+  displayOrder?: number;
+  isActive?: boolean;
+  requiresNote?: boolean;
+}
+
+export interface UpdateRefundReasonInput {
+  value?: string;
+  label?: string;
+  description?: string | null;
+  displayOrder?: number;
+  isActive?: boolean;
+  requiresNote?: boolean;
+}
+
+// List all refund reasons
+export async function getRefundReasons(params?: {
+  limit?: number;
+  offset?: number;
+  q?: string;
+  active?: boolean;
+}): Promise<RefundReasonsResponse> {
+  const query = new URLSearchParams();
+  if (params?.limit) query.set("limit", params.limit.toString());
+  if (params?.offset) query.set("offset", params.offset.toString());
+  if (params?.q) query.set("q", params.q);
+  if (params?.active !== undefined) query.set("active", params.active.toString());
+  return apiFetch<RefundReasonsResponse>(`/admin/refund-reasons${query.toString() ? `?${query}` : ""}`);
+}
+
+// Get single refund reason
+export async function getRefundReason(id: string): Promise<RefundReasonResponse> {
+  return apiFetch<RefundReasonResponse>(`/admin/refund-reasons/${id}`);
+}
+
+// Create a new refund reason
+export async function createRefundReason(data: CreateRefundReasonInput): Promise<RefundReasonResponse> {
+  return apiFetch<RefundReasonResponse>("/admin/refund-reasons", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+// Update a refund reason
+export async function updateRefundReason(id: string, data: UpdateRefundReasonInput): Promise<RefundReasonResponse> {
+  return apiFetch<RefundReasonResponse>(`/admin/refund-reasons/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+// Delete a refund reason
+export async function deleteRefundReason(id: string): Promise<{ id: string; deleted: boolean }> {
+  return apiFetch<{ id: string; deleted: boolean }>(`/admin/refund-reasons/${id}`, {
+    method: "DELETE",
+  });
+}
+
+// Reorder refund reasons
+export async function reorderRefundReasons(ids: string[]): Promise<{ message: string }> {
+  return apiFetch<{ message: string }>("/admin/refund-reasons/reorder", {
+    method: "POST",
+    body: JSON.stringify(ids),
+  });
+}
+
+// Seed default refund reasons
+export async function seedRefundReasons(): Promise<{ message: string; count: number }> {
+  return apiFetch<{ message: string; count: number }>("/admin/refund-reasons/seed", {
+    method: "POST",
+  });
+}
+
+// ============================================================================
+// Security Dashboard API
+// ============================================================================
+
+// Types
+export interface SecuritySession {
+  id: string;
+  userId: string;
+  userEmail: string | null;
+  ipAddress: string;
+  userAgent: string | null;
+  deviceType: string | null;
+  browser: string | null;
+  os: string | null;
+  countryCode: string | null;
+  city: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  status: "ACTIVE" | "EXPIRED" | "REVOKED";
+  flaggedVpn: boolean;
+  flaggedProxy: boolean;
+  fraudScore: number | null;
+  lastActivityAt: string;
+  createdAt: string;
+}
+
+export interface ActiveSessionsResponse {
+  sessions: SecuritySession[];
+  count: number;
+}
+
+export interface IpListEntry {
+  id: string;
+  ipAddress: string;
+  listType: "ALLOWLIST" | "BLOCKLIST";
+  reason: string | null;
+  expiresAt: string | null;
+  addedByUserId: string | null;
+  createdAt: string;
+}
+
+export interface IpListResponse {
+  entries: IpListEntry[];
+  count: number;
+}
+
+export interface SecurityEvent {
+  id: string;
+  eventType: string;
+  severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  ipAddress: string | null;
+  userId: string | null;
+  userEmail: string | null;
+  title: string;
+  description: string | null;
+  countryCode: string | null;
+  city: string | null;
+  fraudScore: number | null;
+  isVpn: boolean | null;
+  isProxy: boolean | null;
+  details: Record<string, unknown> | null;
+  resolved: boolean;
+  resolvedAt: string | null;
+  resolvedBy: string | null;
+  resolutionNotes: string | null;
+  createdAt: string;
+}
+
+export interface SecurityEventsResponse {
+  events: SecurityEvent[];
+  count: number;
+  offset: number;
+  limit: number;
+}
+
+export interface SecurityConfig {
+  block_vpn: boolean;
+  block_proxy: boolean;
+  block_datacenter: boolean;
+  block_tor: boolean;
+  block_bots: boolean;
+  fraud_score_threshold: number;
+  session_timeout_minutes: number;
+  max_sessions_per_user: number;
+  ipqs_enabled: boolean;
+  require_allowlist: boolean;
+}
+
+export interface SecurityConfigResponse {
+  config: SecurityConfig;
+}
+
+export interface SecurityStats {
+  active_sessions: number;
+  blocked_attempts_24h: number;
+  unresolved_events: number;
+  vpn_flagged_24h: number;
+  proxy_flagged_24h: number;
+}
+
+export interface AddIpToListInput {
+  ipAddress: string;
+  listType: "ALLOWLIST" | "BLOCKLIST";
+  reason?: string;
+  expiresAt?: string;
+}
+
+export interface UpdateSecurityConfigInput {
+  block_vpn?: boolean;
+  block_proxy?: boolean;
+  block_datacenter?: boolean;
+  block_tor?: boolean;
+  block_bots?: boolean;
+  fraud_score_threshold?: number;
+  session_timeout_minutes?: number;
+  max_sessions_per_user?: number;
+  ipqs_enabled?: boolean;
+  require_allowlist?: boolean;
+}
+
+// Sessions
+export async function getActiveSessions(): Promise<ActiveSessionsResponse> {
+  return apiFetch<ActiveSessionsResponse>("/admin/security/sessions");
+}
+
+export async function revokeSession(id: string, reason?: string): Promise<{ id: string; revoked: boolean; message: string }> {
+  return apiFetch<{ id: string; revoked: boolean; message: string }>(`/admin/security/sessions/${id}`, {
+    method: "DELETE",
+    body: JSON.stringify({ reason }),
+  });
+}
+
+export async function revokeAllUserSessions(userId: string, reason?: string): Promise<{ userId: string; revokedCount: number; message: string }> {
+  return apiFetch<{ userId: string; revokedCount: number; message: string }>(`/admin/security/sessions/user/${userId}`, {
+    method: "DELETE",
+    body: JSON.stringify({ reason }),
+  });
+}
+
+// IP List
+export async function getIpList(listType?: "ALLOWLIST" | "BLOCKLIST"): Promise<IpListResponse> {
+  const query = listType ? `?list_type=${listType}` : "";
+  return apiFetch<IpListResponse>(`/admin/security/ip-list${query}`);
+}
+
+export async function addIpToList(data: AddIpToListInput): Promise<{ entry: IpListEntry }> {
+  return apiFetch<{ entry: IpListEntry }>("/admin/security/ip-list", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function removeIpFromList(id: string): Promise<{ id: string; deleted: boolean }> {
+  return apiFetch<{ id: string; deleted: boolean }>(`/admin/security/ip-list/${id}`, {
+    method: "DELETE",
+  });
+}
+
+// Security Events
+export async function getSecurityEvents(params?: {
+  limit?: number;
+  offset?: number;
+  event_type?: string;
+  severity?: string;
+  resolved?: boolean;
+}): Promise<SecurityEventsResponse> {
+  const query = new URLSearchParams();
+  if (params?.limit) query.set("limit", params.limit.toString());
+  if (params?.offset) query.set("offset", params.offset.toString());
+  if (params?.event_type) query.set("event_type", params.event_type);
+  if (params?.severity) query.set("severity", params.severity);
+  if (params?.resolved !== undefined) query.set("resolved", params.resolved.toString());
+  return apiFetch<SecurityEventsResponse>(`/admin/security/events${query.toString() ? `?${query}` : ""}`);
+}
+
+export async function resolveSecurityEvent(id: string, notes?: string): Promise<{ event: SecurityEvent }> {
+  return apiFetch<{ event: SecurityEvent }>(`/admin/security/events/${id}/resolve`, {
+    method: "POST",
+    body: JSON.stringify({ notes }),
+  });
+}
+
+export async function bulkResolveSecurityEvents(
+  ids: string[],
+  notes?: string
+): Promise<{ resolvedCount: number; failedIds: string[] }> {
+  return apiFetch<{ resolvedCount: number; failedIds: string[] }>("/admin/security/events/bulk-resolve", {
+    method: "POST",
+    body: JSON.stringify({ eventIds: ids, notes }),
+  });
+}
+
+// Security Config
+export async function getSecurityConfig(): Promise<SecurityConfigResponse> {
+  return apiFetch<SecurityConfigResponse>("/admin/security/config");
+}
+
+export async function updateSecurityConfig(data: UpdateSecurityConfigInput): Promise<SecurityConfigResponse> {
+  return apiFetch<SecurityConfigResponse>("/admin/security/config", {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+// Security Stats
+export async function getSecurityStats(): Promise<SecurityStats> {
+  return apiFetch<SecurityStats>("/admin/security/stats");
+}
+
+// ============================================================================
+// Sales Channels API
+// ============================================================================
+
+export interface SalesChannel {
+  id: string;
+  name: string;
+  description: string | null;
+  is_active: boolean;
+  is_disabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SalesChannelsResponse {
+  sales_channels: SalesChannel[];
+  count: number;
+  limit: number;
+  offset: number;
+}
+
+export interface SalesChannelResponse {
+  sales_channel: SalesChannel;
+}
+
+export interface CreateSalesChannelInput {
+  name: string;
+  description?: string;
+  is_active?: boolean;
+}
+
+export interface UpdateSalesChannelInput {
+  name?: string;
+  description?: string;
+  is_active?: boolean;
+}
+
+// List all sales channels
+export async function getSalesChannels(params?: {
+  limit?: number;
+  offset?: number;
+  q?: string;
+}): Promise<SalesChannelsResponse> {
+  const query = new URLSearchParams();
+  if (params?.limit) query.set("limit", params.limit.toString());
+  if (params?.offset) query.set("offset", params.offset.toString());
+  if (params?.q) query.set("q", params.q);
+  return apiFetch<SalesChannelsResponse>(`/admin/sales-channels${query.toString() ? `?${query}` : ""}`);
+}
+
+// Get single sales channel
+export async function getSalesChannel(id: string): Promise<SalesChannelResponse> {
+  return apiFetch<SalesChannelResponse>(`/admin/sales-channels/${id}`);
+}
+
+// Create a new sales channel
+export async function createSalesChannel(data: CreateSalesChannelInput): Promise<SalesChannelResponse> {
+  return apiFetch<SalesChannelResponse>("/admin/sales-channels", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+// Update a sales channel
+export async function updateSalesChannel(id: string, data: UpdateSalesChannelInput): Promise<SalesChannelResponse> {
+  return apiFetch<SalesChannelResponse>(`/admin/sales-channels/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+// Delete a sales channel
+export async function deleteSalesChannel(id: string): Promise<{ id: string; deleted: boolean }> {
+  return apiFetch<{ id: string; deleted: boolean }>(`/admin/sales-channels/${id}`, {
+    method: "DELETE",
+  });
+}
+
+// ============================================================================
+// Notifications
+// ============================================================================
+
+export interface Notification {
+  id: string;
+  eventType: string;
+  title: string;
+  message: string | null;
+  entityType: string | null;
+  entityId: string | null;
+  navigateTo: string | null;
+  isRead: boolean;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface NotificationsResponse {
+  notifications: Notification[];
+  count: number;
+}
+
+export interface UnreadCountResponse {
+  count: number;
+}
+
+export interface NotificationPreference {
+  eventType: string;
+  eventTypeDisplayName: string;
+  browserEnabled: boolean;
+  inAppEnabled: boolean;
+}
+
+export interface PreferencesResponse {
+  preferences: NotificationPreference[];
+}
+
+export interface UpdatePreferencesInput {
+  preferences: {
+    eventType: string;
+    browserEnabled: boolean;
+    inAppEnabled: boolean;
+  }[];
+}
+
+// Get user notifications
+export async function getNotifications(params?: {
+  limit?: number;
+  unreadOnly?: boolean;
+}): Promise<NotificationsResponse> {
+  const query = new URLSearchParams();
+  if (params?.limit) query.set("limit", params.limit.toString());
+  if (params?.unreadOnly) query.set("unreadOnly", "true");
+  return apiFetch<NotificationsResponse>(`/api/v1/internal/notifications${query.toString() ? `?${query}` : ""}`);
+}
+
+// Get unread notification count
+export async function getUnreadCount(): Promise<UnreadCountResponse> {
+  return apiFetch<UnreadCountResponse>("/api/v1/internal/notifications/unread-count");
+}
+
+// Mark notification as read
+export async function markNotificationAsRead(id: string): Promise<{ id: string; isRead: boolean }> {
+  return apiFetch<{ id: string; isRead: boolean }>(`/api/v1/internal/notifications/${id}/read`, {
+    method: "POST",
+  });
+}
+
+// Mark all notifications as read
+export async function markAllNotificationsAsRead(): Promise<{ markedAsRead: number }> {
+  return apiFetch<{ markedAsRead: number }>("/api/v1/internal/notifications/read-all", {
+    method: "POST",
+  });
+}
+
+// Delete a notification
+export async function deleteNotification(id: string): Promise<{ id: string; deleted: boolean }> {
+  return apiFetch<{ id: string; deleted: boolean }>(`/api/v1/internal/notifications/${id}`, {
+    method: "DELETE",
+  });
+}
+
+// Get notification preferences
+export async function getNotificationPreferences(): Promise<PreferencesResponse> {
+  return apiFetch<PreferencesResponse>("/api/v1/internal/notifications/preferences");
+}
+
+// Update notification preferences
+export async function updateNotificationPreferences(data: UpdatePreferencesInput): Promise<PreferencesResponse> {
+  return apiFetch<PreferencesResponse>("/api/v1/internal/notifications/preferences", {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+// Reset notification preferences to defaults
+export async function resetNotificationPreferences(): Promise<PreferencesResponse> {
+  return apiFetch<PreferencesResponse>("/api/v1/internal/notifications/preferences/reset", {
+    method: "POST",
+  });
 }

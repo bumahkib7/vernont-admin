@@ -51,11 +51,11 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import {
-  getStockLocations,
-  createStockLocation,
-  deleteStockLocation,
-  type StockLocation,
-  type CreateStockLocationRequest,
+  getInventoryStockLocations,
+  createInventoryStockLocation,
+  deleteInventoryStockLocation,
+  type InventoryStockLocation,
+  type CreateInventoryStockLocationRequest,
 } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -86,7 +86,7 @@ const emptyFormData: LocationFormData = {
 };
 
 export default function LocationsPage() {
-  const [locations, setLocations] = useState<StockLocation[]>([]);
+  const [locations, setLocations] = useState<InventoryStockLocation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -97,14 +97,14 @@ export default function LocationsPage() {
 
   // Delete dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [locationToDelete, setLocationToDelete] = useState<StockLocation | null>(null);
+  const [locationToDelete, setLocationToDelete] = useState<InventoryStockLocation | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchLocations = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
-      const response = await getStockLocations({ limit: 100 });
+      const response = await getInventoryStockLocations({ limit: 100 });
       setLocations(response.stock_locations);
     } catch (err) {
       console.error("Failed to fetch locations:", err);
@@ -127,7 +127,7 @@ export default function LocationsPage() {
     try {
       setIsSubmitting(true);
 
-      const request: CreateStockLocationRequest = {
+      const request: CreateInventoryStockLocationRequest = {
         name: formData.name,
         address1: formData.address1 || undefined,
         address2: formData.address2 || undefined,
@@ -140,7 +140,7 @@ export default function LocationsPage() {
         fulfillmentEnabled: formData.fulfillmentEnabled,
       };
 
-      await createStockLocation(request);
+      await createInventoryStockLocation(request);
 
       toast.success(`${formData.name} has been created successfully`);
 
@@ -160,7 +160,7 @@ export default function LocationsPage() {
 
     try {
       setIsDeleting(true);
-      await deleteStockLocation(locationToDelete.id);
+      await deleteInventoryStockLocation(locationToDelete.id);
 
       toast.success(`${locationToDelete.name} has been deleted`);
 
@@ -175,7 +175,7 @@ export default function LocationsPage() {
     }
   };
 
-  const openDeleteDialog = (location: StockLocation) => {
+  const openDeleteDialog = (location: InventoryStockLocation) => {
     setLocationToDelete(location);
     setDeleteDialogOpen(true);
   };

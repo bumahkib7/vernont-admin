@@ -42,6 +42,12 @@ const ALLOWED_ENTITY_TYPES = new Set([
   "GiftCard",
   "Discount",
   "Promotion",
+  "Region",
+  "TaxRate",
+  "StockLocation",
+  "ShippingProfile",
+  "ReturnReasonConfig",
+  "RefundReasonConfig",
 ]);
 
 // Actions that should be shown
@@ -212,6 +218,84 @@ const MESSAGE_GENERATORS: Record<
         return `${prefix}ended promotion`;
       default:
         return `${prefix}modified promotion`;
+    }
+  },
+  Region: (action, id, user) => {
+    const prefix = user && user !== "SYSTEM" ? `${user} ` : "";
+    switch (action) {
+      case "CREATE":
+        return `${prefix}created a new region`;
+      case "UPDATE":
+        return `${prefix}updated region settings`;
+      case "DELETE":
+        return `${prefix}removed a region`;
+      default:
+        return `${prefix}modified region`;
+    }
+  },
+  TaxRate: (action, id, user) => {
+    const prefix = user && user !== "SYSTEM" ? `${user} ` : "";
+    switch (action) {
+      case "CREATE":
+        return `${prefix}created a new tax rate`;
+      case "UPDATE":
+        return `${prefix}updated tax rate`;
+      case "DELETE":
+        return `${prefix}removed a tax rate`;
+      default:
+        return `${prefix}modified tax rate`;
+    }
+  },
+  StockLocation: (action, id, user) => {
+    const prefix = user && user !== "SYSTEM" ? `${user} ` : "";
+    switch (action) {
+      case "CREATE":
+        return `${prefix}added a new stock location`;
+      case "UPDATE":
+        return `${prefix}updated stock location`;
+      case "DELETE":
+        return `${prefix}removed a stock location`;
+      default:
+        return `${prefix}modified stock location`;
+    }
+  },
+  ShippingProfile: (action, id, user) => {
+    const prefix = user && user !== "SYSTEM" ? `${user} ` : "";
+    switch (action) {
+      case "CREATE":
+        return `${prefix}created a shipping profile`;
+      case "UPDATE":
+        return `${prefix}updated shipping profile`;
+      case "DELETE":
+        return `${prefix}removed a shipping profile`;
+      default:
+        return `${prefix}modified shipping profile`;
+    }
+  },
+  ReturnReasonConfig: (action, id, user) => {
+    const prefix = user && user !== "SYSTEM" ? `${user} ` : "";
+    switch (action) {
+      case "CREATE":
+        return `${prefix}added a return reason`;
+      case "UPDATE":
+        return `${prefix}updated return reason`;
+      case "DELETE":
+        return `${prefix}removed a return reason`;
+      default:
+        return `${prefix}modified return reason`;
+    }
+  },
+  RefundReasonConfig: (action, id, user) => {
+    const prefix = user && user !== "SYSTEM" ? `${user} ` : "";
+    switch (action) {
+      case "CREATE":
+        return `${prefix}added a refund reason`;
+      case "UPDATE":
+        return `${prefix}updated refund reason`;
+      case "DELETE":
+        return `${prefix}removed a refund reason`;
+      default:
+        return `${prefix}modified refund reason`;
     }
   },
 };

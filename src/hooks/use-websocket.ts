@@ -28,7 +28,9 @@ interface PendingSubscription {
 }
 
 export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketReturn {
-  const { autoConnect = true, reconnectDelay = 5000, debug = false } = options;
+  // Enable debug by default in development
+  const isDev = process.env.NODE_ENV === "development";
+  const { autoConnect = true, reconnectDelay = 5000, debug = isDev } = options;
 
   const [isConnected, setIsConnected] = useState(false);
   const clientRef = useRef<Client | null>(null);

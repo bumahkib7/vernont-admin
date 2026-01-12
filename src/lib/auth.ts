@@ -91,3 +91,50 @@ export function getRoleDisplayName(role: string): string {
       return role;
   }
 }
+
+// Profile update types
+export type UpdateProfileRequest = {
+  firstName?: string;
+  lastName?: string;
+};
+
+export type ChangePasswordRequest = {
+  currentPassword: string;
+  newPassword: string;
+};
+
+// Update the current user's profile
+export async function updateProfile(data: UpdateProfileRequest): Promise<InternalUserInfo> {
+  const response = await fetch(`${AUTH_CONFIG.apiUrl}${AUTH_CONFIG.endpoints.me}`, {
+    method: "PUT",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to update profile");
+  }
+
+  return response.json();
+}
+
+// Change the current user's password
+export async function changePassword(data: ChangePasswordRequest): Promise<void> {
+  const response = await fetch(`${AUTH_CONFIG.apiUrl}${AUTH_CONFIG.endpoints.me}/password`, {
+    method: "PUT",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to change password");
+  }
+}

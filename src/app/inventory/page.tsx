@@ -63,12 +63,12 @@ import {
 } from "lucide-react";
 import {
   getInventoryLevels,
-  getStockLocations,
+  getInventoryStockLocations,
   adjustInventory,
   getInventoryMovements,
   getMovementTypeDisplay,
   type InventoryLevel,
-  type StockLocation,
+  type InventoryStockLocation,
   type InventoryMovement,
   type MovementType,
 } from "@/lib/api";
@@ -118,7 +118,7 @@ export default function InventoryPage() {
   const [activeTab, setActiveTab] = useState<string>("levels");
   const [inventoryLevels, setInventoryLevels] = useState<InventoryLevel[]>([]);
   const [movements, setMovements] = useState<InventoryMovement[]>([]);
-  const [locations, setLocations] = useState<StockLocation[]>([]);
+  const [locations, setLocations] = useState<InventoryStockLocation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMovements, setIsLoadingMovements] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -145,7 +145,7 @@ export default function InventoryPage() {
 
       const [levelsResponse, locationsResponse] = await Promise.all([
         getInventoryLevels({ limit: 100 }),
-        getStockLocations({ limit: 50 }),
+        getInventoryStockLocations({ limit: 50 }),
       ]);
 
       setInventoryLevels(levelsResponse.inventory_levels);

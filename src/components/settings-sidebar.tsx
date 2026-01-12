@@ -36,6 +36,7 @@ const settingsNav: NavSection[] = [
       { title: "Return Reasons", href: "/settings/return-reasons" },
       { title: "Refund Reasons", href: "/settings/refund-reasons" },
       { title: "Sales Channels", href: "/settings/sales-channels" },
+      { title: "Security", href: "/settings/security" },
       { title: "Product Types", href: "/settings/product-types" },
       { title: "Product Tags", href: "/settings/product-tags" },
       { title: "Locations & Shipping", href: "/settings/locations" },
@@ -52,7 +53,10 @@ const settingsNav: NavSection[] = [
   },
   {
     title: "My Account",
-    items: [{ title: "Profile", href: "/settings/profile" }],
+    items: [
+      { title: "Profile", href: "/settings/profile" },
+      { title: "Notifications", href: "/settings/notifications" },
+    ],
   },
 ];
 

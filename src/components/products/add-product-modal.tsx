@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Autocomplete } from "@/components/ui/autocomplete";
+import { Autocomplete } from "@vernont/admin-ui/components";
 import {
   X,
   Upload,
@@ -31,9 +31,11 @@ import {
   getCategories,
   getCollections,
   createProduct,
+  uploadProductImage,
   type ProductCategory,
   type ProductCollection,
   type CreateProductInput,
+  type ImageInput,
 } from "@/lib/api";
 
 type Step = {
@@ -217,13 +219,13 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
       ]);
 
       if (categoriesRes.status === "fulfilled") {
-        setCategories(categoriesRes.value.categories || []);
+        setCategories(categoriesRes.value?.categories || []);
       } else {
         console.error("Failed to fetch categories:", categoriesRes.reason);
       }
 
       if (collectionsRes.status === "fulfilled") {
-        setCollections(collectionsRes.value.collections || []);
+        setCollections(collectionsRes.value?.collections || []);
       } else {
         console.error("Failed to fetch collections:", collectionsRes.reason);
       }
@@ -268,7 +270,43 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
     setProgress({ stepName: "Starting", current: 0, total: 1, message: "Initializing...", percent: 0 });
 
     try {
-      // Build the product input
+      // Step 1: Upload images first (if any)
+      const uploadedImages: ImageInput[] = [];
+      if (formData.images.length > 0) {
+        setProgress({
+          stepName: "Uploading",
+          current: 0,
+          total: formData.images.length,
+          message: `Uploading ${formData.images.length} image(s)...`,
+          percent: 5
+        });
+
+        for (let i = 0; i < formData.images.length; i++) {
+          const file = formData.images[i];
+          setProgress({
+            stepName: "Uploading",
+            current: i + 1,
+            total: formData.images.length,
+            message: `Uploading image ${i + 1} of ${formData.images.length}...`,
+            percent: 5 + Math.floor((i / formData.images.length) * 20)
+          });
+
+          try {
+            const uploadResult = await uploadProductImage(file);
+            uploadedImages.push({
+              url: uploadResult.url,
+              position: i,
+            });
+          } catch (uploadError) {
+            console.error(`Failed to upload image ${i + 1}:`, uploadError);
+            throw new Error(`Failed to upload image ${i + 1}: ${uploadError instanceof Error ? uploadError.message : 'Unknown error'}`);
+          }
+        }
+      }
+
+      setProgress({ stepName: "Creating", current: 0, total: 1, message: "Creating product...", percent: 30 });
+
+      // Step 2: Build the product input with uploaded image URLs
       const productInput: CreateProductInput = {
         title: formData.title,
         description: formData.description || undefined,
@@ -276,6 +314,7 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
         status: isDraft ? "draft" : "published",
         shippingProfileId: "default", // TODO: Get from backend
         categoryIds: formData.category ? [formData.category] : [],
+        images: uploadedImages.length > 0 ? uploadedImages : undefined,
         options: formData.hasVariants
           ? formData.options.filter(o => o.name && o.values.some(v => v)).map(o => ({
               title: o.name,
