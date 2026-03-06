@@ -58,6 +58,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { StackedThumbnails } from "@/components/ui/thumbnail";
+import { toast } from "sonner";
 import { AddProductModal } from "@/components/products/add-product-modal";
 import {
   getProducts,
@@ -186,9 +187,11 @@ export default function ProductsPage() {
       await deleteProduct(productToDelete.id);
       setDeleteDialogOpen(false);
       setProductToDelete(null);
+      toast.success("Product deleted");
       fetchProducts();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete product");
+      toast.error("Failed to delete product");
       setDeleteDialogOpen(false);
     }
   };

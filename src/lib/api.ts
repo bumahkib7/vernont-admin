@@ -1056,6 +1056,7 @@ export interface Product {
   options: ProductOption[];
   tags: string[];
   categories: string[];  // category names
+  metadata?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
 }

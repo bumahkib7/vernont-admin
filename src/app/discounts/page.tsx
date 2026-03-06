@@ -85,6 +85,7 @@ import {
   getPromotionStatusDisplay,
   formatDiscountValue,
 } from "@/lib/api";
+import { toast } from "sonner";
 import { DiscountDialog } from "@/components/discounts/DiscountDialog";
 
 export default function DiscountsPage() {
@@ -185,20 +186,24 @@ export default function DiscountsPage() {
       } else {
         await activateDiscount(discount.id);
       }
+      toast.success(discount.isActive ? "Discount deactivated" : "Discount activated");
       await fetchDiscounts();
       await fetchStats();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update status");
+      toast.error("Failed to update status");
     }
   };
 
   const handleDuplicate = async (discount: Promotion) => {
     try {
       await duplicateDiscount(discount.id);
+      toast.success("Discount duplicated");
       await fetchDiscounts();
       await fetchStats();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to duplicate");
+      toast.error("Failed to duplicate discount");
     }
   };
 
@@ -208,10 +213,12 @@ export default function DiscountsPage() {
       await deleteDiscount(deletingDiscount.id);
       setDeleteDialogOpen(false);
       setDeletingDiscount(null);
+      toast.success("Discount deleted");
       await fetchDiscounts();
       await fetchStats();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete");
+      toast.error("Failed to delete discount");
     }
   };
 
@@ -223,10 +230,12 @@ export default function DiscountsPage() {
         action,
       });
       setSelectedIds(new Set());
+      toast.success(`Bulk ${action.toLowerCase()} completed for ${selectedIds.size} discount(s)`);
       await fetchDiscounts();
       await fetchStats();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Bulk action failed");
+      toast.error("Bulk action failed");
     }
   };
 

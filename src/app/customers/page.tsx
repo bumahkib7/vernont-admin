@@ -53,6 +53,7 @@ import {
   CheckCircle,
   Loader2,
 } from "lucide-react";
+import { toast } from "sonner";
 import {
   getCustomers,
   getCustomerStats,
@@ -197,7 +198,7 @@ export default function CustomersPage() {
             <Download className="h-4 w-4" />
             Export
           </Button>
-          <Button className="gap-2">
+          <Button className="gap-2" onClick={() => toast.info("Add customer coming soon")}>
             <UserPlus className="h-4 w-4" />
             Add Customer
           </Button>
@@ -395,7 +396,7 @@ export default function CustomersPage() {
                             <DropdownMenuItem
                               className="text-green-600"
                               onClick={() => {
-                                // TODO: Activate customer
+                                toast.info("Customer activation coming soon");
                               }}
                             >
                               <CheckCircle className="mr-2 h-4 w-4" />

@@ -96,6 +96,7 @@ import {
   type UpdateOptionInput,
 } from "@/lib/api";
 import { useRef } from "react";
+import { toast } from "sonner";
 import { FragranceMetadataEditor, type FragranceMetadata } from "@/components/products/FragranceMetadataEditor";
 
 function getStatusBadge(status: ProductStatus) {
@@ -276,6 +277,7 @@ export default function ProductDetailPage() {
 
       await updateProduct(product.id, updateData);
       setSuccess("Product saved successfully");
+      toast.success("Product saved successfully");
       setHasChanges(false);
       await fetchProduct(); // Refresh data
 
@@ -292,6 +294,7 @@ export default function ProductDetailPage() {
     if (!product || !confirm("Are you sure you want to delete this product?")) return;
     try {
       await deleteProduct(product.id);
+      toast.success("Product deleted");
       router.push("/products");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete product");
@@ -381,6 +384,7 @@ export default function ProductDetailPage() {
       setShowAddVariantModal(false);
       resetVariantForm();
       setSuccess("Variant added successfully");
+      toast.success("Variant added successfully");
       await fetchProduct();
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
@@ -422,6 +426,7 @@ export default function ProductDetailPage() {
       setEditingVariant(null);
       resetVariantForm();
       setSuccess("Variant updated successfully");
+      toast.success("Variant updated successfully");
       await fetchProduct();
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
@@ -437,6 +442,7 @@ export default function ProductDetailPage() {
     try {
       await deleteVariant(variantId);
       setSuccess("Variant deleted successfully");
+      toast.success("Variant deleted");
       await fetchProduct();
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
@@ -488,6 +494,7 @@ export default function ProductDetailPage() {
       setShowAddOptionModal(false);
       resetOptionForm();
       setSuccess("Option added successfully");
+      toast.success("Option added successfully");
       await fetchProduct();
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
@@ -517,6 +524,7 @@ export default function ProductDetailPage() {
       setEditingOption(null);
       resetOptionForm();
       setSuccess("Option updated successfully");
+      toast.success("Option updated successfully");
       await fetchProduct();
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
@@ -532,6 +540,7 @@ export default function ProductDetailPage() {
     try {
       await deleteOption(product.id, optionId);
       setSuccess("Option deleted successfully");
+      toast.success("Option deleted");
       await fetchProduct();
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
@@ -572,6 +581,7 @@ export default function ProductDetailPage() {
       }
 
       setSuccess("Image uploaded successfully");
+      toast.success("Image uploaded successfully");
       await fetchProduct();
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
@@ -591,6 +601,7 @@ export default function ProductDetailPage() {
     try {
       await deleteProductImage(product.id, imageId);
       setSuccess("Image deleted successfully");
+      toast.success("Image deleted");
       setSelectedImage(0); // Reset to first image
       await fetchProduct();
       setTimeout(() => setSuccess(null), 3000);
@@ -757,7 +768,7 @@ export default function ProductDetailPage() {
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon">
+              <Button variant="outline" size="icon" aria-label="More actions">
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>

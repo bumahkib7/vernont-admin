@@ -52,6 +52,7 @@ import {
   Check,
   Info,
 } from "lucide-react";
+import { toast } from "sonner";
 import {
   getCollections,
   createCollection,
@@ -131,6 +132,7 @@ export default function CollectionsPage() {
         handle: formData.handle || generateHandle(formData.title),
       });
       setSuccess("Collection created successfully");
+      toast.success("Collection created");
       handleClose();
       await fetchCollections();
       setTimeout(() => setSuccess(null), 3000);
@@ -152,12 +154,14 @@ export default function CollectionsPage() {
     try {
       await deleteCollection(collectionToDelete.id);
       setSuccess("Collection deleted successfully");
+      toast.success("Collection deleted");
       setDeleteDialogOpen(false);
       setCollectionToDelete(null);
       await fetchCollections();
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete collection");
+      toast.error("Failed to delete collection");
     } finally {
       setDeleting(false);
     }
