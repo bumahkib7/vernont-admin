@@ -179,7 +179,7 @@ async function parseErrorResponse(response: Response): Promise<ApiError> {
 }
 
 // Generic API fetch with auth and automatic token refresh
-async function apiFetch<T>(
+export async function apiFetch<T>(
   endpoint: string,
   options: RequestInit = {},
   _isRetry: boolean = false
