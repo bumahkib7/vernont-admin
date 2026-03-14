@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/breadcrumb";
 
 // Routes that don't show the sidebar/header
-const PUBLIC_ROUTES = ["/login", "/forgot-password", "/reset-password"];
+const PUBLIC_ROUTES = ["/login", "/forgot-password", "/reset-password", "/set-password"];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

@@ -34,7 +34,7 @@ type AuthContextType = AuthState & {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 // Public routes that don't require authentication
-const PUBLIC_ROUTES = ["/login", "/forgot-password", "/reset-password"];
+const PUBLIC_ROUTES = ["/login", "/forgot-password", "/reset-password", "/set-password"];
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
