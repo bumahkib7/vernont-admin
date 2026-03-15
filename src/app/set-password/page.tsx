@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, AlertCircle, CheckCircle2, Store } from "lucide-react";
+import { Loader2, AlertCircle, CheckCircle2, Store, Eye, EyeOff, XCircle } from "lucide-react";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
@@ -20,6 +20,12 @@ function SetPasswordForm() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const passwordsMatch = password.length > 0 && confirmPassword.length > 0 && password === confirmPassword;
+  const passwordsMismatch = password.length > 0 && confirmPassword.length > 0 && password !== confirmPassword;
+  const passwordLongEnough = password.length >= 8;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -161,40 +167,82 @@ function SetPasswordForm() {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="password">Password</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      placeholder="Enter your password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      disabled={isSubmitting}
-                      required
-                      minLength={8}
-                      autoComplete="new-password"
-                      autoFocus
-                    />
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Enter your password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        disabled={isSubmitting}
+                        required
+                        minLength={8}
+                        autoComplete="new-password"
+                        autoFocus
+                        className="pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        tabIndex={-1}
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-1 text-xs">
+                      {password.length > 0 ? (
+                        passwordLongEnough ? (
+                          <><CheckCircle2 className="h-3 w-3 text-green-600" /><span className="text-green-600">At least 8 characters</span></>
+                        ) : (
+                          <><XCircle className="h-3 w-3 text-red-500" /><span className="text-red-500">Must be at least 8 characters</span></>
+                        )
+                      ) : (
+                        <span className="text-muted-foreground">Must be at least 8 characters</span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="confirm-password">Confirm password</Label>
-                    <Input
-                      id="confirm-password"
-                      type="password"
-                      placeholder="Confirm your password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      disabled={isSubmitting}
-                      required
-                      minLength={8}
-                      autoComplete="new-password"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="confirm-password"
+                        type={showConfirmPassword ? "text" : "password"}
+                        placeholder="Confirm your password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        disabled={isSubmitting}
+                        required
+                        minLength={8}
+                        autoComplete="new-password"
+                        className="pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        tabIndex={-1}
+                      >
+                        {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                    {confirmPassword.length > 0 && (
+                      <div className="flex items-center gap-1 text-xs">
+                        {passwordsMatch ? (
+                          <><CheckCircle2 className="h-3 w-3 text-green-600" /><span className="text-green-600">Passwords match</span></>
+                        ) : (
+                          <><XCircle className="h-3 w-3 text-red-500" /><span className="text-red-500">Passwords do not match</span></>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 <Button
                   type="submit"
                   className="w-full h-11"
-                  disabled={isSubmitting || !password || !confirmPassword}
+                  disabled={isSubmitting || !passwordsMatch || !passwordLongEnough}
                 >
                   {isSubmitting ? (
                     <>

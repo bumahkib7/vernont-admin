@@ -38,6 +38,10 @@ import {
   User,
   Key,
   Shield,
+  Eye,
+  EyeOff,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -66,6 +70,14 @@ export default function ProfileSettingsPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  // Password validation helpers
+  const passwordsMatch = newPassword.length > 0 && confirmPassword.length > 0 && newPassword === confirmPassword;
+  const passwordsMismatch = newPassword.length > 0 && confirmPassword.length > 0 && newPassword !== confirmPassword;
+  const passwordLongEnough = newPassword.length >= 8;
 
   // Usage insights toggle (local state - could be persisted to backend)
   const [usageInsights, setUsageInsights] = useState(false);
@@ -107,6 +119,9 @@ export default function ProfileSettingsPage() {
     setNewPassword("");
     setConfirmPassword("");
     setPasswordError(null);
+    setShowCurrentPassword(false);
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
     setIsPasswordOpen(true);
   };
 
@@ -367,38 +382,88 @@ export default function ProfileSettingsPage() {
 
             <div className="grid gap-2">
               <Label htmlFor="current-password">Current password</Label>
-              <Input
-                id="current-password"
-                type="password"
-                placeholder="Enter current password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-              />
+              <div className="relative">
+                <Input
+                  id="current-password"
+                  type={showCurrentPassword ? "text" : "password"}
+                  placeholder="Enter current password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  tabIndex={-1}
+                >
+                  {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
 
             <div className="grid gap-2">
               <Label htmlFor="new-password">New password</Label>
-              <Input
-                id="new-password"
-                type="password"
-                placeholder="Enter new password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                Must be at least 8 characters
-              </p>
+              <div className="relative">
+                <Input
+                  id="new-password"
+                  type={showNewPassword ? "text" : "password"}
+                  placeholder="Enter new password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  tabIndex={-1}
+                >
+                  {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              <div className="flex items-center gap-1 text-xs">
+                {newPassword.length > 0 ? (
+                  passwordLongEnough ? (
+                    <><CheckCircle2 className="h-3 w-3 text-green-600" /><span className="text-green-600">At least 8 characters</span></>
+                  ) : (
+                    <><XCircle className="h-3 w-3 text-red-500" /><span className="text-red-500">Must be at least 8 characters</span></>
+                  )
+                ) : (
+                  <span className="text-muted-foreground">Must be at least 8 characters</span>
+                )}
+              </div>
             </div>
 
             <div className="grid gap-2">
               <Label htmlFor="confirm-password">Confirm new password</Label>
-              <Input
-                id="confirm-password"
-                type="password"
-                placeholder="Confirm new password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-              />
+              <div className="relative">
+                <Input
+                  id="confirm-password"
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="Confirm new password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  tabIndex={-1}
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              {confirmPassword.length > 0 && (
+                <div className="flex items-center gap-1 text-xs">
+                  {passwordsMatch ? (
+                    <><CheckCircle2 className="h-3 w-3 text-green-600" /><span className="text-green-600">Passwords match</span></>
+                  ) : (
+                    <><XCircle className="h-3 w-3 text-red-500" /><span className="text-red-500">Passwords do not match</span></>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -406,7 +471,10 @@ export default function ProfileSettingsPage() {
             <Button variant="outline" onClick={() => setIsPasswordOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleChangePassword} disabled={isChangingPassword}>
+            <Button
+              onClick={handleChangePassword}
+              disabled={isChangingPassword || !currentPassword || !passwordsMatch || !passwordLongEnough}
+            >
               {isChangingPassword ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
