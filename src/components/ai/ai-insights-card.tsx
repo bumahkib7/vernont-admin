@@ -175,10 +175,14 @@ export function AiInsightsCard() {
                 );
 
                 if (insight.actionUrl) {
+                  // Strip /admin prefix if present — backend may return /admin/orders, but admin routes are /orders
+                  const href = insight.actionUrl.startsWith("/admin/")
+                    ? insight.actionUrl.replace(/^\/admin/, "")
+                    : insight.actionUrl;
                   return (
                     <Link
                       key={insight.id}
-                      href={insight.actionUrl}
+                      href={href}
                       className="block"
                     >
                       {content}
