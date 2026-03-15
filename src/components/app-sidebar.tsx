@@ -21,6 +21,9 @@ import {
   Megaphone,
   Activity,
   Webhook,
+  BarChart3,
+  Repeat,
+  Building2,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -90,6 +93,15 @@ const navItems: NavItem[] = [
     icon: RotateCcw,
   },
   {
+    title: "Subscriptions",
+    url: "/subscriptions",
+    icon: Repeat,
+    children: [
+      { title: "Plans & Subscribers", url: "/subscriptions" },
+      { title: "Create Plan", url: "/subscriptions/plans/new" },
+    ],
+  },
+  {
     title: "Products",
     url: "/products",
     icon: Package,
@@ -120,7 +132,13 @@ const navItems: NavItem[] = [
       { title: "All Customers", url: "/customers" },
       { title: "Customer Groups", url: "/customers/groups" },
       { title: "Segments", url: "/customers/segments" },
+      { title: "Companies (B2B)", url: "/customers/companies" },
     ],
+  },
+  {
+    title: "Subscriptions",
+    url: "/subscriptions",
+    icon: Repeat,
   },
   {
     title: "Discounts",
@@ -148,6 +166,11 @@ const navItems: NavItem[] = [
       { title: "Ad Platforms", url: "/marketing/advertising" },
       { title: "Product Catalog", url: "/marketing/advertising/catalogs" },
     ],
+  },
+  {
+    title: "Analytics",
+    url: "/analytics",
+    icon: BarChart3,
   },
 ];
 

@@ -1,0 +1,622 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Search,
+  Plus,
+  RefreshCw,
+  AlertCircle,
+  MoreHorizontal,
+  Trash2,
+  Pause,
+  Play,
+  XCircle,
+  Archive,
+} from "lucide-react";
+import { toast } from "sonner";
+import {
+  SubscriptionPlan,
+  SubscriptionPlanStatus,
+  Subscription,
+  SubscriptionStatus,
+  SubscriptionPlansResponse,
+  SubscriptionsResponse,
+  getSubscriptionPlans,
+  getSubscriptions,
+  deleteSubscriptionPlan,
+  cancelSubscription,
+  pauseSubscription,
+  resumeSubscription,
+  getSubscriptionStatusDisplay,
+  getSubscriptionPlanStatusDisplay,
+  formatPrice,
+  formatDate,
+  formatInterval,
+} from "@/lib/api";
+
+function StatusBadge({ label, color }: { label: string; color: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className={`h-2 w-2 rounded-full ${color}`} />
+      <span className="text-sm">{label}</span>
+    </div>
+  );
+}
+
+export default function SubscriptionsPage() {
+  const [activeTab, setActiveTab] = useState("plans");
+
+  // Plans state
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [plansLoading, setPlansLoading] = useState(true);
+  const [plansError, setPlansError] = useState<string | null>(null);
+  const [plansSearch, setPlansSearch] = useState("");
+  const [plansPagination, setPlansPagination] = useState({
+    limit: 20,
+    offset: 0,
+    count: 0,
+  });
+
+  // Subscriptions state
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [subsLoading, setSubsLoading] = useState(true);
+  const [subsError, setSubsError] = useState<string | null>(null);
+  const [subsSearch, setSubsSearch] = useState("");
+  const [subsPagination, setSubsPagination] = useState({
+    limit: 20,
+    offset: 0,
+    count: 0,
+  });
+
+  // Confirm dialog state
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    action: () => Promise<void>;
+    variant: "destructive" | "default";
+  }>({
+    open: false,
+    title: "",
+    description: "",
+    action: async () => {},
+    variant: "default",
+  });
+  const [confirmLoading, setConfirmLoading] = useState(false);
+
+  // Fetch plans
+  const fetchPlans = async () => {
+    setPlansLoading(true);
+    setPlansError(null);
+    try {
+      const response = await getSubscriptionPlans({
+        limit: plansPagination.limit,
+        offset: plansPagination.offset,
+      });
+      setPlans(response.plans || []);
+      setPlansPagination((prev) => ({ ...prev, count: response.count || 0 }));
+    } catch (err) {
+      setPlansError(err instanceof Error ? err.message : "Failed to load plans");
+    } finally {
+      setPlansLoading(false);
+    }
+  };
+
+  // Fetch subscriptions
+  const fetchSubscriptions = async () => {
+    setSubsLoading(true);
+    setSubsError(null);
+    try {
+      const response = await getSubscriptions({
+        limit: subsPagination.limit,
+        offset: subsPagination.offset,
+      });
+      setSubscriptions(response.subscriptions || []);
+      setSubsPagination((prev) => ({ ...prev, count: response.count || 0 }));
+    } catch (err) {
+      setSubsError(err instanceof Error ? err.message : "Failed to load subscriptions");
+    } finally {
+      setSubsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPlans();
+  }, [plansPagination.limit, plansPagination.offset]);
+
+  useEffect(() => {
+    fetchSubscriptions();
+  }, [subsPagination.limit, subsPagination.offset]);
+
+  // Plan actions
+  const handleDeletePlan = (plan: SubscriptionPlan) => {
+    setConfirmDialog({
+      open: true,
+      title: "Delete Plan",
+      description: `Are you sure you want to delete "${plan.name}"? This action cannot be undone.`,
+      variant: "destructive",
+      action: async () => {
+        await deleteSubscriptionPlan(plan.id);
+        toast.success(`Plan "${plan.name}" deleted`);
+        fetchPlans();
+      },
+    });
+  };
+
+  // Subscription actions
+  const handleCancelSubscription = (sub: Subscription) => {
+    setConfirmDialog({
+      open: true,
+      title: "Cancel Subscription",
+      description: `Cancel subscription for ${sub.customerEmail}? The customer will lose access at the end of their current billing period.`,
+      variant: "destructive",
+      action: async () => {
+        await cancelSubscription(sub.id);
+        toast.success("Subscription cancelled");
+        fetchSubscriptions();
+      },
+    });
+  };
+
+  const handlePauseSubscription = async (sub: Subscription) => {
+    try {
+      await pauseSubscription(sub.id);
+      toast.success("Subscription paused");
+      fetchSubscriptions();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to pause subscription");
+    }
+  };
+
+  const handleResumeSubscription = async (sub: Subscription) => {
+    try {
+      await resumeSubscription(sub.id);
+      toast.success("Subscription resumed");
+      fetchSubscriptions();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to resume subscription");
+    }
+  };
+
+  const executeConfirmAction = async () => {
+    setConfirmLoading(true);
+    try {
+      await confirmDialog.action();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Action failed");
+    } finally {
+      setConfirmLoading(false);
+      setConfirmDialog((prev) => ({ ...prev, open: false }));
+    }
+  };
+
+  // Filter plans by search
+  const filteredPlans = plans.filter((plan) => {
+    if (!plansSearch) return true;
+    const q = plansSearch.toLowerCase();
+    return (
+      plan.name.toLowerCase().includes(q) ||
+      plan.description?.toLowerCase().includes(q)
+    );
+  });
+
+  // Filter subscriptions by search
+  const filteredSubscriptions = subscriptions.filter((sub) => {
+    if (!subsSearch) return true;
+    const q = subsSearch.toLowerCase();
+    return (
+      sub.customerEmail.toLowerCase().includes(q) ||
+      sub.customerName?.toLowerCase().includes(q) ||
+      sub.planName.toLowerCase().includes(q)
+    );
+  });
+
+  // Pagination helpers
+  const plansTotalPages = Math.ceil(plansPagination.count / plansPagination.limit);
+  const plansCurrentPage = Math.floor(plansPagination.offset / plansPagination.limit) + 1;
+  const subsTotalPages = Math.ceil(subsPagination.count / subsPagination.limit);
+  const subsCurrentPage = Math.floor(subsPagination.offset / subsPagination.limit) + 1;
+
+  return (
+    <div className="flex flex-col gap-6 p-6">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-4">
+          <CardTitle className="text-xl font-semibold">Subscriptions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList>
+              <TabsTrigger value="plans">Plans</TabsTrigger>
+              <TabsTrigger value="subscriptions">Subscriptions</TabsTrigger>
+            </TabsList>
+
+            {/* Plans Tab */}
+            <TabsContent value="plans" className="mt-4">
+              <div className="flex items-center justify-between mb-4">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search plans..."
+                    className="pl-8 w-[200px]"
+                    value={plansSearch}
+                    onChange={(e) => setPlansSearch(e.target.value)}
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="icon" onClick={fetchPlans} disabled={plansLoading}>
+                    <RefreshCw className={`h-4 w-4 ${plansLoading ? "animate-spin" : ""}`} />
+                  </Button>
+                  <Button asChild>
+                    <Link href="/subscriptions/plans/new">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Plan
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+
+              {plansError && (
+                <div className="flex items-center gap-2 p-4 mb-4 bg-red-50 text-red-700 rounded-lg">
+                  <AlertCircle className="h-5 w-5" />
+                  <span>{plansError}</span>
+                  <Button variant="ghost" size="sm" onClick={fetchPlans} className="ml-auto">
+                    Retry
+                  </Button>
+                </div>
+              )}
+
+              {plansLoading && plans.length === 0 ? (
+                <div className="space-y-3">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="flex items-center gap-4">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="h-4 w-16" />
+                      <Skeleton className="h-4 w-12 ml-auto" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Price</TableHead>
+                        <TableHead>Interval</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Subscribers</TableHead>
+                        <TableHead className="w-[50px]" />
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredPlans.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                            {plans.length === 0 ? "No subscription plans" : "No plans match your search"}
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        filteredPlans.map((plan) => {
+                          const statusDisplay = getSubscriptionPlanStatusDisplay(plan.status);
+                          return (
+                            <TableRow key={plan.id} className="hover:bg-muted/50">
+                              <TableCell>
+                                <div>
+                                  <p className="font-medium">{plan.name}</p>
+                                  {plan.description && (
+                                    <p className="text-xs text-muted-foreground truncate max-w-[300px]">
+                                      {plan.description}
+                                    </p>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell>{formatPrice(plan.price, plan.currency)}</TableCell>
+                              <TableCell>{formatInterval(plan.interval)}</TableCell>
+                              <TableCell>
+                                <StatusBadge label={statusDisplay.label} color={statusDisplay.color} />
+                              </TableCell>
+                              <TableCell className="text-right">{plan.subscriberCount}</TableCell>
+                              <TableCell>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem asChild>
+                                      <Link href={`/subscriptions/plans/new?edit=${plan.id}`}>
+                                        Edit
+                                      </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      className="text-red-600"
+                                      onClick={() => handleDeletePlan(plan)}
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-2" />
+                                      Delete
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      )}
+                    </TableBody>
+                  </Table>
+
+                  {plansPagination.count > 0 && (
+                    <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
+                      <span>
+                        {plansPagination.offset + 1} — {Math.min(plansPagination.offset + plansPagination.limit, plansPagination.count)} of {plansPagination.count} results
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span>
+                          {plansCurrentPage} of {plansTotalPages || 1} pages
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={plansCurrentPage <= 1}
+                          onClick={() =>
+                            setPlansPagination((prev) => ({
+                              ...prev,
+                              offset: (plansCurrentPage - 2) * prev.limit,
+                            }))
+                          }
+                        >
+                          Prev
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={plansCurrentPage >= plansTotalPages}
+                          onClick={() =>
+                            setPlansPagination((prev) => ({
+                              ...prev,
+                              offset: plansCurrentPage * prev.limit,
+                            }))
+                          }
+                        >
+                          Next
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </TabsContent>
+
+            {/* Subscriptions Tab */}
+            <TabsContent value="subscriptions" className="mt-4">
+              <div className="flex items-center justify-between mb-4">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search subscriptions..."
+                    className="pl-8 w-[250px]"
+                    value={subsSearch}
+                    onChange={(e) => setSubsSearch(e.target.value)}
+                  />
+                </div>
+                <Button variant="outline" size="icon" onClick={fetchSubscriptions} disabled={subsLoading}>
+                  <RefreshCw className={`h-4 w-4 ${subsLoading ? "animate-spin" : ""}`} />
+                </Button>
+              </div>
+
+              {subsError && (
+                <div className="flex items-center gap-2 p-4 mb-4 bg-red-50 text-red-700 rounded-lg">
+                  <AlertCircle className="h-5 w-5" />
+                  <span>{subsError}</span>
+                  <Button variant="ghost" size="sm" onClick={fetchSubscriptions} className="ml-auto">
+                    Retry
+                  </Button>
+                </div>
+              )}
+
+              {subsLoading && subscriptions.length === 0 ? (
+                <div className="space-y-3">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="flex items-center gap-4">
+                      <Skeleton className="h-4 w-40" />
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-4 w-20" />
+                      <Skeleton className="h-4 w-28" />
+                      <Skeleton className="h-4 w-28" />
+                      <Skeleton className="h-4 w-8 ml-auto" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Customer</TableHead>
+                        <TableHead>Plan</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Current Period</TableHead>
+                        <TableHead>Next Billing</TableHead>
+                        <TableHead className="w-[50px]" />
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredSubscriptions.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                            {subscriptions.length === 0 ? "No subscriptions" : "No subscriptions match your search"}
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        filteredSubscriptions.map((sub) => {
+                          const statusDisplay = getSubscriptionStatusDisplay(sub.status);
+                          return (
+                            <TableRow key={sub.id} className="hover:bg-muted/50">
+                              <TableCell>
+                                <div>
+                                  <p className="font-medium">{sub.customerEmail}</p>
+                                  {sub.customerName && (
+                                    <p className="text-xs text-muted-foreground">{sub.customerName}</p>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell>{sub.planName}</TableCell>
+                              <TableCell>
+                                <StatusBadge label={statusDisplay.label} color={statusDisplay.color} />
+                              </TableCell>
+                              <TableCell>
+                                <span className="text-sm">
+                                  {formatDate(sub.currentPeriodStart)} — {formatDate(sub.currentPeriodEnd)}
+                                </span>
+                              </TableCell>
+                              <TableCell>
+                                {sub.nextBillingDate ? formatDate(sub.nextBillingDate) : "—"}
+                              </TableCell>
+                              <TableCell>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                      <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    {sub.status === "ACTIVE" && (
+                                      <DropdownMenuItem onClick={() => handlePauseSubscription(sub)}>
+                                        <Pause className="h-4 w-4 mr-2" />
+                                        Pause
+                                      </DropdownMenuItem>
+                                    )}
+                                    {sub.status === "PAUSED" && (
+                                      <DropdownMenuItem onClick={() => handleResumeSubscription(sub)}>
+                                        <Play className="h-4 w-4 mr-2" />
+                                        Resume
+                                      </DropdownMenuItem>
+                                    )}
+                                    {(sub.status === "ACTIVE" || sub.status === "PAUSED" || sub.status === "TRIALING") && (
+                                      <DropdownMenuItem
+                                        className="text-red-600"
+                                        onClick={() => handleCancelSubscription(sub)}
+                                      >
+                                        <XCircle className="h-4 w-4 mr-2" />
+                                        Cancel
+                                      </DropdownMenuItem>
+                                    )}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      )}
+                    </TableBody>
+                  </Table>
+
+                  {subsPagination.count > 0 && (
+                    <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
+                      <span>
+                        {subsPagination.offset + 1} — {Math.min(subsPagination.offset + subsPagination.limit, subsPagination.count)} of {subsPagination.count} results
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span>
+                          {subsCurrentPage} of {subsTotalPages || 1} pages
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={subsCurrentPage <= 1}
+                          onClick={() =>
+                            setSubsPagination((prev) => ({
+                              ...prev,
+                              offset: (subsCurrentPage - 2) * prev.limit,
+                            }))
+                          }
+                        >
+                          Prev
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={subsCurrentPage >= subsTotalPages}
+                          onClick={() =>
+                            setSubsPagination((prev) => ({
+                              ...prev,
+                              offset: subsCurrentPage * prev.limit,
+                            }))
+                          }
+                        >
+                          Next
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+
+      {/* Confirm Dialog */}
+      <Dialog open={confirmDialog.open} onOpenChange={(open) => setConfirmDialog((prev) => ({ ...prev, open }))}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{confirmDialog.title}</DialogTitle>
+            <DialogDescription>{confirmDialog.description}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setConfirmDialog((prev) => ({ ...prev, open: false }))}
+              disabled={confirmLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant={confirmDialog.variant === "destructive" ? "destructive" : "default"}
+              onClick={executeConfirmAction}
+              disabled={confirmLoading}
+            >
+              {confirmLoading ? "Processing..." : "Confirm"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
