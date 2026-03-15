@@ -49,6 +49,7 @@ import {
   getPaymentStatusDisplay,
   getFulfillmentStatusDisplay,
 } from "@/lib/api";
+import { CsvExportButton } from "@/components/csv-export-button";
 import { useOrdersStore, useWebSocketStore } from "@/stores";
 
 function PaymentStatusBadge({ status }: { status: PaymentStatus }) {
@@ -194,9 +195,7 @@ export default function OrdersPage() {
             <Button variant="outline" size="icon" onClick={() => fetchOrders()} disabled={isLoading}>
               <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
             </Button>
-            <Button variant="outline" onClick={handleExport} disabled={orders.length === 0}>
-              Export
-            </Button>
+            <CsvExportButton type="orders" />
           </div>
         </CardHeader>
         <CardContent>

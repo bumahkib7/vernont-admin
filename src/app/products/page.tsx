@@ -60,6 +60,9 @@ import {
 import { StackedThumbnails } from "@/components/ui/thumbnail";
 import { toast } from "sonner";
 import { AddProductModal } from "@/components/products/add-product-modal";
+import { CsvImportDialog } from "@/components/csv-import-dialog";
+import { CsvExportButton } from "@/components/csv-export-button";
+import { importProductsCsv } from "@/lib/api";
 import {
   getProducts,
   deleteProduct,
@@ -218,10 +221,14 @@ export default function ProductsPage() {
             Manage your product inventory and listings
           </p>
         </div>
-        <Button className="gap-2" onClick={() => setAddProductOpen(true)}>
-          <Plus className="h-4 w-4" />
-          Add Product
-        </Button>
+        <div className="flex gap-2">
+          <CsvExportButton type="products" />
+          <CsvImportDialog type="products" onImport={importProductsCsv} onComplete={() => window.location.reload()} />
+          <Button className="gap-2" onClick={() => setAddProductOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Add Product
+          </Button>
+        </div>
       </div>
 
       {/* Filters and Search */}

@@ -19,6 +19,8 @@ import {
   Loader2,
   RotateCcw,
   Megaphone,
+  Activity,
+  Webhook,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -117,6 +119,7 @@ const navItems: NavItem[] = [
     children: [
       { title: "All Customers", url: "/customers" },
       { title: "Customer Groups", url: "/customers/groups" },
+      { title: "Segments", url: "/customers/segments" },
     ],
   },
   {
@@ -140,6 +143,7 @@ const navItems: NavItem[] = [
     icon: Megaphone,
     children: [
       { title: "Overview", url: "/marketing" },
+      { title: "Abandoned Carts", url: "/marketing/abandoned-carts" },
       { title: "Campaigns", url: "/marketing/advertising/campaigns" },
       { title: "Ad Platforms", url: "/marketing/advertising" },
       { title: "Product Catalog", url: "/marketing/advertising/catalogs" },
@@ -398,7 +402,23 @@ export function AppSidebar() {
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={isActive("/settings") && !isActive("/settings/users")}>
+            <SidebarMenuButton asChild isActive={isActive("/settings/activity")}>
+              <Link href="/settings/activity">
+                <Activity className="size-4" />
+                <span>Activity Log</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={isActive("/settings/webhooks")}>
+              <Link href="/settings/webhooks">
+                <Webhook className="size-4" />
+                <span>Webhooks</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={isActive("/settings") && !isActive("/settings/users") && !isActive("/settings/activity") && !isActive("/settings/webhooks")}>
               <Link href="/settings">
                 <Settings className="size-4" />
                 <span>Settings</span>

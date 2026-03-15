@@ -5004,3 +5004,263 @@ export async function getAdCatalogSyncs(): Promise<{ catalogs: CatalogSync[]; co
 export async function triggerCatalogSync(connectionId: string): Promise<{ id: string; status: string; message: string }> {
   return apiFetch(`/admin/advertising/catalogs/${connectionId}/sync`, { method: "POST" });
 }
+
+// ============================================================================
+// Abandoned Cart Recovery APIs
+// ============================================================================
+
+export interface AbandonedCartStats {
+  totalAbandoned: number;
+  totalSent: number;
+  totalRecovered: number;
+  recoveryRate: number;
+  sentLast24h: number;
+  recoveredLast24h: number;
+}
+
+export interface AbandonedCartNotification {
+  id: string;
+  cartId: string;
+  customerId: string | null;
+  email: string;
+  notificationNumber: number;
+  status: string;
+  recoveryToken: string;
+  sentAt: string | null;
+  openedAt: string | null;
+  clickedAt: string | null;
+  recoveredAt: string | null;
+  createdAt: string;
+}
+
+// ============================================================================
+// Order Edit APIs
+// ============================================================================
+
+export interface OrderEditItem {
+  id: string;
+  lineItemId: string | null;
+  action: string;
+  originalQuantity: number | null;
+  newQuantity: number | null;
+  originalUnitPrice: number | null;
+  newUnitPrice: number | null;
+}
+
+export interface OrderEdit {
+  id: string;
+  orderId: string;
+  editedBy: string | null;
+  status: string;
+  note: string | null;
+  differenceAmount: number;
+  confirmedAt: string | null;
+  items: OrderEditItem[];
+  createdAt: string;
+}
+
+export async function createOrderEdit(orderId: string, note?: string): Promise<OrderEdit> {
+  return apiFetch<OrderEdit>(`/admin/orders/${orderId}/edits`, {
+    method: "POST",
+    body: JSON.stringify({ note }),
+  });
+}
+
+export async function getOrderEdits(orderId: string): Promise<{ edits: OrderEdit[]; count: number }> {
+  return apiFetch(`/admin/orders/${orderId}/edits`);
+}
+
+export async function getOrderEdit(orderId: string, editId: string): Promise<OrderEdit> {
+  return apiFetch<OrderEdit>(`/admin/orders/${orderId}/edits/${editId}`);
+}
+
+export async function addOrderEditItem(
+  orderId: string,
+  editId: string,
+  item: { lineItemId?: string; action: string; newQuantity?: number; newUnitPrice?: number }
+): Promise<OrderEdit> {
+  return apiFetch<OrderEdit>(`/admin/orders/${orderId}/edits/${editId}/items`, {
+    method: "POST",
+    body: JSON.stringify(item),
+  });
+}
+
+export async function confirmOrderEdit(orderId: string, editId: string): Promise<OrderEdit> {
+  return apiFetch<OrderEdit>(`/admin/orders/${orderId}/edits/${editId}/confirm`, {
+    method: "POST",
+  });
+}
+
+export async function cancelOrderEdit(orderId: string, editId: string): Promise<OrderEdit> {
+  return apiFetch<OrderEdit>(`/admin/orders/${orderId}/edits/${editId}`, {
+    method: "DELETE",
+  });
+}
+
+// ============================================================================
+// Customer Segment APIs
+// ============================================================================
+
+export interface CustomerSegment {
+  id: string;
+  name: string;
+  description: string | null;
+  criteria: Record<string, any> | null;
+  isDynamic: boolean;
+  customerCount: number;
+  lastEvaluatedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function getCustomerSegments(): Promise<{ segments: CustomerSegment[]; count: number }> {
+  return apiFetch("/admin/customers/segments");
+}
+
+export async function getCustomerSegment(id: string): Promise<CustomerSegment> {
+  return apiFetch<CustomerSegment>(`/admin/customers/segments/${id}`);
+}
+
+export async function createCustomerSegment(data: {
+  name: string;
+  description?: string;
+  criteria?: Record<string, any>;
+  isDynamic?: boolean;
+}): Promise<CustomerSegment> {
+  return apiFetch<CustomerSegment>("/admin/customers/segments", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateCustomerSegment(id: string, data: {
+  name: string;
+  description?: string;
+  criteria?: Record<string, any>;
+  isDynamic?: boolean;
+}): Promise<CustomerSegment> {
+  return apiFetch<CustomerSegment>(`/admin/customers/segments/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteCustomerSegment(id: string): Promise<void> {
+  return apiFetch(`/admin/customers/segments/${id}`, { method: "DELETE" });
+}
+
+export async function evaluateCustomerSegment(id: string): Promise<CustomerSegment> {
+  return apiFetch<CustomerSegment>(`/admin/customers/segments/${id}/evaluate`, {
+    method: "POST",
+  });
+}
+
+export async function previewCustomerSegment(criteria: Record<string, any>): Promise<{ matchingCount: number }> {
+  return apiFetch(`/admin/customers/segments/preview`, {
+    method: "POST",
+    body: JSON.stringify(criteria),
+  });
+}
+
+// ============================================================================
+// CSV Import/Export APIs
+// ============================================================================
+
+export interface ImportResult {
+  totalRows: number;
+  imported: number;
+  updated: number;
+  failed: number;
+  errors: string[];
+}
+
+export async function importProductsCsv(file: File): Promise<ImportResult> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const response = await fetch(`${API_BASE_URL}/admin/import/products`, {
+    method: "POST",
+    credentials: "include",
+    body: formData,
+  });
+  if (!response.ok) throw await parseErrorResponse(response);
+  return response.json();
+}
+
+export async function importCustomersCsv(file: File): Promise<ImportResult> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const response = await fetch(`${API_BASE_URL}/admin/import/customers`, {
+    method: "POST",
+    credentials: "include",
+    body: formData,
+  });
+  if (!response.ok) throw await parseErrorResponse(response);
+  return response.json();
+}
+
+export function getExportUrl(type: "products" | "customers" | "orders"): string {
+  return `${API_BASE_URL}/admin/export/${type}`;
+}
+
+export async function getAbandonedCartStats(): Promise<AbandonedCartStats> {
+  return apiFetch<AbandonedCartStats>("/admin/marketing/abandoned-carts/stats");
+}
+
+export async function getAbandonedCartNotifications(): Promise<{ notifications: AbandonedCartNotification[]; count: number }> {
+  return apiFetch("/admin/marketing/abandoned-carts");
+}
+
+// Webhooks
+export interface WebhookEndpoint {
+  id: string;
+  url: string;
+  events: string[];
+  isActive: boolean;
+  description: string | null;
+  failureCount: number;
+  lastFailureAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WebhookDelivery {
+  id: string;
+  endpointId: string;
+  eventType: string;
+  payload: string;
+  status: string;
+  responseStatus: number | null;
+  responseBody: string | null;
+  attempts: number;
+  nextRetryAt: string | null;
+  deliveredAt: string | null;
+  createdAt: string;
+}
+
+export async function getWebhookEndpoints(page = 0, size = 20): Promise<{ endpoints: WebhookEndpoint[]; total: number }> {
+  return apiFetch(`/admin/webhooks?page=${page}&size=${size}`);
+}
+
+export async function getWebhookEndpoint(id: string): Promise<WebhookEndpoint> {
+  return apiFetch(`/admin/webhooks/${id}`);
+}
+
+export async function createWebhookEndpoint(data: { url: string; secret: string; events: string[]; description?: string }): Promise<WebhookEndpoint> {
+  return apiFetch("/admin/webhooks", { method: "POST", body: JSON.stringify(data) });
+}
+
+export async function updateWebhookEndpoint(id: string, data: Partial<{ url: string; secret: string; events: string[]; description: string; isActive: boolean }>): Promise<WebhookEndpoint> {
+  return apiFetch(`/admin/webhooks/${id}`, { method: "PUT", body: JSON.stringify(data) });
+}
+
+export async function deleteWebhookEndpoint(id: string): Promise<void> {
+  await apiFetch(`/admin/webhooks/${id}`, { method: "DELETE" });
+}
+
+export async function testWebhookEndpoint(id: string): Promise<WebhookDelivery> {
+  return apiFetch(`/admin/webhooks/${id}/test`, { method: "POST" });
+}
+
+export async function getWebhookDeliveries(endpointId: string, page = 0, size = 20): Promise<{ deliveries: WebhookDelivery[]; total: number }> {
+  return apiFetch(`/admin/webhooks/${endpointId}/deliveries?page=${page}&size=${size}`);
+}

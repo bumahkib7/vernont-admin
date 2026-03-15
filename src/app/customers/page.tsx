@@ -67,7 +67,10 @@ import {
   type CustomerTier,
   type CustomerStatus,
   type CustomerStats,
+  importCustomersCsv,
 } from "@/lib/api";
+import { CsvImportDialog } from "@/components/csv-import-dialog";
+import { CsvExportButton } from "@/components/csv-export-button";
 import { SendEmailDialog } from "@/components/customers/SendEmailDialog";
 import { SendGiftCardDialog } from "@/components/customers/SendGiftCardDialog";
 import { SuspendCustomerDialog } from "@/components/customers/SuspendCustomerDialog";
@@ -194,10 +197,8 @@ export default function CustomersPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="gap-2">
-            <Download className="h-4 w-4" />
-            Export
-          </Button>
+          <CsvExportButton type="customers" />
+          <CsvImportDialog type="customers" onImport={importCustomersCsv} onComplete={() => window.location.reload()} />
           <Button className="gap-2" onClick={() => toast.info("Add customer coming soon")}>
             <UserPlus className="h-4 w-4" />
             Add Customer
