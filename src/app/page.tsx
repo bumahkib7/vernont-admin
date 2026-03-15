@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useDashboard } from "@/hooks/use-dashboard";
 import { useActivityEvents } from "@/hooks/use-activity-events";
+import { AiInsightsCard } from "@/components/ai/ai-insights-card";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/api";
@@ -386,6 +387,9 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* AI Insights */}
+      <AiInsightsCard />
 
       {/* Quick Actions */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

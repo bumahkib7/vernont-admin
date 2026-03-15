@@ -11,6 +11,7 @@ import { NotificationHandlerProvider } from "@/hooks/use-notification-handler";
 import { useAuth } from "@/lib/auth-context";
 import { Loader2 } from "lucide-react";
 import { PageBreadcrumbs } from "@/components/page-breadcrumbs";
+import { AiChatButton } from "@/components/ai/ai-chat-button";
 
 // Routes that don't show the sidebar/header
 const PUBLIC_ROUTES = ["/login", "/forgot-password", "/reset-password", "/set-password"];
@@ -72,6 +73,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {children}
           </main>
         </SidebarInset>
+        <AiChatButton />
       </SidebarProvider>
     </NotificationHandlerProvider>
   );

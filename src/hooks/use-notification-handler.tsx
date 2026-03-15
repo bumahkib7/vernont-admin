@@ -11,6 +11,7 @@ import {
   getBrowserPermission,
 } from "./use-notifications";
 import type { Notification } from "@/lib/api";
+import { sendHeartbeat } from "@/lib/api";
 
 // WebSocket message type from backend
 interface NotificationWebSocketMessage {
@@ -114,6 +115,24 @@ export function useNotificationHandler() {
     },
     [handleNewNotification, router]
   );
+
+  // Send activity heartbeat every 5 minutes
+  useEffect(() => {
+    // Send initial heartbeat
+    sendHeartbeat().catch(() => {
+      // Silently ignore heartbeat failures
+    });
+
+    const heartbeatInterval = setInterval(() => {
+      sendHeartbeat().catch(() => {
+        // Silently ignore heartbeat failures
+      });
+    }, 5 * 60 * 1000); // 5 minutes
+
+    return () => {
+      clearInterval(heartbeatInterval);
+    };
+  }, []);
 
   // Subscribe to notification queue when connected
   useEffect(() => {
