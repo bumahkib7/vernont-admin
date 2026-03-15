@@ -8,7 +8,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { createWebhookEndpoint } from "@/lib/api";
 import { toast } from "sonner";
@@ -66,18 +74,22 @@ export default function NewWebhookPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href="/settings/webhooks">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">New Webhook Endpoint</h1>
-          <p className="text-muted-foreground">Configure a new endpoint to receive event notifications</p>
-        </div>
-      </div>
+    <div className="flex flex-col gap-6 p-6">
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink href="/settings">Settings</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbLink href="/settings/webhooks">Webhooks</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>New Endpoint</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
 
       <div className="grid gap-6 max-w-2xl">
         <Card>

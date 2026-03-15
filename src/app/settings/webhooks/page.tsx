@@ -6,6 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { Plus, Trash2, ExternalLink } from "lucide-react";
 import { getWebhookEndpoints, deleteWebhookEndpoint, type WebhookEndpoint } from "@/lib/api";
 import { toast } from "sonner";
@@ -41,24 +49,33 @@ export default function WebhooksPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Webhooks</h1>
-          <p className="text-muted-foreground">Manage webhook endpoints for third-party integrations</p>
-        </div>
-        <Button asChild>
-          <Link href="/settings/webhooks/new">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Endpoint
-          </Link>
-        </Button>
-      </div>
+    <div className="flex flex-col gap-6 p-6">
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink href="/settings">Settings</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>Webhooks</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Endpoints</CardTitle>
-          <CardDescription>Webhook endpoints receive event notifications via HTTP POST</CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Webhooks</CardTitle>
+            <CardDescription>
+              Manage webhook endpoints for third-party integrations
+            </CardDescription>
+          </div>
+          <Button className="gap-2" asChild>
+            <Link href="/settings/webhooks/new">
+              <Plus className="h-4 w-4" />
+              Add Endpoint
+            </Link>
+          </Button>
         </CardHeader>
         <CardContent>
           {loading ? (

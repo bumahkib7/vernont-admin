@@ -7,7 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowLeft, Send, Loader2 } from "lucide-react";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import { Send, Loader2 } from "lucide-react";
 import {
   getWebhookEndpoint,
   getWebhookDeliveries,
@@ -63,32 +71,53 @@ export default function WebhookDetailPage() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin" /></div>;
+    return (
+      <div className="flex flex-col gap-6 p-6">
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </div>
+      </div>
+    );
   }
 
   if (!endpoint) {
-    return <div className="text-center py-12 text-muted-foreground">Webhook endpoint not found</div>;
+    return (
+      <div className="flex flex-col gap-6 p-6">
+        <div className="text-center py-12 text-muted-foreground">Webhook endpoint not found</div>
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/settings/webhooks">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
+    <div className="flex flex-col gap-6 p-6">
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink href="/settings">Settings</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbLink href="/settings/webhooks">Webhooks</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>Endpoint Details</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Webhook Details</h1>
-            <p className="text-muted-foreground text-sm">{endpoint.url}</p>
+            <CardTitle>Webhook Details</CardTitle>
+            <CardDescription>{endpoint.url}</CardDescription>
           </div>
-        </div>
-        <Button variant="outline" onClick={handleTest} disabled={testing}>
-          {testing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
-          Send Test
-        </Button>
-      </div>
+          <Button variant="outline" className="gap-2" onClick={handleTest} disabled={testing}>
+            {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            Send Test
+          </Button>
+        </CardHeader>
+      </Card>
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>

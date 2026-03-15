@@ -50,6 +50,7 @@ const settingsNav: NavSection[] = [
       { title: "Secret API Keys", href: "/settings/secret-api-keys" },
       { title: "Workflows", href: "/settings/workflows" },
       { title: "Human Interventions", href: "/settings/interventions" },
+      { title: "Webhooks", href: "/settings/webhooks" },
     ],
   },
   {
