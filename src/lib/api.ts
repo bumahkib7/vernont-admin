@@ -5567,9 +5567,8 @@ export async function aiModerate(content: string): Promise<{ action: string; rea
  * Clear an AI chat session.
  */
 export async function aiClearSession(sessionId: string): Promise<void> {
-  await apiFetch(`/admin/ai/session`, {
+  await apiFetch(`/admin/ai/session?sessionId=${encodeURIComponent(sessionId)}`, {
     method: "DELETE",
-    body: JSON.stringify({ sessionId }),
   });
 }
 
