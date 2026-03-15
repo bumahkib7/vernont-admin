@@ -3859,6 +3859,105 @@ export async function getDashboardAnalytics(period: "7d" | "30d" | "90d" | "12m"
 }
 
 // =============================================================================
+// Advanced Analytics API
+// =============================================================================
+
+export type AnalyticsPeriod = "today" | "7d" | "30d" | "90d" | "1y" | "custom";
+
+export interface AdvancedAnalyticsParams {
+  period: AnalyticsPeriod;
+  startDate?: string;
+  endDate?: string;
+  compare?: boolean;
+}
+
+export interface RevenueTimePoint {
+  date: string;
+  revenue: number;
+  previousRevenue?: number;
+}
+
+export interface OrdersTimePoint {
+  date: string;
+  orders: number;
+}
+
+export interface CategoryRevenue {
+  name: string;
+  revenue: number;
+  percentage: number;
+  fill?: string;
+}
+
+export interface TopProductRow {
+  id: string;
+  name: string;
+  sku: string;
+  revenue: number;
+  orders: number;
+  avgPrice: number;
+}
+
+export interface TopCustomerRow {
+  id: string;
+  name: string;
+  email: string;
+  totalSpent: number;
+  orderCount: number;
+  lastOrderDate: string;
+}
+
+export interface ChannelRevenue {
+  channel: string;
+  revenue: number;
+  orders: number;
+  percentage: number;
+}
+
+export interface CustomerAcquisitionPoint {
+  date: string;
+  newCustomers: number;
+  returningCustomers: number;
+}
+
+export interface FunnelStep {
+  name: string;
+  value: number;
+  dropOff: number;
+}
+
+export interface AdvancedKpiData {
+  totalRevenue: KpiItem;
+  totalOrders: KpiItem;
+  avgOrderValue: KpiItem;
+  conversionRate: KpiItem;
+}
+
+export interface AdvancedAnalyticsData {
+  kpis: AdvancedKpiData;
+  revenueOverTime: RevenueTimePoint[];
+  ordersOverTime: OrdersTimePoint[];
+  revenueByCategory: CategoryRevenue[];
+  topProducts: TopProductRow[];
+  topCustomers: TopCustomerRow[];
+  channelRevenue: ChannelRevenue[];
+  customerAcquisition: CustomerAcquisitionPoint[];
+  conversionFunnel: FunnelStep[];
+}
+
+function buildAnalyticsQueryString(params: AdvancedAnalyticsParams): string {
+  const query = new URLSearchParams({ period: params.period });
+  if (params.startDate) query.append("startDate", params.startDate);
+  if (params.endDate) query.append("endDate", params.endDate);
+  if (params.compare) query.append("compare", "true");
+  return query.toString();
+}
+
+export async function getAdvancedAnalytics(params: AdvancedAnalyticsParams): Promise<AdvancedAnalyticsData> {
+  return apiFetch<AdvancedAnalyticsData>(`/admin/analytics/advanced?${buildAnalyticsQueryString(params)}`);
+}
+
+// =============================================================================
 // Human Intervention API
 // =============================================================================
 

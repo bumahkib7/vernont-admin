@@ -61,17 +61,20 @@ export default function AbandonedCartsPage() {
   const [stats, setStats] = useState<AbandonedCartStats | null>(null);
   const [notifications, setNotifications] = useState<AbandonedCartNotification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
+      setError(null);
       const [statsData, notifData] = await Promise.all([
-        getAbandonedCartStats(),
-        getAbandonedCartNotifications(),
+        getAbandonedCartStats().catch(() => null),
+        getAbandonedCartNotifications().catch(() => ({ notifications: [], count: 0 })),
       ]);
-      setStats(statsData);
-      setNotifications(notifData.notifications);
+      if (statsData) setStats(statsData);
+      setNotifications(notifData.notifications ?? []);
     } catch (err) {
       console.error("Failed to load abandoned cart data:", err);
+      setError("Failed to load abandoned cart data");
     } finally {
       setLoading(false);
     }
