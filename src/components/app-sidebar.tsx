@@ -140,7 +140,7 @@ const navItems: NavItem[] = [
     icon: Megaphone,
     children: [
       { title: "Overview", url: "/marketing" },
-      { title: "Campaigns", url: "/marketing/campaigns" },
+      { title: "Campaigns", url: "/marketing/advertising/campaigns" },
       { title: "Ad Platforms", url: "/marketing/advertising" },
       { title: "Product Catalog", url: "/marketing/advertising/catalogs" },
     ],
