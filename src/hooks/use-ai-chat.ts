@@ -84,29 +84,27 @@ export function useAiChat(): UseAiChatReturn {
 
         const chunk = decoder.decode(value, { stream: true });
         // Parse SSE lines — Spring SseEmitter sends "data:" without space
-        const lines = chunk.split("\n");
+        const lines = chunk.split(/\r?\n/);
         for (const line of lines) {
-          const dataMatch = line.match(/^data:(.*)$/);
-          if (dataMatch) {
-            const data = dataMatch[1].trimStart();
-            if (data === "[DONE]" || data === "") continue;
-            try {
-              const parsed = JSON.parse(data);
-              if (parsed.content) {
-                accumulated += parsed.content;
-              } else if (typeof parsed === "string") {
-                accumulated += parsed;
-              }
-            } catch {
-              // Plain text SSE data
-              accumulated += data;
+          if (!line.startsWith("data:")) continue;
+          const data = line.slice(5).trimStart();
+          if (data === "[DONE]" || data === "") continue;
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.content) {
+              accumulated += parsed.content;
+            } else if (typeof parsed === "string") {
+              accumulated += parsed;
             }
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.id === assistantMsgId ? { ...m, content: accumulated } : m
-              )
-            );
+          } catch {
+            // Plain text SSE data
+            accumulated += data;
           }
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMsgId ? { ...m, content: accumulated } : m
+            )
+          );
         }
       }
 
