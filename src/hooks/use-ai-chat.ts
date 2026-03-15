@@ -83,12 +83,13 @@ export function useAiChat(): UseAiChatReturn {
         }
 
         const chunk = decoder.decode(value, { stream: true });
-        // Parse SSE lines
+        // Parse SSE lines — Spring SseEmitter sends "data:" without space
         const lines = chunk.split("\n");
         for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const data = line.slice(6);
-            if (data === "[DONE]") continue;
+          const dataMatch = line.match(/^data:(.*)$/);
+          if (dataMatch) {
+            const data = dataMatch[1].trimStart();
+            if (data === "[DONE]" || data === "") continue;
             try {
               const parsed = JSON.parse(data);
               if (parsed.content) {
