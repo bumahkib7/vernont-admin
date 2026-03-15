@@ -91,6 +91,10 @@ const navItems: NavItem[] = [
     title: "Returns",
     url: "/returns",
     icon: RotateCcw,
+    children: [
+      { title: "All Returns", url: "/returns" },
+      { title: "Claims", url: "/returns/claims" },
+    ],
   },
   {
     title: "Subscriptions",
