@@ -18,6 +18,7 @@ import {
   Warehouse,
   Loader2,
   RotateCcw,
+  Megaphone,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -132,6 +133,17 @@ const navItems: NavItem[] = [
     title: "Pricing",
     url: "/pricing",
     icon: CreditCard,
+  },
+  {
+    title: "Marketing",
+    url: "/marketing",
+    icon: Megaphone,
+    children: [
+      { title: "Overview", url: "/marketing" },
+      { title: "Campaigns", url: "/marketing/campaigns" },
+      { title: "Ad Platforms", url: "/marketing/advertising" },
+      { title: "Product Catalog", url: "/marketing/advertising/catalogs" },
+    ],
   },
 ];
 

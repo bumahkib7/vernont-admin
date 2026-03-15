@@ -12,6 +12,7 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from "@/components/ui/command";
+import { KeyboardShortcutsModal } from "@/components/keyboard-shortcuts-modal";
 import {
   ShoppingCart,
   Package,
@@ -65,6 +66,7 @@ type CommandGroup = {
 export function CommandPalette() {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
+  const [shortcutsOpen, setShortcutsOpen] = React.useState(false);
   const router = useRouter();
 
   // Handle keyboard shortcut
@@ -306,9 +308,7 @@ export function CommandPalette() {
         label: "Keyboard Shortcuts",
         icon: <Keyboard className="h-4 w-4" />,
         shortcut: "?",
-        action: () => {
-          alert("Showing keyboard shortcuts...");
-        },
+        action: () => setShortcutsOpen(true),
         keywords: ["hotkeys", "keys"],
       },
       {
@@ -502,6 +502,11 @@ export function CommandPalette() {
           </div>
         </div>
       </CommandDialog>
+
+      <KeyboardShortcutsModal
+        open={shortcutsOpen}
+        onOpenChange={setShortcutsOpen}
+      />
     </>
   );
 }

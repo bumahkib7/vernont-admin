@@ -10,12 +10,7 @@ import { NotificationBell } from "@/components/notification-bell";
 import { NotificationHandlerProvider } from "@/hooks/use-notification-handler";
 import { useAuth } from "@/lib/auth-context";
 import { Loader2 } from "lucide-react";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbList,
-  BreadcrumbPage,
-} from "@/components/ui/breadcrumb";
+import { PageBreadcrumbs } from "@/components/page-breadcrumbs";
 
 // Routes that don't show the sidebar/header
 const PUBLIC_ROUTES = ["/login", "/forgot-password", "/reset-password", "/set-password"];
@@ -65,13 +60,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div className="flex items-center gap-2">
               <SidebarTrigger className="-ml-1" />
               <Separator orientation="vertical" className="mr-2 h-4" />
-              <Breadcrumb>
-                <BreadcrumbList>
-                  <BreadcrumbItem>
-                    <BreadcrumbPage>Dashboard</BreadcrumbPage>
-                  </BreadcrumbItem>
-                </BreadcrumbList>
-              </Breadcrumb>
+              <PageBreadcrumbs />
             </div>
             <div className="flex items-center gap-2">
               <NotificationBell />
