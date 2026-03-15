@@ -3568,6 +3568,13 @@ export async function inviteInternalUser(data: InviteInternalUserRequest): Promi
   });
 }
 
+// Resend invitation email for a pending user
+export async function resendInvite(userId: string): Promise<{ message: string }> {
+  return apiFetch<{ message: string }>(`/api/admin/internal-users/invite/resend/${userId}`, {
+    method: "POST",
+  });
+}
+
 // ============================================================================
 // Dashboard API
 // ============================================================================

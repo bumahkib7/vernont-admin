@@ -75,6 +75,7 @@ import {
   UserPlus,
   Shield,
   AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 import {
   getInternalUsers,
@@ -82,6 +83,7 @@ import {
   updateInternalUser,
   archiveInternalUser,
   hardDeleteInternalUser,
+  resendInvite,
   ApiError,
   type InternalUser,
   type InternalUserRole,
@@ -90,9 +92,6 @@ import { getRoleBadgeColor, getRoleDisplayName } from "@/lib/auth";
 
 const AVAILABLE_ROLES: { value: InternalUserRole; label: string; description: string }[] = [
   { value: "ADMIN", label: "Admin", description: "Full access to all features" },
-  { value: "DEVELOPER", label: "Developer", description: "Developer access for integrations" },
-  { value: "CUSTOMER_SERVICE", label: "Customer Service", description: "Manage orders and customers" },
-  { value: "WAREHOUSE_MANAGER", label: "Warehouse Manager", description: "Manage inventory and fulfillment" },
 ];
 
 export default function UsersSettingsPage() {
@@ -106,7 +105,7 @@ export default function UsersSettingsPage() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteFirstName, setInviteFirstName] = useState("");
   const [inviteLastName, setInviteLastName] = useState("");
-  const [inviteRoles, setInviteRoles] = useState<string[]>(["CUSTOMER_SERVICE"]);
+  const [inviteRoles, setInviteRoles] = useState<string[]>(["ADMIN"]);
   const [isInviting, setIsInviting] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
 
@@ -203,7 +202,7 @@ export default function UsersSettingsPage() {
     setInviteEmail("");
     setInviteFirstName("");
     setInviteLastName("");
-    setInviteRoles(["CUSTOMER_SERVICE"]);
+    setInviteRoles(["ADMIN"]);
     setInviteError(null);
   };
 
@@ -286,6 +285,16 @@ export default function UsersSettingsPage() {
       console.error("Failed to permanently delete user:", err);
     } finally {
       setIsHardDeleting(false);
+    }
+  };
+
+  // Handle resend invite
+  const handleResendInvite = async (user: InternalUser) => {
+    try {
+      await resendInvite(user.id);
+      fetchUsers();
+    } catch (err) {
+      setError(getErrorMessage(err));
     }
   };
 
@@ -458,6 +467,12 @@ export default function UsersSettingsPage() {
                                 <Pencil className="h-4 w-4 mr-2" />
                                 Edit User
                               </DropdownMenuItem>
+                              {user.inviteStatus === "PENDING" && (
+                                <DropdownMenuItem onClick={() => handleResendInvite(user)}>
+                                  <RefreshCw className="h-4 w-4 mr-2" />
+                                  Resend Invite
+                                </DropdownMenuItem>
+                              )}
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 onClick={() => openArchiveConfirm(user)}
