@@ -926,6 +926,134 @@ export async function getDraftOrders(params?: {
   return apiFetch<OrdersResponse>(`/admin/orders/drafts${query ? `?${query}` : ""}`);
 }
 
+// Draft Order types (full detail)
+export type DraftOrderStatus = "OPEN" | "INVOICE_SENT" | "COMPLETED" | "CANCELLED";
+
+export interface DraftOrderItem {
+  id: string;
+  productId?: string;
+  variantId?: string;
+  title: string;
+  sku?: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+}
+
+export interface DraftOrder {
+  id: string;
+  customerEmail?: string;
+  customerId?: string;
+  status: DraftOrderStatus;
+  note?: string;
+  shippingAddress?: OrderAddress;
+  billingAddress?: OrderAddress;
+  subtotal: number;
+  taxTotal: number;
+  shippingTotal: number;
+  discountTotal: number;
+  total: number;
+  currency: string;
+  convertedOrderId?: string;
+  createdBy?: string;
+  items: DraftOrderItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DraftOrdersDetailResponse {
+  draftOrders: DraftOrder[];
+  count: number;
+  offset: number;
+  limit: number;
+}
+
+export interface CreateDraftOrderItemInput {
+  productId?: string;
+  variantId?: string;
+  title: string;
+  sku?: string;
+  quantity: number;
+  unitPrice: number;
+}
+
+export interface CreateDraftOrderInput {
+  customerEmail?: string;
+  customerId?: string;
+  note?: string;
+  shippingAddress?: Omit<OrderAddress, "id">;
+  billingAddress?: Omit<OrderAddress, "id">;
+  items: CreateDraftOrderItemInput[];
+  currency?: string;
+}
+
+export interface UpdateDraftOrderInput {
+  customerEmail?: string;
+  customerId?: string;
+  note?: string;
+  shippingAddress?: Omit<OrderAddress, "id">;
+  billingAddress?: Omit<OrderAddress, "id">;
+  items?: CreateDraftOrderItemInput[];
+}
+
+// Draft Order CRUD
+export async function getDraftOrder(id: string): Promise<DraftOrder> {
+  return apiFetch<DraftOrder>(`/admin/orders/drafts/${id}`);
+}
+
+export async function createDraftOrder(data: CreateDraftOrderInput): Promise<DraftOrder> {
+  return apiFetch<DraftOrder>("/admin/orders/drafts", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateDraftOrder(id: string, data: UpdateDraftOrderInput): Promise<DraftOrder> {
+  return apiFetch<DraftOrder>(`/admin/orders/drafts/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteDraftOrder(id: string): Promise<void> {
+  await apiFetch<void>(`/admin/orders/drafts/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export async function sendDraftOrderInvoice(id: string): Promise<DraftOrder> {
+  return apiFetch<DraftOrder>(`/admin/orders/drafts/${id}/invoice`, {
+    method: "POST",
+  });
+}
+
+export async function convertDraftOrderToOrder(id: string): Promise<{ orderId: string }> {
+  return apiFetch<{ orderId: string }>(`/admin/orders/drafts/${id}/convert`, {
+    method: "POST",
+  });
+}
+
+export async function cancelDraftOrder(id: string): Promise<DraftOrder> {
+  return apiFetch<DraftOrder>(`/admin/orders/drafts/${id}/cancel`, {
+    method: "POST",
+  });
+}
+
+export function getDraftOrderStatusDisplay(status: DraftOrderStatus): { label: string; color: string } {
+  switch (status) {
+    case "OPEN":
+      return { label: "Open", color: "bg-blue-500" };
+    case "INVOICE_SENT":
+      return { label: "Invoice Sent", color: "bg-yellow-500" };
+    case "COMPLETED":
+      return { label: "Completed", color: "bg-green-500" };
+    case "CANCELLED":
+      return { label: "Cancelled", color: "bg-red-500" };
+    default:
+      return { label: status, color: "bg-gray-500" };
+  }
+}
+
 // =============================================================================
 // Products API
 // =============================================================================
@@ -4883,7 +5011,7 @@ export async function resetNotificationPreferences(): Promise<PreferencesRespons
 
 // Send activity heartbeat (keeps user session active for notification delivery)
 export async function sendHeartbeat(): Promise<void> {
-  await apiFetch<void>("/api/v1/internal/notifications/heartbeat", {
+  await apiFetch<void>("/admin/notifications/heartbeat", {
     method: "POST",
   });
 }

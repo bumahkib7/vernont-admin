@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Lightbulb,
@@ -123,8 +122,8 @@ export function AiInsightsCard() {
         </CardAction>
       </CardHeader>
 
-      <CardContent className="p-0">
-        <ScrollArea className="max-h-[320px]">
+      <CardContent className="p-0 overflow-hidden">
+        <div className="max-h-[280px] overflow-y-auto">
           <div className="divide-y">
             {isLoading ? (
               <>
@@ -165,7 +164,7 @@ export function AiInsightsCard() {
                           {insight.priority}
                         </Badge>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
                         {insight.description}
                       </p>
                     </div>
@@ -191,7 +190,7 @@ export function AiInsightsCard() {
               })
             )}
           </div>
-        </ScrollArea>
+        </div>
       </CardContent>
     </Card>
   );
