@@ -22,6 +22,14 @@ const nextConfig: NextConfig = {
         hostname: "127.0.0.1",
         port: "9000",
       },
+      {
+        protocol: "https",
+        hostname: "*.runixcloud.dev",
+      },
+      {
+        protocol: "https",
+        hostname: "*.amazonaws.com",
+      },
     ],
     // Disable image optimization in development to avoid private IP blocking
     unoptimized: isDev,

@@ -69,6 +69,7 @@ import {
   deleteProduct,
   getCategories,
   formatPrice,
+  resolveImageUrl,
   type ProductSummary,
   type ProductStatus,
   type ProductCategory,
@@ -361,7 +362,7 @@ export default function ProductsPage() {
                         <Link href={`/products/${product.id}`}>
                           {product.thumbnail ? (
                             <img
-                              src={product.thumbnail}
+                              src={resolveImageUrl(product.thumbnail) || ""}
                               alt={product.title}
                               className="h-12 w-12 rounded object-cover"
                             />

@@ -58,6 +58,12 @@ import {
   CheckCircle,
   Loader2,
   Printer,
+  MapPin,
+  ExternalLink,
+  Ban,
+  DollarSign,
+  Clock,
+  Tag,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
@@ -70,11 +76,19 @@ import {
   completeOrder,
   getShippingOptions,
   getShippingConfig,
+  getShippingRates,
+  getOrderTracking,
+  getOrderFulfillments,
+  voidShippingLabel,
   Order,
   PaymentStatus,
   FulfillmentStatus,
   ShippingOption,
   ShippingConfig,
+  ShippingRate,
+  FulfillmentDetail,
+  TrackingInfo,
+  TrackingEvent,
   formatPrice,
   formatDateTime,
   getPaymentStatusDisplay,
@@ -156,6 +170,15 @@ export default function OrderDetailsPage() {
   const [labelDialogOpen, setLabelDialogOpen] = useState(false);
   const [labelUrl, setLabelUrl] = useState<string | null>(null);
 
+  // Rates, tracking, fulfillment state
+  const [rates, setRates] = useState<ShippingRate[]>([]);
+  const [ratesLoading, setRatesLoading] = useState(false);
+  const [fulfillments, setFulfillments] = useState<FulfillmentDetail[]>([]);
+  const [tracking, setTracking] = useState<TrackingInfo | null>(null);
+  const [trackingLoading, setTrackingLoading] = useState(false);
+  const [voidLoading, setVoidLoading] = useState(false);
+  const [trackingDialogOpen, setTrackingDialogOpen] = useState(false);
+
   const fetchOrder = async () => {
     setLoading(true);
     setError(null);
@@ -195,6 +218,64 @@ export default function OrderDetailsPage() {
     }
   };
 
+  const fetchFulfillments = async () => {
+    try {
+      const data = await getOrderFulfillments(orderId);
+      setFulfillments(data.fulfillments || []);
+    } catch (err) {
+      console.error("Failed to load fulfillments:", err);
+    }
+  };
+
+  const fetchRates = async () => {
+    setRatesLoading(true);
+    try {
+      const data = await getShippingRates(orderId, {
+        packageWeight: packageDimensions.weight ? parseFloat(packageDimensions.weight) : undefined,
+        packageLength: packageDimensions.length ? parseFloat(packageDimensions.length) : undefined,
+        packageWidth: packageDimensions.width ? parseFloat(packageDimensions.width) : undefined,
+        packageHeight: packageDimensions.height ? parseFloat(packageDimensions.height) : undefined,
+      });
+      setRates(data.rates || []);
+    } catch (err) {
+      console.error("Failed to load rates:", err);
+      toast.error("Failed to fetch shipping rates");
+    } finally {
+      setRatesLoading(false);
+    }
+  };
+
+  const fetchTracking = async () => {
+    setTrackingLoading(true);
+    try {
+      const data = await getOrderTracking(orderId);
+      setTracking(data.tracking || null);
+    } catch (err) {
+      console.error("Failed to load tracking:", err);
+    } finally {
+      setTrackingLoading(false);
+    }
+  };
+
+  const handleVoidLabel = async () => {
+    if (!order) return;
+    setVoidLoading(true);
+    try {
+      const result = await voidShippingLabel(order.id);
+      if (result.success) {
+        toast.success(result.message || "Label voided successfully");
+        await fetchFulfillments();
+        await fetchOrder();
+      } else {
+        toast.error(result.message || "Failed to void label");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to void label");
+    } finally {
+      setVoidLoading(false);
+    }
+  };
+
   useEffect(() => {
     // Redirect to login if not authenticated
     if (!authLoading && !user) {
@@ -207,6 +288,7 @@ export default function OrderDetailsPage() {
       fetchOrder();
       fetchShippingOptions();
       fetchShippingConfig();
+      fetchFulfillments();
     }
   }, [orderId, user, authLoading, router]);
 
@@ -662,6 +744,166 @@ export default function OrderDetailsPage() {
             </CardContent>
           </Card>
 
+          {/* Shipping & Label Card */}
+          {fulfillments.length > 0 && (() => {
+            const activeFulfillment = fulfillments.find(f => !f.isCanceled);
+            if (!activeFulfillment) return null;
+            const hasLabel = activeFulfillment.labelId !== null;
+            const labelPurchased = activeFulfillment.labelStatus === "PURCHASED";
+            const labelVoided = activeFulfillment.labelStatus === "VOIDED";
+            const labelVoidFailed = activeFulfillment.labelStatus === "VOID_FAILED";
+
+            return (
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle>Shipping</CardTitle>
+                  {hasLabel && (
+                    <Badge variant="outline" className="gap-1">
+                      <div className={`h-2 w-2 rounded-full ${
+                        labelPurchased ? "bg-green-500" :
+                        labelVoided ? "bg-gray-400" :
+                        labelVoidFailed ? "bg-red-500" : "bg-yellow-500"
+                      }`} />
+                      {activeFulfillment.labelStatus}
+                    </Badge>
+                  )}
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {/* Tracking Numbers */}
+                  {activeFulfillment.trackingNumbers.length > 0 && (
+                    <div className="space-y-1">
+                      <span className="text-xs text-muted-foreground font-medium">Tracking</span>
+                      {activeFulfillment.trackingNumbers.map((tn, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <Truck className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span className="text-sm font-mono">{tn}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-5 w-5"
+                            onClick={() => { navigator.clipboard.writeText(tn); toast.success("Copied!"); }}
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Tracking URLs */}
+                  {activeFulfillment.trackingUrls.length > 0 && (
+                    <div>
+                      <a
+                        href={activeFulfillment.trackingUrls[0]}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        Track Package
+                      </a>
+                    </div>
+                  )}
+
+                  {/* Carrier & Service */}
+                  {(activeFulfillment.carrierCode || activeFulfillment.serviceCode) && (
+                    <>
+                      <Separator />
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        {activeFulfillment.carrierCode && (
+                          <div>
+                            <span className="text-muted-foreground text-xs">Carrier</span>
+                            <p className="font-medium capitalize">{activeFulfillment.carrierCode}</p>
+                          </div>
+                        )}
+                        {activeFulfillment.serviceCode && (
+                          <div>
+                            <span className="text-muted-foreground text-xs">Service</span>
+                            <p className="font-medium">{activeFulfillment.serviceCode.replace(/_/g, " ")}</p>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  {/* Label Info */}
+                  {hasLabel && (
+                    <>
+                      <Separator />
+                      <div className="space-y-2">
+                        {activeFulfillment.labelCost != null && (
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Label Cost</span>
+                            <span className="font-medium">
+                              {formatPrice((activeFulfillment.labelCost || 0) / 100, order?.currencyCode || "USD")}
+                            </span>
+                          </div>
+                        )}
+                        {activeFulfillment.labelPurchasedAt && (
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Purchased</span>
+                            <span>{formatDateTime(activeFulfillment.labelPurchasedAt)}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Label Actions */}
+                      <div className="flex gap-2 pt-1">
+                        {activeFulfillment.labelUrl && labelPurchased && (
+                          <Button size="sm" variant="outline" asChild className="flex-1">
+                            <a href={activeFulfillment.labelUrl} target="_blank" rel="noopener noreferrer">
+                              <Printer className="h-3.5 w-3.5 mr-1" />
+                              Print Label
+                            </a>
+                          </Button>
+                        )}
+                        {labelPurchased && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-red-600 hover:text-red-700"
+                            onClick={handleVoidLabel}
+                            disabled={voidLoading}
+                          >
+                            {voidLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Ban className="h-3.5 w-3.5 mr-1" />}
+                            Void
+                          </Button>
+                        )}
+                      </div>
+
+                      {/* Void error */}
+                      {labelVoidFailed && activeFulfillment.labelVoidError && (
+                        <div className="p-2 bg-red-50 dark:bg-red-950/20 rounded text-xs text-red-600">
+                          <AlertCircle className="h-3 w-3 inline mr-1" />
+                          Void failed: {activeFulfillment.labelVoidError}
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* Track with ShipEngine */}
+                  {activeFulfillment.trackingNumbers.length > 0 && shippingConfig?.shipEngineConfigured && (
+                    <>
+                      <Separator />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => {
+                          fetchTracking();
+                          setTrackingDialogOpen(true);
+                        }}
+                      >
+                        <MapPin className="h-3.5 w-3.5 mr-1" />
+                        View Tracking Events
+                      </Button>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })()}
+
           {/* Activity Card */}
           <Card>
             <CardHeader>
@@ -800,6 +1042,64 @@ export default function OrderDetailsPage() {
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+
+                <Separator />
+
+                {/* Rate Comparison */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium">Compare Rates</label>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={fetchRates}
+                      disabled={ratesLoading}
+                    >
+                      {ratesLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <DollarSign className="h-3 w-3 mr-1" />}
+                      {ratesLoading ? "Loading..." : "Get Rates"}
+                    </Button>
+                  </div>
+                  {rates.length > 0 && (
+                    <div className="space-y-1 max-h-48 overflow-y-auto">
+                      {rates
+                        .sort((a, b) => a.shippingAmount.amount - b.shippingAmount.amount)
+                        .map((rate) => (
+                          <button
+                            key={rate.rateId}
+                            className={`w-full text-left p-2 rounded border text-sm hover:bg-muted/50 transition-colors ${
+                              selectedCarrier === rate.carrierId && selectedService === rate.serviceCode
+                                ? "border-blue-500 bg-blue-50 dark:bg-blue-950/20"
+                                : "border-border"
+                            }`}
+                            onClick={() => {
+                              setSelectedCarrier(rate.carrierId);
+                              setSelectedService(rate.serviceCode);
+                            }}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <span className="font-medium capitalize">{rate.carrierCode}</span>
+                                <span className="text-muted-foreground ml-1">{rate.serviceCode.replace(/_/g, " ")}</span>
+                              </div>
+                              <span className="font-semibold">
+                                {new Intl.NumberFormat("en-US", {
+                                  style: "currency",
+                                  currency: rate.shippingAmount.currency || "USD",
+                                }).format(rate.shippingAmount.amount)}
+                              </span>
+                            </div>
+                            {rate.deliveryDays && (
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                                <Clock className="h-3 w-3" />
+                                {rate.deliveryDays} day{rate.deliveryDays > 1 ? "s" : ""}
+                                {rate.estimatedDeliveryDate && ` (est. ${new Date(rate.estimatedDeliveryDate).toLocaleDateString()})`}
+                              </div>
+                            )}
+                          </button>
+                        ))}
+                    </div>
+                  )}
                 </div>
 
                 <Separator />
@@ -1010,6 +1310,96 @@ export default function OrderDetailsPage() {
             <Button variant="destructive" onClick={handleCancel} disabled={actionLoading === "cancel"}>
               {actionLoading === "cancel" && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Cancel Order
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Tracking Events Dialog */}
+      <Dialog open={trackingDialogOpen} onOpenChange={setTrackingDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Tracking Events</DialogTitle>
+            <DialogDescription>
+              {tracking ? `Status: ${tracking.statusDescription}` : "Loading tracking information..."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            {trackingLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : tracking ? (
+              <div className="space-y-4">
+                {/* Status Summary */}
+                <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                  <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
+                    tracking.statusCode === "DE" ? "bg-green-100 text-green-600" :
+                    tracking.statusCode === "IT" ? "bg-blue-100 text-blue-600" :
+                    tracking.statusCode === "AC" ? "bg-yellow-100 text-yellow-600" :
+                    "bg-gray-100 text-gray-600"
+                  }`}>
+                    {tracking.statusCode === "DE" ? <CheckCircle className="h-5 w-5" /> :
+                     tracking.statusCode === "IT" ? <Truck className="h-5 w-5" /> :
+                     <Package className="h-5 w-5" />}
+                  </div>
+                  <div>
+                    <p className="font-medium">{tracking.statusDescription}</p>
+                    <p className="text-xs text-muted-foreground font-mono">{tracking.trackingNumber}</p>
+                  </div>
+                </div>
+
+                {/* Events Timeline */}
+                {tracking.events.length > 0 ? (
+                  <div className="space-y-0">
+                    {tracking.events.map((event, index) => (
+                      <div key={index} className="flex gap-3">
+                        <div className="flex flex-col items-center">
+                          <div className={`h-2.5 w-2.5 rounded-full mt-1.5 ${
+                            index === 0 ? "bg-blue-500" : "bg-gray-300"
+                          }`} />
+                          {index < tracking.events.length - 1 && (
+                            <div className="w-px flex-1 bg-border min-h-[20px]" />
+                          )}
+                        </div>
+                        <div className="flex-1 pb-3">
+                          <p className="text-sm">{event.description}</p>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                            <span>{new Date(event.occurredAt).toLocaleString()}</span>
+                            {event.cityLocality && (
+                              <span className="flex items-center gap-0.5">
+                                <MapPin className="h-3 w-3" />
+                                {[event.cityLocality, event.stateProvince, event.countryCode].filter(Boolean).join(", ")}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No tracking events available yet.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No tracking information available.
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            {tracking?.trackingUrl && (
+              <Button variant="outline" asChild>
+                <a href={tracking.trackingUrl} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Track on Carrier Site
+                </a>
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => setTrackingDialogOpen(false)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

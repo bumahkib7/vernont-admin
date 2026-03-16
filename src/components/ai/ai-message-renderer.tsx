@@ -1,7 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import Markdown from "react-markdown";
 import { cn } from "@/lib/utils";
+import { resolveImageUrl } from "@/lib/api";
+import { ExternalLink } from "lucide-react";
 
 interface AgentMessageRendererProps {
   content: string;
@@ -13,6 +16,12 @@ export function AgentMessageRenderer({
   className,
 }: AgentMessageRendererProps) {
   if (!content) return null;
+
+  // Pre-process: convert [Attached image: URL] patterns to markdown images
+  const processedContent = content.replace(
+    /\[Attached image:\s*(https?:\/\/[^\]]+)\]/g,
+    "![]($1)"
+  );
 
   return (
     <div className={cn("agent-prose text-sm leading-relaxed", className)}>
@@ -76,6 +85,9 @@ export function AgentMessageRenderer({
           td: ({ children }) => (
             <td className="border-t px-2 py-1.5">{children}</td>
           ),
+          img: ({ src, alt }) => (
+            <ProductImage src={typeof src === "string" ? src : undefined} alt={alt} />
+          ),
           blockquote: ({ children }) => (
             <blockquote className="my-2 border-l-2 border-muted-foreground/30 pl-3 text-muted-foreground italic">
               {children}
@@ -94,8 +106,78 @@ export function AgentMessageRenderer({
           ),
         }}
       >
-        {content}
+        {processedContent}
       </Markdown>
     </div>
+  );
+}
+
+/** Inline image component for AI chat with loading state and lightbox */
+function ProductImage({ src, alt }: { src?: string; alt?: string }) {
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  const resolvedSrc = resolveImageUrl(src);
+  if (!resolvedSrc) return null;
+  if (error) return null;
+
+  return (
+    <>
+      <span className="my-2 block">
+        <span
+          className={cn(
+            "relative block overflow-hidden rounded-lg border border-border/50 cursor-pointer",
+            "transition-all duration-200 hover:border-border hover:shadow-sm",
+            !loaded && "animate-pulse bg-muted h-32"
+          )}
+          onClick={() => setExpanded(true)}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={resolvedSrc}
+            alt={alt || "Product image"}
+            className={cn(
+              "max-h-48 w-auto rounded-lg object-contain",
+              loaded ? "opacity-100" : "opacity-0"
+            )}
+            onLoad={() => setLoaded(true)}
+            onError={() => setError(true)}
+          />
+        </span>
+        {alt && (
+          <span className="mt-1 block text-[10px] text-muted-foreground truncate">
+            {alt}
+          </span>
+        )}
+      </span>
+
+      {/* Lightbox */}
+      {expanded && (
+        <span
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm cursor-pointer"
+          onClick={() => setExpanded(false)}
+        >
+          <span className="relative max-h-[85vh] max-w-[85vw]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={resolvedSrc}
+              alt={alt || "Product image"}
+              className="max-h-[85vh] max-w-[85vw] rounded-lg object-contain shadow-2xl"
+            />
+            <a
+              href={resolvedSrc}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="absolute top-2 right-2 flex items-center gap-1 rounded-md bg-black/50 px-2 py-1 text-xs text-white hover:bg-black/70"
+            >
+              <ExternalLink className="h-3 w-3" />
+              Open
+            </a>
+          </span>
+        </span>
+      )}
+    </>
   );
 }

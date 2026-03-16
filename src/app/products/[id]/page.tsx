@@ -94,6 +94,7 @@ import {
   type UpdateVariantInput,
   type CreateOptionInput,
   type UpdateOptionInput,
+  resolveImageUrl,
 } from "@/lib/api";
 import { useRef } from "react";
 import { toast } from "sonner";
@@ -653,17 +654,7 @@ export default function ProductDetailPage() {
     return product.variants[0].prices[0];
   };
 
-  // Get image URL - handle both absolute and relative URLs
-  const getImageUrl = (url: string | undefined) => {
-    if (!url) return null;
-    // If it's already an absolute URL, use it directly
-    if (url.startsWith("http://") || url.startsWith("https://")) {
-      return url;
-    }
-    // If it's a relative URL, prepend the API base
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-    return `${apiBase}${url.startsWith("/") ? "" : "/"}${url}`;
-  };
+  const getImageUrl = (url: string | undefined) => resolveImageUrl(url);
 
   if (loading) {
     return (

@@ -220,6 +220,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (justAuthenticatedRef.current) {
         console.log("[AuthContext] Just authenticated, skipping re-fetch");
         justAuthenticatedRef.current = false; // Reset for future use
+        // Restart the refresh interval that was stopped by the effect cleanup
+        startTokenRefreshInterval();
         return;
       }
 

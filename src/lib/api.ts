@@ -3,6 +3,18 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 const AUTH_REFRESH_ENDPOINT = "/api/v1/internal/auth/refresh";
 
+/**
+ * Resolve an image URL from the backend.
+ * - Absolute URLs (http/https) are returned as-is
+ * - Relative URLs (e.g. /files?key=...) are prefixed with API_BASE_URL
+ * - Null/undefined returns null
+ */
+export function resolveImageUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  return `${API_BASE_URL}${url.startsWith("/") ? "" : "/"}${url}`;
+}
+
 // Token refresh state management
 let isRefreshing = false;
 let refreshPromise: Promise<boolean> | null = null;
@@ -911,6 +923,109 @@ export interface ShippingConfig {
 
 export async function getShippingConfig(): Promise<ShippingConfig> {
   return apiFetch<ShippingConfig>("/admin/orders/shipping/config");
+}
+
+// ShipEngine rate quoting
+export interface ShippingRate {
+  rateId: string;
+  carrierId: string;
+  carrierCode: string;
+  serviceCode: string;
+  serviceType: string | null;
+  shippingAmount: { amount: number; currency: string };
+  deliveryDays: number | null;
+  estimatedDeliveryDate: string | null;
+}
+
+export interface GetRatesRequest {
+  carrierIds?: string[];
+  packageWeight?: number;
+  packageLength?: number;
+  packageWidth?: number;
+  packageHeight?: number;
+}
+
+export async function getShippingRates(
+  orderId: string,
+  data?: GetRatesRequest
+): Promise<{ rates: ShippingRate[]; carrierCount: number }> {
+  return apiFetch(`/admin/orders/${orderId}/rates`, {
+    method: "POST",
+    body: JSON.stringify(data || {}),
+  });
+}
+
+// Tracking
+export interface TrackingEvent {
+  occurredAt: string;
+  description: string;
+  cityLocality: string | null;
+  stateProvince: string | null;
+  postalCode: string | null;
+  countryCode: string | null;
+}
+
+export interface TrackingInfo {
+  trackingNumber: string;
+  statusCode: string;
+  statusDescription: string;
+  carrierStatusCode: string | null;
+  carrierStatusDescription: string | null;
+  trackingUrl: string | null;
+  events: TrackingEvent[];
+}
+
+export interface TrackingResponse {
+  tracking: TrackingInfo | null;
+  fulfillmentId?: string;
+  labelStatus?: string;
+  labelId?: string;
+  labelUrl?: string;
+  labelCost?: number;
+  carrierCode?: string;
+  serviceCode?: string;
+  message?: string;
+}
+
+export async function getOrderTracking(orderId: string): Promise<TrackingResponse> {
+  return apiFetch<TrackingResponse>(`/admin/orders/${orderId}/tracking`);
+}
+
+// Void label
+export async function voidShippingLabel(
+  orderId: string
+): Promise<{ success: boolean; message: string; alreadyVoided?: boolean; requiresAttention?: boolean }> {
+  return apiFetch(`/admin/orders/${orderId}/label/void`, {
+    method: "POST",
+  });
+}
+
+// Fulfillment details
+export interface FulfillmentDetail {
+  id: string;
+  orderId: string;
+  trackingNumbers: string[];
+  trackingUrls: string[];
+  shippedAt: string | null;
+  canceledAt: string | null;
+  isShipped: boolean;
+  isCanceled: boolean;
+  labelId: string | null;
+  labelStatus: string;
+  labelUrl: string | null;
+  labelCost: number | null;
+  carrierCode: string | null;
+  serviceCode: string | null;
+  labelPurchasedAt: string | null;
+  labelVoidError: string | null;
+  itemCount: number;
+  data: Record<string, unknown> | null;
+}
+
+export async function getOrderFulfillments(
+  orderId: string
+): Promise<{ fulfillments: FulfillmentDetail[]; count: number }> {
+  return apiFetch(`/admin/orders/${orderId}/fulfillments`);
 }
 
 // Draft orders API
