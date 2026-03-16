@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useConfirm } from "@/hooks/use-confirm";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +22,7 @@ import { toast } from "sonner";
 export default function WebhooksPage() {
   const [endpoints, setEndpoints] = useState<WebhookEndpoint[]>([]);
   const [loading, setLoading] = useState(true);
+  const [ConfirmDialog, confirm] = useConfirm();
 
   const fetchEndpoints = useCallback(async () => {
     try {
@@ -38,7 +40,8 @@ export default function WebhooksPage() {
   }, [fetchEndpoints]);
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this webhook endpoint?")) return;
+    const ok = await confirm({ title: "Delete webhook", description: "Delete this webhook endpoint? This action cannot be undone.", confirmLabel: "Delete", variant: "destructive" });
+    if (!ok) return;
     try {
       await deleteWebhookEndpoint(id);
       toast.success("Webhook deleted");
@@ -139,6 +142,7 @@ export default function WebhooksPage() {
           )}
         </CardContent>
       </Card>
+      <ConfirmDialog />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useConfirm } from "@/hooks/use-confirm";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -56,6 +57,7 @@ export default function AdvertisingPage() {
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState<string | null>(null);
   const [disconnecting, setDisconnecting] = useState<string | null>(null);
+  const [ConfirmDialog, confirm] = useConfirm();
 
   const fetchConnections = useCallback(async () => {
     try {
@@ -94,9 +96,8 @@ export default function AdvertisingPage() {
   };
 
   const handleDisconnect = async (connectionId: string, platformName: string) => {
-    if (!confirm(`Disconnect ${platformName}? This will remove your ad account connection.`)) {
-      return;
-    }
+    const ok = await confirm({ title: `Disconnect ${platformName}`, description: `This will remove your ${platformName} ad account connection.`, confirmLabel: "Disconnect", variant: "destructive" });
+    if (!ok) return;
     setDisconnecting(connectionId);
     try {
       await disconnectAdPlatform(connectionId);
@@ -271,6 +272,7 @@ export default function AdvertisingPage() {
           </CardContent>
         </Card>
       )}
+      <ConfirmDialog />
     </div>
   );
 }

@@ -13,6 +13,7 @@ import {
   CommandShortcut,
 } from "@/components/ui/command";
 import { KeyboardShortcutsModal } from "@/components/keyboard-shortcuts-modal";
+import { useConfirm } from "@/hooks/use-confirm";
 import {
   ShoppingCart,
   Package,
@@ -70,6 +71,7 @@ export function CommandPalette() {
   const [search, setSearch] = React.useState("");
   const [shortcutsOpen, setShortcutsOpen] = React.useState(false);
   const router = useRouter();
+  const [ConfirmDialog, confirmAction] = useConfirm();
 
   // Handle keyboard shortcut
   React.useEffect(() => {
@@ -335,10 +337,9 @@ export function CommandPalette() {
         id: "logout",
         label: "Log Out",
         icon: <LogOut className="h-4 w-4" />,
-        action: () => {
-          if (confirm("Are you sure you want to log out?")) {
-            router.push("/login");
-          }
+        action: async () => {
+          const ok = await confirmAction({ title: "Log out", description: "Are you sure you want to log out?", confirmLabel: "Log out", variant: "destructive" });
+          if (ok) router.push("/login");
         },
         keywords: ["sign out", "exit"],
       },
@@ -565,6 +566,7 @@ export function CommandPalette() {
         open={shortcutsOpen}
         onOpenChange={setShortcutsOpen}
       />
+      <ConfirmDialog />
     </>
   );
 }

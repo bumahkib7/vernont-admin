@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useConfirm } from "@/hooks/use-confirm";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ export default function SegmentsPage() {
   const [segments, setSegments] = useState<CustomerSegment[]>([]);
   const [loading, setLoading] = useState(true);
   const [evaluating, setEvaluating] = useState<string | null>(null);
+  const [ConfirmDialog, confirm] = useConfirm();
 
   const fetchSegments = useCallback(async () => {
     try {
@@ -66,7 +68,8 @@ export default function SegmentsPage() {
   };
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Delete segment "${name}"?`)) return;
+    const ok = await confirm({ title: "Delete segment", description: `Delete segment "${name}"? This action cannot be undone.`, confirmLabel: "Delete", variant: "destructive" });
+    if (!ok) return;
     try {
       await deleteCustomerSegment(id);
       toast.success("Segment deleted");
@@ -192,6 +195,7 @@ export default function SegmentsPage() {
           )}
         </CardContent>
       </Card>
+      <ConfirmDialog />
     </div>
   );
 }

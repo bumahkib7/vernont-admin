@@ -100,6 +100,7 @@ import { useRef } from "react";
 import { toast } from "sonner";
 
 import { usePageContext } from "@/hooks/use-page-context";
+import { useConfirm } from "@/hooks/use-confirm";
 
 function getStatusBadge(status: ProductStatus) {
   switch (status) {
@@ -186,6 +187,7 @@ export default function ProductDetailPage() {
   // Image upload state
   const [uploadingImage, setUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [ConfirmDialog, confirm] = useConfirm();
 
   useEffect(() => {
     fetchProduct();
@@ -270,7 +272,9 @@ export default function ProductDetailPage() {
   };
 
   const handleDelete = async () => {
-    if (!product || !confirm("Are you sure you want to delete this product?")) return;
+    if (!product) return;
+    const ok = await confirm({ title: "Delete product", description: "Are you sure you want to delete this product? This action cannot be undone.", confirmLabel: "Delete", variant: "destructive" });
+    if (!ok) return;
     try {
       await deleteProduct(product.id);
       toast.success("Product deleted");
@@ -416,7 +420,8 @@ export default function ProductDetailPage() {
   };
 
   const handleDeleteVariant = async (variantId: string) => {
-    if (!confirm("Are you sure you want to delete this variant?")) return;
+    const ok = await confirm({ title: "Delete variant", description: "Are you sure you want to delete this variant?", confirmLabel: "Delete", variant: "destructive" });
+    if (!ok) return;
 
     try {
       await deleteVariant(variantId);
@@ -514,7 +519,9 @@ export default function ProductDetailPage() {
   };
 
   const handleDeleteOption = async (optionId: string) => {
-    if (!product || !confirm("Are you sure you want to delete this option?")) return;
+    if (!product) return;
+    const ok = await confirm({ title: "Delete option", description: "Are you sure you want to delete this option?", confirmLabel: "Delete", variant: "destructive" });
+    if (!ok) return;
 
     try {
       await deleteOption(product.id, optionId);
@@ -575,7 +582,9 @@ export default function ProductDetailPage() {
   };
 
   const handleDeleteImage = async (imageId: string) => {
-    if (!product || !confirm("Are you sure you want to delete this image?")) return;
+    if (!product) return;
+    const ok = await confirm({ title: "Delete image", description: "Are you sure you want to delete this image?", confirmLabel: "Delete", variant: "destructive" });
+    if (!ok) return;
 
     try {
       await deleteProductImage(product.id, imageId);
@@ -1715,6 +1724,8 @@ export default function ProductDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog />
     </div>
   );
 }
