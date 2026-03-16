@@ -73,6 +73,7 @@ export function useAiChat(): UseAiChatReturn {
 
       const decoder = new TextDecoder();
       let accumulated = "";
+      let buffer = ""; // Buffer for incomplete SSE lines across chunks
 
       while (true) {
         const { done, value } = await reader.read();
@@ -82,29 +83,53 @@ export function useAiChat(): UseAiChatReturn {
           break;
         }
 
-        const chunk = decoder.decode(value, { stream: true });
-        // Parse SSE lines — Spring SseEmitter sends "data:" without space
-        const lines = chunk.split(/\r?\n/);
-        for (const line of lines) {
+        buffer += decoder.decode(value, { stream: true });
+
+        // Process complete lines from buffer
+        const parts = buffer.split(/\r?\n/);
+        // Keep the last part as it may be incomplete
+        buffer = parts.pop() || "";
+
+        for (const line of parts) {
           if (!line.startsWith("data:")) continue;
-          const data = line.slice(5).trimStart();
-          if (data === "[DONE]" || data === "") continue;
+          const raw = line.slice(5).trimStart();
+          if (!raw || raw === "[DONE]") continue;
+
           try {
-            const parsed = JSON.parse(data);
-            if (parsed.content) {
+            const parsed = JSON.parse(raw);
+            // Backend sends {"content": "chunk text"}
+            if (parsed && typeof parsed.content === "string") {
               accumulated += parsed.content;
             } else if (typeof parsed === "string") {
               accumulated += parsed;
             }
           } catch {
-            // Plain text SSE data
-            accumulated += data;
+            // Plain text fallback
+            accumulated += raw;
           }
+
           setMessages((prev) =>
             prev.map((m) =>
               m.id === assistantMsgId ? { ...m, content: accumulated } : m
             )
           );
+        }
+      }
+
+      // Process any remaining buffer
+      if (buffer.startsWith("data:")) {
+        const raw = buffer.slice(5).trimStart();
+        if (raw && raw !== "[DONE]") {
+          try {
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed.content === "string") {
+              accumulated += parsed.content;
+            } else if (typeof parsed === "string") {
+              accumulated += parsed;
+            }
+          } catch {
+            accumulated += raw;
+          }
         }
       }
 
