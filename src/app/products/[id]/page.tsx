@@ -957,12 +957,16 @@ export default function ProductDetailPage() {
                               src={imgUrl}
                               alt={image.altText || `Image ${index + 1}`}
                               className="h-full w-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                                const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
+                                if (fallback) fallback.style.display = "flex";
+                              }}
                             />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center bg-muted">
-                              <ImageIcon className="h-6 w-6 text-muted-foreground" />
-                            </div>
-                          )}
+                          ) : null}
+                          <div className={`${imgUrl ? "hidden" : "flex"} h-full w-full items-center justify-center bg-muted`}>
+                            <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                          </div>
                         </button>
                         {/* Action buttons overlay */}
                         <div className="absolute bottom-1 left-1 right-1 flex justify-between opacity-0 group-hover:opacity-100 transition-opacity z-10">

@@ -365,12 +365,16 @@ export default function ProductsPage() {
                               src={resolveImageUrl(product.thumbnail) || ""}
                               alt={product.title}
                               className="h-12 w-12 rounded object-cover"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                                const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
+                                if (fallback) fallback.style.display = "flex";
+                              }}
                             />
-                          ) : (
-                            <div className="h-12 w-12 rounded bg-muted flex items-center justify-center">
-                              <span className="text-xs text-muted-foreground">No img</span>
-                            </div>
-                          )}
+                          ) : null}
+                          <div className={`${product.thumbnail ? "hidden" : "flex"} h-12 w-12 rounded bg-muted items-center justify-center`}>
+                            <span className="text-xs text-muted-foreground">No img</span>
+                          </div>
                         </Link>
                       </TableCell>
                       <TableCell>
