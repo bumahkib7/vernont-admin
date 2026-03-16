@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Autocomplete } from "@vernont/admin-ui/components";
+import { Autocomplete } from "@/components/ui/autocomplete";
 import {
   X,
   Upload,
