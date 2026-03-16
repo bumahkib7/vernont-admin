@@ -27,6 +27,9 @@ import {
   Plus,
   Bell,
   ShieldAlert,
+  FolderPlus,
+  Library,
+  List,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -123,6 +126,30 @@ const TOOL_META: Record<string, ToolMeta> = {
     color: "text-emerald-500",
     bgColor: "bg-emerald-500/10",
     borderColor: "border-emerald-500/20",
+  },
+  create_category: {
+    icon: FolderPlus,
+    color: "text-amber-500",
+    bgColor: "bg-amber-500/10",
+    borderColor: "border-amber-500/20",
+  },
+  create_collection: {
+    icon: Library,
+    color: "text-cyan-500",
+    bgColor: "bg-cyan-500/10",
+    borderColor: "border-cyan-500/20",
+  },
+  list_categories: {
+    icon: List,
+    color: "text-amber-500",
+    bgColor: "bg-amber-500/10",
+    borderColor: "border-amber-500/20",
+  },
+  list_collections: {
+    icon: List,
+    color: "text-cyan-500",
+    bgColor: "bg-cyan-500/10",
+    borderColor: "border-cyan-500/20",
   },
   update_product: {
     icon: Tag,
