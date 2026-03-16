@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ShieldAlert } from "lucide-react";
+import { ShieldAlert, Loader2 } from "lucide-react";
 import { useAgentActionsStore } from "@/stores/agent-actions";
 
 interface AiConfirmationCardProps {
@@ -11,17 +12,20 @@ interface AiConfirmationCardProps {
 export function AiConfirmationCard({ onConfirm }: AiConfirmationCardProps) {
   const confirmation = useAgentActionsStore((s) => s.pendingConfirmation);
   const clearConfirmation = useAgentActionsStore((s) => s.clearConfirmation);
+  const [submitting, setSubmitting] = useState(false);
 
   if (!confirmation) return null;
 
   const handleConfirm = () => {
+    setSubmitting(true);
     clearConfirmation();
-    onConfirm("Yes, proceed");
+    onConfirm(`Yes, proceed with: ${confirmation.title}`);
   };
 
   const handleCancel = () => {
+    setSubmitting(true);
     clearConfirmation();
-    onConfirm("No, cancel that");
+    onConfirm(`No, do not ${confirmation.title.toLowerCase()}`);
   };
 
   return (
@@ -44,6 +48,7 @@ export function AiConfirmationCard({ onConfirm }: AiConfirmationCardProps) {
           variant="ghost"
           size="sm"
           onClick={handleCancel}
+          disabled={submitting}
           className="h-7 text-xs"
         >
           Cancel
@@ -52,9 +57,14 @@ export function AiConfirmationCard({ onConfirm }: AiConfirmationCardProps) {
           variant="destructive"
           size="sm"
           onClick={handleConfirm}
+          disabled={submitting}
           className="h-7 text-xs"
         >
-          {confirmation.confirmLabel || "Confirm"}
+          {submitting ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            confirmation.confirmLabel || "Confirm"
+          )}
         </Button>
       </div>
     </div>

@@ -52,18 +52,21 @@ export const useAgentActionsStore = create<AgentActionsState>((set, get) => ({
         break;
       }
       case "open_create_product_form": {
+        // Set form data first, then navigation + modal trigger.
+        // Navigation is consumed by useAgentNavigation after route change,
+        // and modal/formData persist until the target page component mounts.
         set({
-          pendingNavigation: { path: "/products" },
-          pendingModal: { modalId: "add-product", data: payload },
           pendingFormData: { formId: "add-product", data: payload },
+          pendingModal: { modalId: "add-product", data: payload },
+          pendingNavigation: { path: "/products" },
         });
         break;
       }
       case "open_create_discount_form": {
         set({
-          pendingNavigation: { path: "/discounts" },
-          pendingModal: { modalId: "discount-dialog", data: payload },
           pendingFormData: { formId: "discount-dialog", data: payload },
+          pendingModal: { modalId: "discount-dialog", data: payload },
+          pendingNavigation: { path: "/discounts" },
         });
         break;
       }
@@ -84,6 +87,10 @@ export const useAgentActionsStore = create<AgentActionsState>((set, get) => ({
             confirmLabel: payload.confirm_label as string | undefined,
           },
         });
+        break;
+      }
+      default: {
+        console.warn(`[agent-actions] Unknown action type: "${action}"`, payload);
         break;
       }
     }
@@ -130,6 +137,8 @@ export const useAgentActionsStore = create<AgentActionsState>((set, get) => ({
     const state = get();
     if (state.pendingNavigation) {
       const nav = state.pendingNavigation;
+      // Only clear navigation — preserve pendingModal and pendingFormData
+      // so the target page can consume them after mount
       set({ pendingNavigation: null });
       return nav;
     }

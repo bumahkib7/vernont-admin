@@ -192,7 +192,11 @@ export function useAiChat(): UseAiChatReturn {
               break;
             }
             case "action": {
-              const actionName = parsed.action as string;
+              const actionName = parsed.action;
+              if (typeof actionName !== "string" || !actionName) {
+                console.warn("[ai-chat] Received action event with missing action name", parsed);
+                break;
+              }
               const actionPayload = (parsed.payload as Record<string, unknown>) || {};
               useAgentActionsStore.getState().dispatchAction(actionName, actionPayload);
               // Record as completed action in tool activity

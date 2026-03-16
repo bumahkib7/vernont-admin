@@ -1,20 +1,28 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAgentActionsStore } from "@/stores/agent-actions";
 
+/**
+ * Reacts to pendingNavigation changes in the agent actions store.
+ * Uses a ref + useEffect to avoid Zustand v5 subscribe selector issues.
+ */
 export function useAgentNavigation() {
   const router = useRouter();
+  const pendingNavigation = useAgentActionsStore((s) => s.pendingNavigation);
+  const consumeNavigation = useAgentActionsStore((s) => s.consumeNavigation);
+  const navigatingRef = useRef(false);
 
   useEffect(() => {
-    const unsub = useAgentActionsStore.subscribe((state) => {
-      if (state.pendingNavigation) {
-        router.push(state.pendingNavigation.path);
-        // Use setTimeout to avoid updating store during subscribe callback
-        setTimeout(() => useAgentActionsStore.getState().consumeNavigation(), 0);
-      }
-    });
-    return unsub;
-  }, [router]);
+    if (pendingNavigation && !navigatingRef.current) {
+      navigatingRef.current = true;
+      router.push(pendingNavigation.path);
+      // Delay consume to let React settle after navigation
+      requestAnimationFrame(() => {
+        consumeNavigation();
+        navigatingRef.current = false;
+      });
+    }
+  }, [pendingNavigation, router, consumeNavigation]);
 }

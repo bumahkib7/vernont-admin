@@ -21,6 +21,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { isLoading, isAuthenticated } = useAuth();
 
+  // Hook must be called unconditionally (Rules of Hooks).
+  // It's a no-op when there's no pending navigation.
+  useAgentNavigation();
+
   const isPublicRoute = PUBLIC_ROUTES.some((route) => pathname?.startsWith(route));
 
   // Show loading spinner while checking auth
@@ -51,9 +55,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-
-  // Listen for agent navigation actions
-  useAgentNavigation();
 
   // Authenticated: render with sidebar
   return (
