@@ -5634,7 +5634,7 @@ export async function continueAiWorkflow(
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sessionId, input }),
+    body: JSON.stringify({ sessionId, message: input }),
   });
   if (!response.ok) {
     throw await parseErrorResponse(response);
