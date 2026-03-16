@@ -24,7 +24,7 @@ export function AgentMessageRenderer({
   );
 
   return (
-    <div className={cn("agent-prose text-sm leading-relaxed", className)}>
+    <div className={cn("agent-prose text-sm leading-relaxed break-words [overflow-wrap:anywhere]", className)}>
       <Markdown
         components={{
           p: ({ children }) => (
