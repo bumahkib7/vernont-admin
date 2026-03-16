@@ -59,6 +59,7 @@ import {
 } from "lucide-react";
 import { StackedThumbnails } from "@/components/ui/thumbnail";
 import { toast } from "sonner";
+import { useAgentActionsStore } from "@/stores/agent-actions";
 import { AddProductModal } from "@/components/products/add-product-modal";
 import { CsvImportDialog } from "@/components/csv-import-dialog";
 import { CsvExportButton } from "@/components/csv-export-button";
@@ -72,6 +73,7 @@ import {
   type ProductStatus,
   type ProductCategory,
 } from "@/lib/api";
+import { usePageContext } from "@/hooks/use-page-context";
 
 function getStatusBadge(status: ProductStatus) {
   switch (status) {
@@ -112,6 +114,7 @@ function ProductsPageContent({ onOpenModal }: { onOpenModal: () => void }) {
 }
 
 export default function ProductsPage() {
+  usePageContext("products");
   const [addProductOpen, setAddProductOpen] = useState(false);
   const [products, setProducts] = useState<ProductSummary[]>([]);
   const [categories, setCategories] = useState<ProductCategory[]>([]);
@@ -128,6 +131,17 @@ export default function ProductsPage() {
   });
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<ProductSummary | null>(null);
+
+  // Agent actions: auto-open add-product modal
+  const pendingModal = useAgentActionsStore(s => s.pendingModal);
+  const consumeModal = useAgentActionsStore(s => s.consumeModal);
+
+  useEffect(() => {
+    if (pendingModal?.modalId === "add-product") {
+      setAddProductOpen(true);
+      consumeModal("add-product");
+    }
+  }, [pendingModal, consumeModal]);
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -200,7 +214,7 @@ export default function ProductsPage() {
   };
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-6 p-4 sm:p-6">
       {/* Handle search params */}
       <Suspense fallback={null}>
         <ProductsPageContent onOpenModal={() => setAddProductOpen(true)} />
@@ -235,7 +249,7 @@ export default function ProductsPage() {
       <Card>
         <CardContent className="pt-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-1 gap-4">
+            <div className="flex flex-1 flex-wrap gap-4">
               <div className="relative flex-1 max-w-sm">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -246,7 +260,7 @@ export default function ProductsPage() {
                 />
               </div>
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="w-[160px]">
+                <SelectTrigger className="w-full sm:w-[160px]">
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
                 <SelectContent>
@@ -259,7 +273,7 @@ export default function ProductsPage() {
                 </SelectContent>
               </Select>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[160px]">
+                <SelectTrigger className="w-full sm:w-[160px]">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -321,13 +335,14 @@ export default function ProductsPage() {
               ))}
             </div>
           ) : (
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[100px]">Image</TableHead>
                   <TableHead>Product</TableHead>
-                  <TableHead>Handle</TableHead>
-                  <TableHead className="text-center">Variants</TableHead>
+                  <TableHead className="hidden sm:table-cell">Handle</TableHead>
+                  <TableHead className="hidden sm:table-cell text-center">Variants</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
@@ -367,8 +382,8 @@ export default function ProductsPage() {
                           )}
                         </Link>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">/{product.handle}</TableCell>
-                      <TableCell className="text-center">
+                      <TableCell className="hidden sm:table-cell text-muted-foreground">/{product.handle}</TableCell>
+                      <TableCell className="hidden sm:table-cell text-center">
                         {product.variantCount ?? 0}
                       </TableCell>
                       <TableCell>{getStatusBadge(product.status)}</TableCell>
@@ -411,11 +426,12 @@ export default function ProductsPage() {
                 )}
               </TableBody>
             </Table>
+            </div>
           )}
 
           {/* Pagination */}
           {pagination.totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mt-4 text-sm text-muted-foreground">
               <span>
                 {pagination.start + 1} — {Math.min(pagination.end, pagination.totalElements)} of {pagination.totalElements} products
               </span>

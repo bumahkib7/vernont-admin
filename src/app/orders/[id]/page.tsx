@@ -61,6 +61,7 @@ import {
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+import { usePageContext } from "@/hooks/use-page-context";
 import {
   getOrder,
   fulfillOrder,
@@ -124,6 +125,7 @@ export default function OrderDetailsPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
   const orderId = params.id as string;
+  usePageContext("orders", orderId, "order");
 
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);

@@ -84,6 +84,7 @@ import { SendEmailDialog } from "@/components/customers/SendEmailDialog";
 import { SendGiftCardDialog } from "@/components/customers/SendGiftCardDialog";
 import { SuspendCustomerDialog } from "@/components/customers/SuspendCustomerDialog";
 import { ChangeTierDialog } from "@/components/customers/ChangeTierDialog";
+import { usePageContext } from "@/hooks/use-page-context";
 
 function getTierBadge(tier: string) {
   const display = getTierDisplay(tier as "BRONZE" | "SILVER" | "GOLD" | "PLATINUM");
@@ -198,6 +199,7 @@ function formatDateTime(dateString: string) {
 export default function CustomerDetailPage() {
   const params = useParams();
   const customerId = params.id as string;
+  usePageContext("customers", customerId, "customer");
 
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [orders, setOrders] = useState<OrderSummary[]>([]);

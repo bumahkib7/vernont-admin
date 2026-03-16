@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useWebSocket } from "@/hooks/use-websocket";
+import { useAgentActionsStore } from "@/stores/agent-actions";
 import {
   getCategories,
   getCollections,
@@ -168,6 +169,31 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
       fetchBackendData();
     }
   }, [isOpen]);
+
+  // Agent actions: consume pre-fill data when modal opens
+  const consumeFormData = useAgentActionsStore(s => s.consumeFormData);
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const prefill = consumeFormData("add-product");
+    if (prefill) {
+      setFormData(prev => ({
+        ...prev,
+        ...(prefill.title != null && { title: String(prefill.title) }),
+        ...(prefill.subtitle != null && { subtitle: String(prefill.subtitle) }),
+        ...(prefill.handle != null && { handle: String(prefill.handle) }),
+        ...(prefill.description != null && { description: String(prefill.description) }),
+        ...(prefill.price != null && { price: String(prefill.price) }),
+        ...(prefill.compareAtPrice != null && { compareAtPrice: String(prefill.compareAtPrice) }),
+        ...(prefill.costPerItem != null && { costPerItem: String(prefill.costPerItem) }),
+        ...(prefill.sku != null && { sku: String(prefill.sku) }),
+        ...(prefill.barcode != null && { barcode: String(prefill.barcode) }),
+        ...(prefill.quantity != null && { quantity: String(prefill.quantity) }),
+        ...(prefill.category != null && { category: String(prefill.category) }),
+        ...(prefill.collection != null && { collection: String(prefill.collection) }),
+        ...(Array.isArray(prefill.tags) && { tags: prefill.tags as string[] }),
+      }));
+    }
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Subscribe to workflow events when we have an execution ID
   React.useEffect(() => {

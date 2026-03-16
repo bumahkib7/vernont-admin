@@ -52,6 +52,7 @@ import {
   formatDate,
   getReturnStatusDisplay,
 } from "@/lib/api";
+import { usePageContext } from "@/hooks/use-page-context";
 
 function ReturnStatusBadge({ status }: { status: string }) {
   const { label, color } = getReturnStatusDisplay(status);
@@ -78,6 +79,7 @@ const returnStatuses = [
 ];
 
 export default function ReturnsPage() {
+  usePageContext("returns");
   const [returns, setReturns] = useState<ReturnSummary[]>([]);
   const [stats, setStats] = useState<ReturnStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -164,10 +166,10 @@ export default function ReturnsPage() {
   };
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-6 p-4 sm:p-6">
       {/* Stats Cards */}
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">Pending Returns</CardTitle>
@@ -212,7 +214,7 @@ export default function ReturnsPage() {
       )}
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-4">
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pb-4">
           <CardTitle className="text-xl font-semibold">Returns</CardTitle>
           <Button variant="outline" size="icon" onClick={fetchReturns} disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
@@ -220,8 +222,8 @@ export default function ReturnsPage() {
         </CardHeader>
         <CardContent>
           {/* Filters Row */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+            <div className="flex items-center gap-2 flex-wrap">
               {/* Add Filter Dropdown */}
               <Popover>
                 <PopoverTrigger asChild>
@@ -297,7 +299,7 @@ export default function ReturnsPage() {
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search by order or email..."
-                  className="pl-8 w-[250px]"
+                  className="pl-8 w-full sm:w-[250px]"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -335,16 +337,17 @@ export default function ReturnsPage() {
           ) : (
             <>
               {/* Returns Table */}
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Return ID</TableHead>
                     <TableHead>Order</TableHead>
-                    <TableHead>Customer</TableHead>
+                    <TableHead className="hidden sm:table-cell">Customer</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Reason</TableHead>
-                    <TableHead>Items</TableHead>
-                    <TableHead>Date</TableHead>
+                    <TableHead className="hidden md:table-cell">Reason</TableHead>
+                    <TableHead className="hidden sm:table-cell">Items</TableHead>
+                    <TableHead className="hidden md:table-cell">Date</TableHead>
                     <TableHead className="text-right">Refund Amount</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -368,15 +371,15 @@ export default function ReturnsPage() {
                         <TableCell className="font-medium">
                           #{ret.orderDisplayId || ret.orderId.slice(0, 8)}
                         </TableCell>
-                        <TableCell>{ret.customerEmail || "-"}</TableCell>
+                        <TableCell className="hidden sm:table-cell">{ret.customerEmail || "-"}</TableCell>
                         <TableCell>
                           <ReturnStatusBadge status={ret.status} />
                         </TableCell>
-                        <TableCell className="capitalize">
+                        <TableCell className="hidden md:table-cell capitalize">
                           {ret.reason.replace(/_/g, " ").toLowerCase()}
                         </TableCell>
-                        <TableCell>{ret.itemCount}</TableCell>
-                        <TableCell>{formatDate(ret.requestedAt)}</TableCell>
+                        <TableCell className="hidden sm:table-cell">{ret.itemCount}</TableCell>
+                        <TableCell className="hidden md:table-cell">{formatDate(ret.requestedAt)}</TableCell>
                         <TableCell className="text-right">
                           {formatPrice(ret.refundAmount / 100, ret.currencyCode)}
                         </TableCell>
@@ -385,9 +388,10 @@ export default function ReturnsPage() {
                   )}
                 </TableBody>
               </Table>
+              </div>
 
               {/* Pagination */}
-              <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mt-4 text-sm text-muted-foreground">
                 <span>
                   {pagination.offset + 1} — {Math.min(pagination.offset + pagination.limit, pagination.count)} of{" "}
                   {pagination.count} results

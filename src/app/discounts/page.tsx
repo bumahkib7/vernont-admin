@@ -86,9 +86,12 @@ import {
   formatDiscountValue,
 } from "@/lib/api";
 import { toast } from "sonner";
+import { useAgentActionsStore } from "@/stores/agent-actions";
 import { DiscountDialog } from "@/components/discounts/DiscountDialog";
+import { usePageContext } from "@/hooks/use-page-context";
 
 export default function DiscountsPage() {
+  usePageContext("discounts");
   // State
   const [discounts, setDiscounts] = useState<Promotion[]>([]);
   const [stats, setStats] = useState<DiscountStatsResponse | null>(null);
@@ -110,6 +113,18 @@ export default function DiscountsPage() {
   const [editingDiscount, setEditingDiscount] = useState<Promotion | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingDiscount, setDeletingDiscount] = useState<Promotion | null>(null);
+
+  // Agent actions: auto-open discount dialog
+  const pendingModal = useAgentActionsStore(s => s.pendingModal);
+  const consumeModal = useAgentActionsStore(s => s.consumeModal);
+
+  useEffect(() => {
+    if (pendingModal?.modalId === "discount-dialog") {
+      setEditingDiscount(null);
+      setDialogOpen(true);
+      consumeModal("discount-dialog");
+    }
+  }, [pendingModal, consumeModal]);
 
   // Fetch data
   const fetchDiscounts = useCallback(async () => {
@@ -281,9 +296,9 @@ export default function DiscountsPage() {
   };
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6">
+    <div className="flex flex-1 flex-col gap-6 p-4 sm:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Discounts</h1>
           <p className="text-sm text-muted-foreground">
@@ -298,7 +313,7 @@ export default function DiscountsPage() {
 
       {/* Stats Cards */}
       {stats && (
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Active</CardTitle>
@@ -385,7 +400,7 @@ export default function DiscountsPage() {
                   </div>
                 </div>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-[150px]">
+                  <SelectTrigger className="w-full sm:w-[150px]">
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -398,7 +413,7 @@ export default function DiscountsPage() {
                   </SelectContent>
                 </Select>
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
-                  <SelectTrigger className="w-[150px]">
+                  <SelectTrigger className="w-full sm:w-[150px]">
                     <SelectValue placeholder="Type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -468,6 +483,7 @@ export default function DiscountsPage() {
           {/* Discounts Table */}
           <Card>
             <CardContent className="p-0">
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -481,11 +497,11 @@ export default function DiscountsPage() {
                       />
                     </TableHead>
                     <TableHead>Code</TableHead>
-                    <TableHead>Type</TableHead>
+                    <TableHead className="hidden sm:table-cell">Type</TableHead>
                     <TableHead>Value</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Usage</TableHead>
-                    <TableHead>Schedule</TableHead>
+                    <TableHead className="hidden sm:table-cell">Usage</TableHead>
+                    <TableHead className="hidden md:table-cell">Schedule</TableHead>
                     <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -499,7 +515,7 @@ export default function DiscountsPage() {
                         <TableCell>
                           <Skeleton className="h-4 w-24" />
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden sm:table-cell">
                           <Skeleton className="h-4 w-20" />
                         </TableCell>
                         <TableCell>
@@ -508,10 +524,10 @@ export default function DiscountsPage() {
                         <TableCell>
                           <Skeleton className="h-4 w-16" />
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden sm:table-cell">
                           <Skeleton className="h-4 w-16" />
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden md:table-cell">
                           <Skeleton className="h-4 w-24" />
                         </TableCell>
                         <TableCell>
@@ -550,7 +566,7 @@ export default function DiscountsPage() {
                               </div>
                             )}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="hidden sm:table-cell">
                             <div className="flex items-center gap-2">
                               {getTypeIcon(discount.type)}
                               <span className="text-sm">{typeDisplay.label}</span>
@@ -566,13 +582,13 @@ export default function DiscountsPage() {
                               {statusDisplay.label}
                             </Badge>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="hidden sm:table-cell">
                             <div className="text-sm">
                               {discount.usageCount}
                               {discount.usageLimit && ` / ${discount.usageLimit}`}
                             </div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="hidden md:table-cell">
                             <div className="text-sm">
                               {discount.startsAt ? (
                                 <div>
@@ -647,12 +663,13 @@ export default function DiscountsPage() {
                   )}
                 </TableBody>
               </Table>
+              </div>
             </CardContent>
 
             {/* Pagination */}
             {pagination.count > pagination.limit && (
               <CardContent className="border-t">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <span className="text-sm text-muted-foreground">
                     Showing {pagination.offset + 1} to{" "}
                     {Math.min(pagination.offset + pagination.limit, pagination.count)} of{" "}

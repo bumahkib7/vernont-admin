@@ -370,7 +370,7 @@ export default function PricingPage() {
   const hasPriceChanged = (variantId: string) => pendingChanges.has(variantId);
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-6 p-4 sm:p-6">
       {/* Page Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-1">
@@ -413,7 +413,7 @@ export default function PricingPage() {
 
       {/* Stats Cards */}
       {stats && (
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Variants</CardTitle>
@@ -475,15 +475,15 @@ export default function PricingPage() {
             <TabsContent value="editor" className="space-y-4">
               <Card>
                 <CardHeader>
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <CardTitle>Price Editor</CardTitle>
                       <CardDescription>
                         Click on a price to edit. Changes are saved in bulk.
                       </CardDescription>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="relative w-64">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="relative w-full sm:w-64">
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
                           placeholder="Search products..."
@@ -521,6 +521,7 @@ export default function PricingPage() {
                       ))}
                     </div>
                   ) : (
+                    <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -532,9 +533,9 @@ export default function PricingPage() {
                           </TableHead>
                           <TableHead className="w-[60px]">Image</TableHead>
                           <TableHead>Product</TableHead>
-                          <TableHead>SKU</TableHead>
+                          <TableHead className="hidden sm:table-cell">SKU</TableHead>
                           <TableHead className="text-right">Current Price</TableHead>
-                          <TableHead className="text-right">Compare At</TableHead>
+                          <TableHead className="text-right hidden sm:table-cell">Compare At</TableHead>
                           <TableHead className="text-right">New Price</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -576,13 +577,13 @@ export default function PricingPage() {
                                   <span className="text-xs text-muted-foreground">{item.variantTitle}</span>
                                 </div>
                               </TableCell>
-                              <TableCell className="text-muted-foreground font-mono text-sm">
+                              <TableCell className="hidden sm:table-cell text-muted-foreground font-mono text-sm">
                                 {item.sku || "-"}
                               </TableCell>
                               <TableCell className="text-right font-medium">
                                 {formatPrice(item.currentPrice / 100, item.currencyCode)}
                               </TableCell>
-                              <TableCell className="text-right text-muted-foreground">
+                              <TableCell className="text-right text-muted-foreground hidden sm:table-cell">
                                 {item.compareAtPrice
                                   ? formatPrice(item.compareAtPrice / 100, item.currencyCode)
                                   : "-"}
@@ -625,11 +626,12 @@ export default function PricingPage() {
                         )}
                       </TableBody>
                     </Table>
+                    </div>
                   )}
 
                   {/* Pagination */}
                   {pagination.count > pagination.limit && (
-                    <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mt-4 text-sm text-muted-foreground">
                       <span>
                         {pagination.offset + 1} — {Math.min(pagination.offset + pagination.limit, pagination.count)}{" "}
                         of {pagination.count} variants
@@ -692,6 +694,7 @@ export default function PricingPage() {
                       No pricing rules configured
                     </div>
                   ) : (
+                    <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -772,6 +775,7 @@ export default function PricingPage() {
                         })}
                       </TableBody>
                     </Table>
+                    </div>
                   )}
                 </CardContent>
               </Card>
@@ -790,6 +794,7 @@ export default function PricingPage() {
                       No price changes recorded
                     </div>
                   ) : (
+                    <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -845,6 +850,7 @@ export default function PricingPage() {
                         })}
                       </TableBody>
                     </Table>
+                    </div>
                   )}
                 </CardContent>
               </Card>

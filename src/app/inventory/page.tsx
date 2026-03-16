@@ -73,6 +73,7 @@ import {
   type MovementType,
 } from "@/lib/api";
 import { toast } from "sonner";
+import { usePageContext } from "@/hooks/use-page-context";
 
 type AdjustmentType = "add" | "remove" | "adjust";
 
@@ -115,6 +116,7 @@ function getStatusBadge(status: string) {
 }
 
 export default function InventoryPage() {
+  usePageContext("inventory");
   const [activeTab, setActiveTab] = useState<string>("levels");
   const [inventoryLevels, setInventoryLevels] = useState<InventoryLevel[]>([]);
   const [movements, setMovements] = useState<InventoryMovement[]>([]);
@@ -290,7 +292,7 @@ export default function InventoryPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-6 p-4 sm:p-6">
       {/* Page Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-1">
@@ -407,7 +409,7 @@ export default function InventoryPage() {
           {/* Filters */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -418,7 +420,7 @@ export default function InventoryPage() {
               />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[160px]">
+              <SelectTrigger className="w-full sm:w-[160px]">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -429,7 +431,7 @@ export default function InventoryPage() {
               </SelectContent>
             </Select>
             <Select value={selectedLocation} onValueChange={setSelectedLocation}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue placeholder="Location" />
               </SelectTrigger>
               <SelectContent>
@@ -478,15 +480,16 @@ export default function InventoryPage() {
               </p>
             </div>
           ) : (
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>SKU</TableHead>
-                  <TableHead>Location</TableHead>
+                  <TableHead className="hidden md:table-cell">Location</TableHead>
                   <TableHead className="text-center">In Stock</TableHead>
-                  <TableHead className="text-center">Reserved</TableHead>
+                  <TableHead className="hidden sm:table-cell text-center">Reserved</TableHead>
                   <TableHead className="text-center">Available</TableHead>
-                  <TableHead className="text-center">Incoming</TableHead>
+                  <TableHead className="hidden md:table-cell text-center">Incoming</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
@@ -499,13 +502,13 @@ export default function InventoryPage() {
                       <TableCell className="font-mono text-sm">
                         {level.sku || "-"}
                       </TableCell>
-                      <TableCell className="text-muted-foreground">
+                      <TableCell className="hidden md:table-cell text-muted-foreground">
                         {level.locationName || "-"}
                       </TableCell>
                       <TableCell className="text-center font-medium">
                         {level.stockedQuantity}
                       </TableCell>
-                      <TableCell className="text-center text-muted-foreground">
+                      <TableCell className="hidden sm:table-cell text-center text-muted-foreground">
                         {level.reservedQuantity}
                       </TableCell>
                       <TableCell className="text-center">
@@ -513,7 +516,7 @@ export default function InventoryPage() {
                           {level.availableQuantity}
                         </span>
                       </TableCell>
-                      <TableCell className="text-center text-muted-foreground">
+                      <TableCell className="hidden md:table-cell text-center text-muted-foreground">
                         {level.incomingQuantity}
                       </TableCell>
                       <TableCell>{getStatusBadge(status)}</TableCell>
@@ -548,6 +551,7 @@ export default function InventoryPage() {
                 })}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -558,9 +562,9 @@ export default function InventoryPage() {
           {/* Movements Filters */}
           <Card>
             <CardContent className="pt-6">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+              <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
                 <Select value={movementTypeFilter} onValueChange={setMovementTypeFilter}>
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-full sm:w-[180px]">
                     <SelectValue placeholder="Movement Type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -578,7 +582,7 @@ export default function InventoryPage() {
                   </SelectContent>
                 </Select>
                 <Select value={selectedLocation} onValueChange={setSelectedLocation}>
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-full sm:w-[180px]">
                     <SelectValue placeholder="Location" />
                   </SelectTrigger>
                   <SelectContent>
@@ -620,14 +624,15 @@ export default function InventoryPage() {
                   </p>
                 </div>
               ) : (
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Type</TableHead>
                       <TableHead>SKU</TableHead>
-                      <TableHead>Location</TableHead>
+                      <TableHead className="hidden sm:table-cell">Location</TableHead>
                       <TableHead className="text-center">Change</TableHead>
-                      <TableHead>Reason</TableHead>
+                      <TableHead className="hidden md:table-cell">Reason</TableHead>
                       <TableHead>Time</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -645,7 +650,7 @@ export default function InventoryPage() {
                           <TableCell className="font-mono text-sm">
                             {movement.sku || "-"}
                           </TableCell>
-                          <TableCell className="text-muted-foreground">
+                          <TableCell className="hidden sm:table-cell text-muted-foreground">
                             {movement.locationName || "-"}
                           </TableCell>
                           <TableCell className="text-center">
@@ -660,7 +665,7 @@ export default function InventoryPage() {
                               {isPositive ? "+" : ""}{movement.quantity}
                             </span>
                           </TableCell>
-                          <TableCell className="text-muted-foreground max-w-[200px] truncate">
+                          <TableCell className="hidden md:table-cell text-muted-foreground max-w-[200px] truncate">
                             {movement.reason || movement.note || "-"}
                           </TableCell>
                           <TableCell className="text-muted-foreground text-sm">
@@ -671,6 +676,7 @@ export default function InventoryPage() {
                     })}
                   </TableBody>
                 </Table>
+                </div>
               )}
             </CardContent>
           </Card>

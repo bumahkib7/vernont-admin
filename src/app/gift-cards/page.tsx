@@ -291,9 +291,9 @@ export default function GiftCardsPage() {
   };
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6">
+    <div className="flex flex-1 flex-col gap-6 p-4 sm:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Gift Cards</h1>
           <p className="text-sm text-muted-foreground">
@@ -308,7 +308,7 @@ export default function GiftCardsPage() {
 
       {/* Stats Cards */}
       {stats && (
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Active Cards</CardTitle>
@@ -388,7 +388,7 @@ export default function GiftCardsPage() {
               </div>
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -457,6 +457,7 @@ export default function GiftCardsPage() {
       {/* Gift Cards Table */}
       <Card>
         <CardContent className="p-0">
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -470,12 +471,12 @@ export default function GiftCardsPage() {
                   />
                 </TableHead>
                 <TableHead>Code</TableHead>
-                <TableHead>Recipient</TableHead>
+                <TableHead className="hidden sm:table-cell">Recipient</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Initial Amount</TableHead>
+                <TableHead className="hidden md:table-cell">Initial Amount</TableHead>
                 <TableHead>Balance</TableHead>
-                <TableHead>Expires</TableHead>
-                <TableHead>Created</TableHead>
+                <TableHead className="hidden sm:table-cell">Expires</TableHead>
+                <TableHead className="hidden md:table-cell">Created</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
@@ -534,7 +535,7 @@ export default function GiftCardsPage() {
                           </Button>
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden sm:table-cell">
                         <div className="text-sm">
                           {card.recipientName || card.recipientEmail ? (
                             <>
@@ -558,7 +559,7 @@ export default function GiftCardsPage() {
                           {statusDisplay.label}
                         </Badge>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell">
                         <span className="font-medium">
                           {card.formattedInitialAmount}
                         </span>
@@ -568,7 +569,7 @@ export default function GiftCardsPage() {
                           {card.formattedBalance}
                         </span>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden sm:table-cell">
                         {card.expiresAt ? (
                           <div className={`text-sm ${card.isExpired ? "text-red-600" : ""}`}>
                             {new Date(card.expiresAt).toLocaleDateString()}
@@ -577,7 +578,7 @@ export default function GiftCardsPage() {
                           <span className="text-muted-foreground">Never</span>
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden md:table-cell">
                         <div className="text-sm text-muted-foreground">
                           {card.createdAt
                             ? new Date(card.createdAt).toLocaleDateString()
@@ -639,12 +640,13 @@ export default function GiftCardsPage() {
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
 
         {/* Pagination */}
         {pagination.count > pagination.limit && (
           <CardContent className="border-t">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <span className="text-sm text-muted-foreground">
                 Showing {pagination.offset + 1} to{" "}
                 {Math.min(pagination.offset + pagination.limit, pagination.count)} of{" "}

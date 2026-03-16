@@ -51,6 +51,7 @@ import {
 } from "@/lib/api";
 import { CsvExportButton } from "@/components/csv-export-button";
 import { useOrdersStore, useWebSocketStore } from "@/stores";
+import { usePageContext } from "@/hooks/use-page-context";
 
 function PaymentStatusBadge({ status }: { status: PaymentStatus }) {
   const { label, color } = getPaymentStatusDisplay(status);
@@ -92,6 +93,7 @@ export default function OrdersPage() {
   } = useOrdersStore();
 
   const { isConnected } = useWebSocketStore();
+  usePageContext("orders");
 
   const [activeFilters, setActiveFilters] = useState<Filter[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -173,9 +175,9 @@ export default function OrdersPage() {
   };
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-6 p-4 sm:p-6">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-4">
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pb-4">
           <div className="flex items-center gap-3">
             <CardTitle className="text-xl font-semibold">Orders</CardTitle>
             {/* Live indicator */}
@@ -200,8 +202,8 @@ export default function OrdersPage() {
         </CardHeader>
         <CardContent>
           {/* Filters Row */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+            <div className="flex items-center gap-2 flex-wrap">
               {/* Add Filter Dropdown */}
               <Popover>
                 <PopoverTrigger asChild>
@@ -294,7 +296,7 @@ export default function OrdersPage() {
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search orders..."
-                  className="pl-8 w-[200px]"
+                  className="pl-8 w-full sm:w-[200px]"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -333,12 +335,13 @@ export default function OrdersPage() {
           ) : (
             <>
               {/* Orders Table */}
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Order</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Customer</TableHead>
+                    <TableHead className="hidden sm:table-cell">Date</TableHead>
+                    <TableHead className="hidden sm:table-cell">Customer</TableHead>
                     <TableHead>Payment</TableHead>
                     <TableHead>Fulfillment</TableHead>
                     <TableHead className="text-right">Total</TableHead>
@@ -359,8 +362,8 @@ export default function OrdersPage() {
                         onClick={() => (window.location.href = `/orders/${order.id}`)}
                       >
                         <TableCell className="font-medium">#{order.displayId}</TableCell>
-                        <TableCell>{formatDate(order.createdAt)}</TableCell>
-                        <TableCell>{order.email}</TableCell>
+                        <TableCell className="hidden sm:table-cell">{formatDate(order.createdAt)}</TableCell>
+                        <TableCell className="hidden sm:table-cell">{order.email}</TableCell>
                         <TableCell>
                           <PaymentStatusBadge status={order.paymentStatus as PaymentStatus} />
                         </TableCell>
@@ -375,9 +378,10 @@ export default function OrdersPage() {
                   )}
                 </TableBody>
               </Table>
+              </div>
 
               {/* Pagination */}
-              <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mt-4 text-sm text-muted-foreground">
                 <span>
                   {offset + 1} — {Math.min(offset + limit, count)} of {count} results
                 </span>

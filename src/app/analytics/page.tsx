@@ -53,6 +53,7 @@ import { CategoryBreakdown } from "@/components/analytics/category-breakdown";
 import { CustomerAcquisitionChart } from "@/components/analytics/customer-acquisition-chart";
 import { ConversionFunnel } from "@/components/analytics/conversion-funnel";
 import { TopProductsTable } from "@/components/analytics/top-products-table";
+import { usePageContext } from "@/hooks/use-page-context";
 
 function formatCurrency(amount: number) {
   return new Intl.NumberFormat("en-US", {
@@ -120,6 +121,7 @@ const PERIOD_LABELS: Record<AnalyticsPeriod, string> = {
 };
 
 export default function AnalyticsPage() {
+  usePageContext("analytics");
   const [period, setPeriod] = useState<AnalyticsPeriod>("30d");
   const [compare, setCompare] = useState(false);
   const [customStart, setCustomStart] = useState<Date | undefined>();
@@ -156,7 +158,7 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-6 p-4 sm:p-6">
       {/* Page Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-1">
@@ -177,7 +179,7 @@ export default function AnalyticsPage() {
           </div>
 
           <Select value={period} onValueChange={(v) => setPeriod(v as AnalyticsPeriod)}>
-            <SelectTrigger className="w-[160px]">
+            <SelectTrigger className="w-full sm:w-[160px]">
               <SelectValue placeholder="Select period" />
             </SelectTrigger>
             <SelectContent>
@@ -232,7 +234,7 @@ export default function AnalyticsPage() {
       )}
 
       {/* KPI Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {isLoading ? (
           <>
             <KpiCardSkeleton />
@@ -464,6 +466,7 @@ export default function AnalyticsPage() {
               {isLoading ? (
                 <TableSkeleton rows={10} />
               ) : data?.topCustomers && data.topCustomers.length > 0 ? (
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -490,6 +493,7 @@ export default function AnalyticsPage() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               ) : (
                 <div className="h-40 flex items-center justify-center text-muted-foreground">
                   No customer data available
@@ -509,6 +513,7 @@ export default function AnalyticsPage() {
               {isLoading ? (
                 <TableSkeleton rows={4} />
               ) : data?.channelRevenue && data.channelRevenue.length > 0 ? (
+                <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -541,6 +546,7 @@ export default function AnalyticsPage() {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
               ) : (
                 <div className="h-40 flex items-center justify-center text-muted-foreground">
                   No channel data available

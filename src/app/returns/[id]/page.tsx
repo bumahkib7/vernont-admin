@@ -46,6 +46,7 @@ import {
   formatDateTime,
   getReturnStatusDisplay,
 } from "@/lib/api";
+import { usePageContext } from "@/hooks/use-page-context";
 
 function ReturnStatusBadge({ status }: { status: string }) {
   const { label, color } = getReturnStatusDisplay(status);
@@ -70,6 +71,7 @@ export default function ReturnDetailPage() {
   const [actionError, setActionError] = useState<string | null>(null);
 
   const returnId = params.id as string;
+  usePageContext("returns", returnId, "return");
 
   const fetchReturn = async () => {
     setLoading(true);

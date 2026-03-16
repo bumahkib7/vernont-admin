@@ -98,6 +98,7 @@ import {
 import { useRef } from "react";
 import { toast } from "sonner";
 import { FragranceMetadataEditor, type FragranceMetadata } from "@/components/products/FragranceMetadataEditor";
+import { usePageContext } from "@/hooks/use-page-context";
 
 function getStatusBadge(status: ProductStatus) {
   switch (status) {
@@ -118,6 +119,7 @@ export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
   const productId = params.id as string;
+  usePageContext("products", productId, "product");
 
   const [product, setProduct] = useState<Product | null>(null);
   const [categories, setCategories] = useState<ProductCategory[]>([]);

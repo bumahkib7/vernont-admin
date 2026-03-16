@@ -50,6 +50,7 @@ import {
   type CreatePromotionRuleRequest,
   getPromotionTypeDisplay,
 } from "@/lib/api";
+import { useAgentActionsStore } from "@/stores/agent-actions";
 
 interface DiscountDialogProps {
   open: boolean;
@@ -161,6 +162,29 @@ export function DiscountDialog({
     setStep(1);
     setError(null);
   }, [discount, open]);
+
+  // Agent actions: consume pre-fill data when dialog opens for creation
+  const consumeFormData = useAgentActionsStore(s => s.consumeFormData);
+  useEffect(() => {
+    if (!open || discount) return; // only for new discounts
+    const prefill = consumeFormData("discount-dialog");
+    if (prefill) {
+      setFormData(prev => ({
+        ...prev,
+        ...(prefill.name != null && { name: String(prefill.name) }),
+        ...(prefill.code != null && { code: String(prefill.code).toUpperCase() }),
+        ...(prefill.description != null && { description: String(prefill.description) }),
+        ...(prefill.type != null && { type: String(prefill.type) as PromotionType }),
+        ...(prefill.value != null && { value: Number(prefill.value) }),
+        ...(prefill.minimumAmount != null && { minimumAmount: Number(prefill.minimumAmount) }),
+        ...(prefill.maximumDiscount != null && { maximumDiscount: Number(prefill.maximumDiscount) }),
+        ...(prefill.usageLimit != null && { usageLimit: Number(prefill.usageLimit) }),
+        ...(prefill.customerUsageLimit != null && { customerUsageLimit: Number(prefill.customerUsageLimit) }),
+        ...(prefill.isStackable != null && { isStackable: Boolean(prefill.isStackable) }),
+        ...(prefill.activateImmediately != null && { activateImmediately: Boolean(prefill.activateImmediately) }),
+      }));
+    }
+  }, [open, discount]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleGenerateCode = async () => {
     setGeneratingCode(true);

@@ -251,7 +251,7 @@ export default function SubscriptionsPage() {
   const subsCurrentPage = Math.floor(subsPagination.offset / subsPagination.limit) + 1;
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-6 p-4 sm:p-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between pb-4">
           <CardTitle className="text-xl font-semibold">Subscriptions</CardTitle>
@@ -265,12 +265,12 @@ export default function SubscriptionsPage() {
 
             {/* Plans Tab */}
             <TabsContent value="plans" className="mt-4">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                 <div className="relative">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search plans..."
-                    className="pl-8 w-[200px]"
+                    className="pl-8 w-full sm:w-[200px]"
                     value={plansSearch}
                     onChange={(e) => setPlansSearch(e.target.value)}
                   />
@@ -312,12 +312,13 @@ export default function SubscriptionsPage() {
                 </div>
               ) : (
                 <>
+                  <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Name</TableHead>
                         <TableHead>Price</TableHead>
-                        <TableHead>Interval</TableHead>
+                        <TableHead className="hidden sm:table-cell">Interval</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Subscribers</TableHead>
                         <TableHead className="w-[50px]" />
@@ -346,7 +347,7 @@ export default function SubscriptionsPage() {
                                 </div>
                               </TableCell>
                               <TableCell>{formatPrice(plan.price, plan.currency)}</TableCell>
-                              <TableCell>{formatInterval(plan.interval)}</TableCell>
+                              <TableCell className="hidden sm:table-cell">{formatInterval(plan.interval)}</TableCell>
                               <TableCell>
                                 <StatusBadge label={statusDisplay.label} color={statusDisplay.color} />
                               </TableCell>
@@ -380,9 +381,10 @@ export default function SubscriptionsPage() {
                       )}
                     </TableBody>
                   </Table>
+                  </div>
 
                   {plansPagination.count > 0 && (
-                    <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mt-4 text-sm text-muted-foreground">
                       <span>
                         {plansPagination.offset + 1} — {Math.min(plansPagination.offset + plansPagination.limit, plansPagination.count)} of {plansPagination.count} results
                       </span>
@@ -425,12 +427,12 @@ export default function SubscriptionsPage() {
 
             {/* Subscriptions Tab */}
             <TabsContent value="subscriptions" className="mt-4">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                 <div className="relative">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search subscriptions..."
-                    className="pl-8 w-[250px]"
+                    className="pl-8 w-full sm:w-[250px]"
                     value={subsSearch}
                     onChange={(e) => setSubsSearch(e.target.value)}
                   />
@@ -465,14 +467,15 @@ export default function SubscriptionsPage() {
                 </div>
               ) : (
                 <>
+                  <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Customer</TableHead>
                         <TableHead>Plan</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead>Current Period</TableHead>
-                        <TableHead>Next Billing</TableHead>
+                        <TableHead className="hidden sm:table-cell">Current Period</TableHead>
+                        <TableHead className="hidden md:table-cell">Next Billing</TableHead>
                         <TableHead className="w-[50px]" />
                       </TableRow>
                     </TableHeader>
@@ -500,12 +503,12 @@ export default function SubscriptionsPage() {
                               <TableCell>
                                 <StatusBadge label={statusDisplay.label} color={statusDisplay.color} />
                               </TableCell>
-                              <TableCell>
+                              <TableCell className="hidden sm:table-cell">
                                 <span className="text-sm">
                                   {formatDate(sub.currentPeriodStart)} — {formatDate(sub.currentPeriodEnd)}
                                 </span>
                               </TableCell>
-                              <TableCell>
+                              <TableCell className="hidden md:table-cell">
                                 {sub.nextBillingDate ? formatDate(sub.nextBillingDate) : "—"}
                               </TableCell>
                               <TableCell>
@@ -546,9 +549,10 @@ export default function SubscriptionsPage() {
                       )}
                     </TableBody>
                   </Table>
+                  </div>
 
                   {subsPagination.count > 0 && (
-                    <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mt-4 text-sm text-muted-foreground">
                       <span>
                         {subsPagination.offset + 1} — {Math.min(subsPagination.offset + subsPagination.limit, subsPagination.count)} of {subsPagination.count} results
                       </span>

@@ -75,6 +75,7 @@ import { SendEmailDialog } from "@/components/customers/SendEmailDialog";
 import { SendGiftCardDialog } from "@/components/customers/SendGiftCardDialog";
 import { SuspendCustomerDialog } from "@/components/customers/SuspendCustomerDialog";
 import { ChangeTierDialog } from "@/components/customers/ChangeTierDialog";
+import { usePageContext } from "@/hooks/use-page-context";
 
 function getTierBadge(tier: CustomerTier) {
   const display = getTierDisplay(tier);
@@ -94,6 +95,7 @@ function getStatusBadge(status: CustomerStatus) {
 }
 
 export default function CustomersPage() {
+  usePageContext("customers");
   const [customers, setCustomers] = useState<CustomerSummary[]>([]);
   const [stats, setStats] = useState<CustomerStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -187,7 +189,7 @@ export default function CustomersPage() {
   ];
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-6 p-4 sm:p-6">
       {/* Page Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-1">
@@ -239,7 +241,7 @@ export default function CustomersPage() {
               />
             </div>
             <Select value={tierFilter} onValueChange={setTierFilter}>
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className="w-full sm:w-[140px]">
                 <SelectValue placeholder="Tier" />
               </SelectTrigger>
               <SelectContent>
@@ -251,7 +253,7 @@ export default function CustomersPage() {
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className="w-full sm:w-[140px]">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -295,14 +297,15 @@ export default function CustomersPage() {
               No customers found
             </div>
           ) : (
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Customer</TableHead>
                   <TableHead>Tier</TableHead>
-                  <TableHead className="text-center">Orders</TableHead>
-                  <TableHead className="text-right">Total Spent</TableHead>
-                  <TableHead>Joined</TableHead>
+                  <TableHead className="hidden sm:table-cell text-center">Orders</TableHead>
+                  <TableHead className="hidden sm:table-cell text-right">Total Spent</TableHead>
+                  <TableHead className="hidden md:table-cell">Joined</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
@@ -328,11 +331,11 @@ export default function CustomersPage() {
                       </Link>
                     </TableCell>
                     <TableCell>{getTierBadge(customer.tier)}</TableCell>
-                    <TableCell className="text-center">{customer.orderCount}</TableCell>
-                    <TableCell className="text-right font-medium">
+                    <TableCell className="hidden sm:table-cell text-center">{customer.orderCount}</TableCell>
+                    <TableCell className="hidden sm:table-cell text-right font-medium">
                       {formatPrice(customer.totalSpent, "GBP")}
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
+                    <TableCell className="hidden md:table-cell text-muted-foreground">
                       {formatDate(customer.createdAt)}
                     </TableCell>
                     <TableCell>{getStatusBadge(customer.status)}</TableCell>
@@ -411,6 +414,7 @@ export default function CustomersPage() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>

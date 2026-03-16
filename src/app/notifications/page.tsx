@@ -194,8 +194,8 @@ export default function NotificationsPage() {
   };
 
   return (
-    <div className="container max-w-4xl py-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="container max-w-4xl py-4 px-4 sm:py-6 sm:px-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold">Notifications</h1>
           <p className="text-muted-foreground">
@@ -206,7 +206,7 @@ export default function NotificationsPage() {
         </div>
         <div className="flex items-center gap-2">
           <Select value={filter} onValueChange={(v) => setFilter(v as "all" | "unread")}>
-            <SelectTrigger className="w-[140px]">
+            <SelectTrigger className="w-full sm:w-[140px]">
               <Filter className="h-4 w-4 mr-2" />
               <SelectValue />
             </SelectTrigger>

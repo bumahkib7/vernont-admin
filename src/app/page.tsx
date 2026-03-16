@@ -26,6 +26,7 @@ import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/api";
 import { Wifi, WifiOff, Radio } from "lucide-react";
+import { usePageContext } from "@/hooks/use-page-context";
 
 function getStatusBadge(status: string) {
   switch (status) {
@@ -98,6 +99,7 @@ function ActivitySkeleton() {
 export default function DashboardPage() {
   const { stats, isLoading, isError, error, refetch } = useDashboard();
   const { activities, connectionStatus, isConnected } = useActivityEvents();
+  usePageContext("dashboard");
 
   const getGreeting = () => {
     const hour = new Date().getHours();
