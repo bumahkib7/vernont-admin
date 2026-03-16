@@ -45,6 +45,8 @@ const TOOL_LABELS: Record<string, string> = {
   get_low_stock_report: "Checking inventory",
   update_stock: "Adjusting stock",
   search_products: "Searching products",
+  create_product: "Creating product",
+  create_discount: "Creating discount",
   update_product: "Updating product",
   list_returns: "Loading returns",
   get_return: "Loading return details",

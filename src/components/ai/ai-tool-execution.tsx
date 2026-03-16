@@ -112,6 +112,18 @@ const TOOL_META: Record<string, ToolMeta> = {
     bgColor: "bg-indigo-500/10",
     borderColor: "border-indigo-500/20",
   },
+  create_product: {
+    icon: Plus,
+    color: "text-green-500",
+    bgColor: "bg-green-500/10",
+    borderColor: "border-green-500/20",
+  },
+  create_discount: {
+    icon: Tag,
+    color: "text-emerald-500",
+    bgColor: "bg-emerald-500/10",
+    borderColor: "border-emerald-500/20",
+  },
   update_product: {
     icon: Tag,
     color: "text-indigo-500",

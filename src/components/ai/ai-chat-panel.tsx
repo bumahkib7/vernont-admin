@@ -10,12 +10,10 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   useAiChat,
   type ChatMessage,
 } from "@/hooks/use-ai-chat";
-import { AiWorkflowPanel } from "@/components/ai/ai-workflow-panel";
 import { ToolExecutionGroup } from "@/components/ai/ai-tool-execution";
 import { AgentThinkingIndicator } from "@/components/ai/ai-thinking-indicator";
 import { AgentMessageRenderer } from "@/components/ai/ai-message-renderer";
@@ -34,7 +32,6 @@ import {
   Users,
   BarChart3,
   MessageSquare,
-  Workflow,
   Sparkles,
   ArrowRight,
   Paperclip,
@@ -79,16 +76,16 @@ const SUGGESTIONS = [
     bg: "bg-orange-500/10 hover:bg-orange-500/15",
   },
   {
-    label: "Pending returns",
-    prompt: "Are there any pending returns I need to handle?",
-    icon: RotateCcw,
+    label: "Create product",
+    prompt: "I want to create a new product",
+    icon: Package,
     color: "text-pink-500",
     bg: "bg-pink-500/10 hover:bg-pink-500/15",
   },
   {
-    label: "Customer insights",
-    prompt: "Tell me about my top customers",
-    icon: Users,
+    label: "Create discount",
+    prompt: "Create a 20% off discount code",
+    icon: BarChart3,
     color: "text-violet-500",
     bg: "bg-violet-500/10 hover:bg-violet-500/15",
   },
@@ -199,7 +196,6 @@ export function AiChatPanel({ open, onOpenChange }: AiChatPanelProps) {
   } = useAiChat();
   const pendingConfirmation = useAgentActionsStore((s) => s.pendingConfirmation);
   const [input, setInput] = useState("");
-  const [activeTab, setActiveTab] = useState("chat");
   const [attachedImages, setAttachedImages] = useState<{ file: File; preview: string }[]>([]);
   const [uploading, setUploading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -224,7 +220,6 @@ export function AiChatPanel({ open, onOpenChange }: AiChatPanelProps) {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       if (typeof detail === "string" && detail && !loading) {
-        setActiveTab("chat");
         sendMessage(detail);
       }
     };
@@ -337,7 +332,7 @@ export function AiChatPanel({ open, onOpenChange }: AiChatPanelProps) {
               </div>
             </div>
             <div className="flex items-center gap-1">
-              {activeTab === "chat" && messages.length > 0 && (
+              {messages.length > 0 && (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -353,27 +348,7 @@ export function AiChatPanel({ open, onOpenChange }: AiChatPanelProps) {
           </div>
         </SheetHeader>
 
-        {/* Tab bar */}
-        <Tabs
-          value={activeTab}
-          onValueChange={setActiveTab}
-          className="flex flex-col flex-1 min-h-0"
-        >
-          <div className="px-4 pt-2">
-            <TabsList className="w-full h-9">
-              <TabsTrigger value="chat" className="text-xs gap-1.5">
-                <MessageSquare className="h-3 w-3" />
-                Chat
-              </TabsTrigger>
-              <TabsTrigger value="workflows" className="text-xs gap-1.5">
-                <Workflow className="h-3 w-3" />
-                Workflows
-              </TabsTrigger>
-            </TabsList>
-          </div>
-
-          {activeTab === "chat" ? (
-            <>
+        <div className="flex flex-col flex-1 min-h-0">
               {/* Message area */}
               <ScrollArea className="flex-1 min-h-0">
                 <div ref={scrollRef} className="flex flex-col gap-4 p-4">
@@ -484,11 +459,7 @@ export function AiChatPanel({ open, onOpenChange }: AiChatPanelProps) {
                   </span>
                 </div>
               </div>
-            </>
-          ) : (
-            <AiWorkflowPanel sessionId={sessionId} />
-          )}
-        </Tabs>
+        </div>
       </SheetContent>
     </Sheet>
   );
