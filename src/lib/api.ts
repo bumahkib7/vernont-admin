@@ -5,13 +5,32 @@ const AUTH_REFRESH_ENDPOINT = "/api/v1/internal/auth/refresh";
 
 /**
  * Resolve an image URL from the backend.
- * - Absolute URLs (http/https) are returned as-is
+ * - Old MinIO URLs (vernont-minio*.runixcloud.dev) are rewritten to use the /files proxy
  * - Relative URLs (e.g. /files?key=...) are prefixed with API_BASE_URL
+ * - Other absolute URLs are returned as-is
  * - Null/undefined returns null
  */
 export function resolveImageUrl(url: string | null | undefined): string | null {
   if (!url) return null;
+
+  // Rewrite old MinIO URLs to use backend proxy
+  // Old format: https://vernont-minio*.runixcloud.dev/BUCKET/key
+  if (url.includes("vernont-minio") && url.includes("runixcloud.dev")) {
+    try {
+      const parsed = new URL(url);
+      const parts = parsed.pathname.split("/").filter(Boolean);
+      // First segment is bucket name, rest is the S3 key
+      if (parts.length > 1) {
+        const key = parts.slice(1).join("/");
+        return `${API_BASE_URL}/files?key=${encodeURIComponent(key)}`;
+      }
+    } catch { /* fall through */ }
+  }
+
+  // Other absolute URLs — return as-is
   if (url.startsWith("http://") || url.startsWith("https://")) return url;
+
+  // Relative URLs — prefix with API base
   return `${API_BASE_URL}${url.startsWith("/") ? "" : "/"}${url}`;
 }
 
