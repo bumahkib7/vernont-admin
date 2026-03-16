@@ -57,132 +57,22 @@ export function getToolLabel(toolName: string): string {
 }
 
 /**
- * Extract JSON objects from a chunk of text that may contain:
- * - SSE-framed lines: "data:{...}\n"
- * - Raw concatenated JSON: "{...}{...}{...}"
- * - Mixed content with "event:" lines, empty lines, etc.
- *
- * Returns [parsed objects, remaining unparsed text].
+ * Parse a line of NDJSON into a typed object.
+ * Strips optional SSE "data:" prefix for backwards compatibility.
  */
-function extractJsonObjects(
-  text: string
-): [Array<Record<string, unknown>>, string] {
-  const objects: Array<Record<string, unknown>> = [];
-  let remaining = text;
-
-  // First, try line-based parsing (handles SSE and NDJSON)
-  const lines = remaining.split(/\r?\n/);
-  remaining = lines.pop() || ""; // keep last incomplete line
-
-  for (const line of lines) {
-    // Strip SSE framing if present
-    if (line.startsWith("event:") || line.trim() === "") continue;
-
-    let jsonStr = line;
-    if (jsonStr.startsWith("data:")) {
-      jsonStr = jsonStr.slice(5).trim();
-    }
-    if (!jsonStr || jsonStr === "[DONE]") continue;
-
-    // Handle possible concatenated JSON on a single line: {...}{...}{...}
-    const parsed = parseJsonFromString(jsonStr);
-    objects.push(...parsed);
-  }
-
-  // Also try to extract JSON objects from the remaining buffer
-  // (handles case where no newlines arrive and JSON objects are concatenated)
-  if (remaining.includes("}")) {
-    const parsed = parseJsonFromString(remaining);
-    if (parsed.length > 0) {
-      objects.push(...parsed);
-      // Find where the last successfully parsed object ended
-      let consumed = 0;
-      for (const obj of parsed) {
-        const objStr = JSON.stringify(obj);
-        // Find next '{' after current position in remaining
-        const braceStart = remaining.indexOf("{", consumed);
-        if (braceStart === -1) break;
-        // Find matching closing brace
-        const end = findJsonEnd(remaining, braceStart);
-        if (end !== -1) {
-          consumed = end + 1;
-        }
-      }
-      remaining = remaining.slice(consumed);
-    }
-  }
-
-  return [objects, remaining];
-}
-
-/**
- * Parse one or more JSON objects from a string like: '{"a":1}{"b":2}'
- */
-function parseJsonFromString(str: string): Array<Record<string, unknown>> {
-  const results: Array<Record<string, unknown>> = [];
-  let pos = 0;
-  // Strip leading SSE prefix if present
-  let s = str;
+function parseLine(line: string): Record<string, unknown> | null {
+  let s = line.trim();
+  if (!s || s === "[DONE]") return null;
+  // Strip SSE prefix if present (backwards compat)
   if (s.startsWith("data:")) s = s.slice(5).trim();
-
-  while (pos < s.length) {
-    // Skip whitespace
-    while (pos < s.length && s[pos] !== "{") pos++;
-    if (pos >= s.length) break;
-
-    const end = findJsonEnd(s, pos);
-    if (end === -1) break; // incomplete JSON, leave in buffer
-
-    const candidate = s.slice(pos, end + 1);
-    try {
-      const parsed = JSON.parse(candidate);
-      if (typeof parsed === "object" && parsed !== null) {
-        results.push(parsed);
-      }
-    } catch {
-      // Not valid JSON at this position, skip past this brace
-      pos++;
-      continue;
-    }
-    pos = end + 1;
+  if (s.startsWith("event:")) return null;
+  if (!s) return null;
+  try {
+    const parsed = JSON.parse(s);
+    return typeof parsed === "object" && parsed !== null ? parsed : null;
+  } catch {
+    return null;
   }
-  return results;
-}
-
-/**
- * Find the index of the closing '}' that matches the '{' at startPos,
- * accounting for nested braces and JSON strings.
- * Returns -1 if no matching brace is found (incomplete JSON).
- */
-function findJsonEnd(str: string, startPos: number): number {
-  if (str[startPos] !== "{") return -1;
-  let depth = 0;
-  let inString = false;
-  let escape = false;
-
-  for (let i = startPos; i < str.length; i++) {
-    const ch = str[i];
-    if (escape) {
-      escape = false;
-      continue;
-    }
-    if (ch === "\\" && inString) {
-      escape = true;
-      continue;
-    }
-    if (ch === '"') {
-      inString = !inString;
-      continue;
-    }
-    if (inString) continue;
-
-    if (ch === "{") depth++;
-    else if (ch === "}") {
-      depth--;
-      if (depth === 0) return i;
-    }
-  }
-  return -1; // incomplete
 }
 
 export function useAiChat(): UseAiChatReturn {
@@ -248,10 +138,14 @@ export function useAiChat(): UseAiChatReturn {
 
         buffer += decoder.decode(value, { stream: true });
 
-        const [objects, leftover] = extractJsonObjects(buffer);
-        buffer = leftover;
+        // NDJSON: split on newlines, keep last partial line in buffer
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
 
-        for (const parsed of objects) {
+        for (const line of lines) {
+          const parsed = parseLine(line);
+          if (!parsed) continue;
+
           switch (parsed.type) {
             case "message": {
               if (typeof parsed.content === "string") {
@@ -308,13 +202,9 @@ export function useAiChat(): UseAiChatReturn {
 
       // Process any remaining buffer
       if (buffer.trim()) {
-        const [finalObjects] = extractJsonObjects(buffer + "\n");
-        for (const parsed of finalObjects) {
-          if (parsed.type === "message" && typeof parsed.content === "string") {
-            accumulated += parsed.content;
-          }
-        }
-        if (accumulated) {
+        const parsed = parseLine(buffer);
+        if (parsed?.type === "message" && typeof parsed.content === "string") {
+          accumulated += parsed.content;
           updateMessage(assistantMsgId, accumulated, toolActivities);
         }
       }
