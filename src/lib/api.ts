@@ -1,6 +1,12 @@
 // Admin API client
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+// In production, route through Next.js rewrite proxy (/api/proxy) so cookies
+// are same-origin — required for mobile Safari which blocks third-party cookies.
+// In development, connect directly to the backend.
+const API_BASE_URL =
+  typeof window !== "undefined" && process.env.NODE_ENV === "production"
+    ? "/api/proxy"
+    : process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 const AUTH_REFRESH_ENDPOINT = "/api/v1/internal/auth/refresh";
 
 /**

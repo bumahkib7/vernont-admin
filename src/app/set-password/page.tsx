@@ -8,7 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, AlertCircle, CheckCircle2, Store, Eye, EyeOff, XCircle } from "lucide-react";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+const API_BASE_URL =
+  typeof window !== "undefined" && process.env.NODE_ENV === "production"
+    ? "/api/proxy"
+    : process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
 function SetPasswordForm() {
   const router = useRouter();
