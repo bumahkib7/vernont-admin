@@ -5504,12 +5504,16 @@ export async function getWebhookDeliveries(endpointId: string, page = 0, size = 
 /**
  * Send a chat message to the AI assistant. Returns a raw Response for SSE streaming.
  */
-export async function aiChat(sessionId: string, message: string): Promise<Response> {
+export async function aiChat(
+  sessionId: string,
+  message: string,
+  context?: { currentPage: string; currentEntityId: string | null; currentEntityType: string | null }
+): Promise<Response> {
   const response = await fetch(`${API_BASE_URL}/admin/ai/chat`, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sessionId, message }),
+    body: JSON.stringify({ sessionId, message, context }),
   });
   if (!response.ok) {
     throw await parseErrorResponse(response);

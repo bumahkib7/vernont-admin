@@ -79,28 +79,33 @@ export function PageBreadcrumbs() {
     isLast: index === segments.length - 1,
   }));
 
+  const hasMany = crumbs.length >= 3;
+
   return (
     <Breadcrumb>
-      <BreadcrumbList>
+      <BreadcrumbList className="flex-nowrap overflow-hidden">
         <BreadcrumbItem>
           <BreadcrumbLink asChild>
             <Link href="/">Dashboard</Link>
           </BreadcrumbLink>
         </BreadcrumbItem>
-        {crumbs.map((crumb) => (
-          <span key={crumb.href} className="contents">
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              {crumb.isLast ? (
-                <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
-              ) : (
-                <BreadcrumbLink asChild>
-                  <Link href={crumb.href}>{crumb.label}</Link>
-                </BreadcrumbLink>
-              )}
-            </BreadcrumbItem>
-          </span>
-        ))}
+        {crumbs.map((crumb, index) => {
+          const isIntermediate = !crumb.isLast && hasMany && index < crumbs.length - 1;
+          return (
+            <span key={crumb.href} className={`contents ${isIntermediate ? "hidden sm:contents" : ""}`}>
+              <BreadcrumbSeparator className={isIntermediate ? "hidden sm:inline-flex" : ""} />
+              <BreadcrumbItem className={isIntermediate ? "hidden sm:inline-flex" : ""}>
+                {crumb.isLast ? (
+                  <BreadcrumbPage className="truncate max-w-[150px] sm:max-w-none">{crumb.label}</BreadcrumbPage>
+                ) : (
+                  <BreadcrumbLink asChild>
+                    <Link href={crumb.href}>{crumb.label}</Link>
+                  </BreadcrumbLink>
+                )}
+              </BreadcrumbItem>
+            </span>
+          );
+        })}
       </BreadcrumbList>
     </Breadcrumb>
   );

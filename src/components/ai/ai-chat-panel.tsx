@@ -19,6 +19,8 @@ import { AiWorkflowPanel } from "@/components/ai/ai-workflow-panel";
 import { ToolExecutionGroup } from "@/components/ai/ai-tool-execution";
 import { AgentThinkingIndicator } from "@/components/ai/ai-thinking-indicator";
 import { AgentMessageRenderer } from "@/components/ai/ai-message-renderer";
+import { AiConfirmationCard } from "@/components/ai/ai-confirmation-card";
+import { useAgentActionsStore } from "@/stores/agent-actions";
 import {
   Send,
   Trash2,
@@ -191,6 +193,7 @@ export function AiChatPanel({ open, onOpenChange }: AiChatPanelProps) {
     sendMessage,
     clearHistory,
   } = useAiChat();
+  const pendingConfirmation = useAgentActionsStore((s) => s.pendingConfirmation);
   const [input, setInput] = useState("");
   const [activeTab, setActiveTab] = useState("chat");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -324,6 +327,11 @@ export function AiChatPanel({ open, onOpenChange }: AiChatPanelProps) {
                           </div>
                           <ToolExecutionGroup activities={activeTools} />
                         </div>
+                      )}
+
+                      {/* Confirmation card */}
+                      {pendingConfirmation && (
+                        <AiConfirmationCard onConfirm={(msg) => sendMessage(msg)} />
                       )}
                     </>
                   )}

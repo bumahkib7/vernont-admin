@@ -23,6 +23,10 @@ import {
   Ban,
   DollarSign,
   Zap,
+  Navigation2,
+  Plus,
+  Bell,
+  ShieldAlert,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -140,6 +144,36 @@ const TOOL_META: Record<string, ToolMeta> = {
   },
   reject_return: {
     icon: Ban,
+    color: "text-red-500",
+    bgColor: "bg-red-500/10",
+    borderColor: "border-red-500/20",
+  },
+  "ui:navigate_to_page": {
+    icon: Navigation2,
+    color: "text-sky-500",
+    bgColor: "bg-sky-500/10",
+    borderColor: "border-sky-500/20",
+  },
+  "ui:open_create_product_form": {
+    icon: Plus,
+    color: "text-indigo-500",
+    bgColor: "bg-indigo-500/10",
+    borderColor: "border-indigo-500/20",
+  },
+  "ui:open_create_discount_form": {
+    icon: Tag,
+    color: "text-emerald-500",
+    bgColor: "bg-emerald-500/10",
+    borderColor: "border-emerald-500/20",
+  },
+  "ui:show_notification": {
+    icon: Bell,
+    color: "text-amber-500",
+    bgColor: "bg-amber-500/10",
+    borderColor: "border-amber-500/20",
+  },
+  "ui:request_confirmation": {
+    icon: ShieldAlert,
     color: "text-red-500",
     bgColor: "bg-red-500/10",
     borderColor: "border-red-500/20",

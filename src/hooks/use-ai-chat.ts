@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { aiChat, aiClearSession, aiDescribeProduct } from "@/lib/api";
+import { useAgentActionsStore } from "@/stores/agent-actions";
 
 export interface ToolActivity {
   toolName: string;
@@ -50,6 +51,11 @@ const TOOL_LABELS: Record<string, string> = {
   receive_return: "Processing return receipt",
   process_return_refund: "Processing refund",
   reject_return: "Rejecting return",
+  "ui:navigate_to_page": "Navigating...",
+  "ui:open_create_product_form": "Opening product form...",
+  "ui:open_create_discount_form": "Opening discount form...",
+  "ui:show_notification": "Sending notification",
+  "ui:request_confirmation": "Requesting confirmation",
 };
 
 export function getToolLabel(toolName: string): string {
@@ -119,7 +125,8 @@ export function useAiChat(): UseAiChatReturn {
       const controller = new AbortController();
       abortControllerRef.current = controller;
 
-      const response = await aiChat(sessionIdRef.current, trimmed);
+      const context = useAgentActionsStore.getState().getPageContext();
+      const response = await aiChat(sessionIdRef.current, trimmed, context);
       const reader = response.body?.getReader();
       if (!reader) throw new Error("No response body");
 
@@ -182,6 +189,28 @@ export function useAiChat(): UseAiChatReturn {
                 ...toolActivities.filter((t) => t.status === "executing"),
               ]);
               updateMessage(assistantMsgId, accumulated, toolActivities);
+              break;
+            }
+            case "action": {
+              const actionName = parsed.action as string;
+              const actionPayload = (parsed.payload as Record<string, unknown>) || {};
+              useAgentActionsStore.getState().dispatchAction(actionName, actionPayload);
+              // Record as completed action in tool activity
+              const activity: ToolActivity = {
+                toolName: `ui:${actionName}`,
+                toolId: `ui-${Date.now()}-${Math.random().toString(36).slice(2, 5)}`,
+                status: "complete",
+              };
+              toolActivities.push(activity);
+              updateMessage(assistantMsgId, accumulated, toolActivities);
+              break;
+            }
+            case "confirmation": {
+              useAgentActionsStore.getState().dispatchAction("request_confirmation", {
+                title: parsed.title as string,
+                description: parsed.description as string,
+                confirm_label: parsed.confirm_label as string | undefined,
+              });
               break;
             }
             case "done":
