@@ -96,37 +96,69 @@ export function AiWorkflowPanel({ sessionId }: AiWorkflowPanelProps) {
 
       const decoder = new TextDecoder();
       let accumulated = "";
+      let buffer = "";
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split("\n");
+        buffer += decoder.decode(value, { stream: true });
+
+        // NDJSON: split on newlines, keep last partial line in buffer
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
         for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const data = line.slice(6);
-            if (data === "[DONE]") continue;
-            try {
-              const parsed = JSON.parse(data);
-              // Handle workflow state updates from SSE
+          let s = line.trim();
+          if (!s) continue;
+          // Strip SSE prefix if present (backwards compat)
+          if (s.startsWith("data:")) s = s.slice(5).trim();
+          if (s.startsWith("event:") || s === "[DONE]") continue;
+          if (!s) continue;
+
+          try {
+            const parsed = JSON.parse(s);
+            if (parsed.type === "message" && typeof parsed.content === "string") {
+              accumulated += parsed.content;
+            } else if (parsed.type === "done") {
+              // Handle workflow state if included
               if (parsed.workflowState) {
                 setWorkflowState(parsed.workflowState);
               }
-              if (parsed.content) {
-                accumulated += parsed.content;
-              } else if (typeof parsed === "string") {
-                accumulated += parsed;
-              }
-            } catch {
-              accumulated += data;
+            } else if (parsed.type === "error") {
+              accumulated = `Error: ${parsed.error || "Unknown error"}`;
+            } else if (parsed.workflowState) {
+              setWorkflowState(parsed.workflowState);
+            } else if (typeof parsed.content === "string") {
+              accumulated += parsed.content;
             }
+          } catch {
+            // Skip unparseable lines
+          }
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMsgId ? { ...m, content: accumulated } : m
+            )
+          );
+        }
+      }
+
+      // Process remaining buffer
+      if (buffer.trim()) {
+        try {
+          let s = buffer.trim();
+          if (s.startsWith("data:")) s = s.slice(5).trim();
+          const parsed = JSON.parse(s);
+          if (parsed.type === "message" && typeof parsed.content === "string") {
+            accumulated += parsed.content;
             setMessages((prev) =>
               prev.map((m) =>
                 m.id === assistantMsgId ? { ...m, content: accumulated } : m
               )
             );
           }
+        } catch {
+          // ignore
         }
       }
     },
