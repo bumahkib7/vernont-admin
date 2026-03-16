@@ -24,12 +24,14 @@ import {
   BarChart3,
   Repeat,
   Building2,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { getUserDisplayName, getUserInitials, getRoleDisplayName, getRoleBadgeColor } from "@/lib/auth";
 import { Badge } from "@/components/ui/badge";
+import { useAiPanelStore } from "@/stores/ai-panel";
 
 import {
   Sidebar,
@@ -321,6 +323,22 @@ function NavItemWithChildren({
   );
 }
 
+function AiSidebarButton() {
+  const setOpen = useAiPanelStore((s) => s.setOpen);
+  return (
+    <SidebarMenuButton
+      onClick={() => setOpen(true)}
+      className="bg-gradient-to-r from-violet-500/10 to-blue-500/10 hover:from-violet-500/20 hover:to-blue-500/20 border border-violet-500/20"
+    >
+      <Sparkles className="size-4 text-violet-500" />
+      <span className="font-medium">AI Agent</span>
+      <kbd className="ml-auto pointer-events-none hidden h-5 select-none items-center gap-0.5 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium sm:flex">
+        <span className="text-xs">⌘</span>J
+      </kbd>
+    </SidebarMenuButton>
+  );
+}
+
 export function AppSidebar() {
   const pathname = usePathname();
   const [expanded, setExpanded] = useState<Set<string>>(() => {
@@ -415,6 +433,12 @@ export function AppSidebar() {
               onToggle={() => toggleExpanded(item.url)}
             />
           ))}
+        </SidebarMenu>
+        <SidebarSeparator />
+        <SidebarMenu className="px-2 py-1">
+          <SidebarMenuItem>
+            <AiSidebarButton />
+          </SidebarMenuItem>
         </SidebarMenu>
       </SidebarContent>
 

@@ -1,18 +1,19 @@
 "use client";
 
-import { useState } from "react";
 import { Sparkles } from "lucide-react";
 import { AiChatPanel } from "@/components/ai/ai-chat-panel";
+import { useAiPanelStore } from "@/stores/ai-panel";
 import { cn } from "@/lib/utils";
 
 export function AiChatButton() {
-  const [open, setOpen] = useState(false);
+  const open = useAiPanelStore((s) => s.open);
+  const setOpen = useAiPanelStore((s) => s.setOpen);
 
   return (
     <>
       <button
         onClick={() => setOpen(true)}
-        title="AI Agent"
+        title="AI Agent (⌘J)"
         className={cn(
           "fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center",
           "rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300",

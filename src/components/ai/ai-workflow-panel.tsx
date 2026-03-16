@@ -18,7 +18,9 @@ import {
   CheckCircle2,
   ArrowRight,
   Sparkles,
+  Paperclip,
 } from "lucide-react";
+import { uploadProductImage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { AgentMessageRenderer } from "@/components/ai/ai-message-renderer";
 import { AgentThinkingIndicator } from "@/components/ai/ai-thinking-indicator";
@@ -88,8 +90,11 @@ export function AiWorkflowPanel({ sessionId }: AiWorkflowPanelProps) {
     null
   );
   const [activeWorkflow, setActiveWorkflow] = useState<string | null>(null);
+  const [attachedImages, setAttachedImages] = useState<{ file: File; preview: string }[]>([]);
+  const [uploading, setUploading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -214,15 +219,57 @@ export function AiWorkflowPanel({ sessionId }: AiWorkflowPanelProps) {
     }
   };
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    const newImages = Array.from(files)
+      .filter((f) => f.type.startsWith("image/"))
+      .slice(0, 4 - attachedImages.length)
+      .map((file) => ({ file, preview: URL.createObjectURL(file) }));
+    setAttachedImages((prev) => [...prev, ...newImages]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const removeImage = (index: number) => {
+    setAttachedImages((prev) => {
+      const next = [...prev];
+      URL.revokeObjectURL(next[index].preview);
+      next.splice(index, 1);
+      return next;
+    });
+  };
+
   const handleSend = async () => {
     const text = input.trim();
-    if (!text || loading || !activeWorkflow) return;
+    if ((!text && attachedImages.length === 0) || loading || !activeWorkflow) return;
     setInput("");
+
+    let finalText = text;
+    // Upload images if attached
+    if (attachedImages.length > 0) {
+      setUploading(true);
+      try {
+        const urls: string[] = [];
+        for (const img of attachedImages) {
+          const result = await uploadProductImage(img.file);
+          urls.push(result.url);
+          URL.revokeObjectURL(img.preview);
+        }
+        setAttachedImages([]);
+        const imageNote = urls.map((url) => `[Attached image: ${url}]`).join("\n");
+        finalText = text ? `${text}\n\n${imageNote}` : imageNote;
+      } catch (err) {
+        console.error("[workflow] Image upload failed:", err);
+        if (!text) { setUploading(false); return; }
+      } finally {
+        setUploading(false);
+      }
+    }
 
     const userMsg: WorkflowMessage = {
       id: generateId(),
       role: "user",
-      content: text,
+      content: finalText,
       timestamp: new Date(),
     };
     setMessages((prev) => [...prev, userMsg]);
@@ -242,7 +289,7 @@ export function AiWorkflowPanel({ sessionId }: AiWorkflowPanelProps) {
     try {
       abortRef.current?.abort();
       abortRef.current = new AbortController();
-      const response = await continueAiWorkflow(sessionId, text);
+      const response = await continueAiWorkflow(sessionId, finalText);
       await readStream(response, assistantMsgId);
     } catch (error) {
       if ((error as Error).name === "AbortError") return;
@@ -439,7 +486,45 @@ export function AiWorkflowPanel({ sessionId }: AiWorkflowPanelProps) {
       {/* Input */}
       {!workflowState?.completed && (
         <div className="border-t p-3">
-          <div className="flex items-center gap-2">
+          {/* Attached image previews */}
+          {attachedImages.length > 0 && (
+            <div className="flex gap-2 mb-2 flex-wrap">
+              {attachedImages.map((img, i) => (
+                <div key={i} className="relative group">
+                  <img
+                    src={img.preview}
+                    alt={`Attached ${i + 1}`}
+                    className="h-14 w-14 rounded-lg object-cover border"
+                  />
+                  <button
+                    onClick={() => removeImage(i)}
+                    className="absolute -top-1.5 -right-1.5 h-4 w-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="h-2.5 w-2.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex items-center gap-1.5">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={handleImageSelect}
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={loading || uploading || attachedImages.length >= 4}
+              title="Attach images"
+              className="h-9 w-9 rounded-lg shrink-0"
+            >
+              <Paperclip className="h-4 w-4" />
+            </Button>
             <input
               ref={inputRef}
               type="text"
@@ -447,16 +532,16 @@ export function AiWorkflowPanel({ sessionId }: AiWorkflowPanelProps) {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Type your answer..."
-              disabled={loading}
+              disabled={loading || uploading}
               className="flex-1 rounded-lg border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
             />
             <Button
               size="icon"
               onClick={handleSend}
-              disabled={!input.trim() || loading}
+              disabled={(!input.trim() && attachedImages.length === 0) || loading || uploading}
               className="h-9 w-9 rounded-lg shrink-0"
             >
-              {loading ? (
+              {loading || uploading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Send className="h-4 w-4" />

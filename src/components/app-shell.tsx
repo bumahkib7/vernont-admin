@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { ConditionalSidebar } from "@/components/conditional-sidebar";
@@ -13,6 +14,7 @@ import { Loader2 } from "lucide-react";
 import { PageBreadcrumbs } from "@/components/page-breadcrumbs";
 import { AiChatButton } from "@/components/ai/ai-chat-button";
 import { useAgentNavigation } from "@/hooks/use-agent-navigation";
+import { useAiPanelStore } from "@/stores/ai-panel";
 
 // Routes that don't show the sidebar/header
 const PUBLIC_ROUTES = ["/login", "/forgot-password", "/reset-password", "/set-password"];
@@ -21,9 +23,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { isLoading, isAuthenticated } = useAuth();
 
-  // Hook must be called unconditionally (Rules of Hooks).
-  // It's a no-op when there's no pending navigation.
+  // Hooks must be called unconditionally (Rules of Hooks).
   useAgentNavigation();
+
+  // Cmd+J to toggle AI panel
+  const toggleAiPanel = useAiPanelStore((s) => s.toggle);
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "j" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        toggleAiPanel();
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [toggleAiPanel]);
 
   const isPublicRoute = PUBLIC_ROUTES.some((route) => pathname?.startsWith(route));
 

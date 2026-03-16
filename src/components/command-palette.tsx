@@ -47,7 +47,9 @@ import {
   Clock,
   Star,
   Keyboard,
+  Sparkles,
 } from "lucide-react";
+import { useAiPanelStore } from "@/stores/ai-panel";
 
 type CommandAction = {
   id: string;
@@ -412,7 +414,63 @@ export function CommandPalette() {
     ],
   };
 
+  // AI commands
+  const aiCommands: CommandGroup = {
+    heading: "AI Agent",
+    items: [
+      {
+        id: "ai-open",
+        label: "Open AI Agent",
+        icon: <Sparkles className="h-4 w-4 text-violet-500" />,
+        shortcut: "⌘J",
+        action: () => useAiPanelStore.getState().setOpen(true),
+        keywords: ["ai", "agent", "chat", "assistant", "claude"],
+      },
+      {
+        id: "ai-sales",
+        label: "Ask AI: Sales Summary",
+        icon: <Sparkles className="h-4 w-4 text-violet-500" />,
+        action: () => {
+          useAiPanelStore.getState().setOpen(true);
+          // Small delay so panel opens first
+          setTimeout(() => {
+            const event = new CustomEvent("ai-quick-prompt", { detail: "Give me a sales summary for this week" });
+            window.dispatchEvent(event);
+          }, 200);
+        },
+        keywords: ["ai", "revenue", "analytics", "report"],
+      },
+      {
+        id: "ai-low-stock",
+        label: "Ask AI: Low Stock Report",
+        icon: <Sparkles className="h-4 w-4 text-violet-500" />,
+        action: () => {
+          useAiPanelStore.getState().setOpen(true);
+          setTimeout(() => {
+            const event = new CustomEvent("ai-quick-prompt", { detail: "Show me items that are low on stock" });
+            window.dispatchEvent(event);
+          }, 200);
+        },
+        keywords: ["ai", "inventory", "stock", "alert"],
+      },
+      {
+        id: "ai-recent-orders",
+        label: "Ask AI: Recent Orders",
+        icon: <Sparkles className="h-4 w-4 text-violet-500" />,
+        action: () => {
+          useAiPanelStore.getState().setOpen(true);
+          setTimeout(() => {
+            const event = new CustomEvent("ai-quick-prompt", { detail: "What are the most recent orders?" });
+            window.dispatchEvent(event);
+          }, 200);
+        },
+        keywords: ["ai", "orders", "latest", "recent"],
+      },
+    ],
+  };
+
   const allGroups = [
+    aiCommands,
     navigationCommands,
     quickActions,
     settingsCommands,
