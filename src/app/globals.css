@@ -274,3 +274,129 @@
 .animate-node-pulse {
   animation: node-pulse 2s ease-in-out infinite;
 }
+
+/* ═══════════════════════════════════════
+   Agentic AI UI Animations
+   ═══════════════════════════════════════ */
+
+/* Thinking dots */
+.agent-thinking-dot {
+  @apply h-1.5 w-1.5 rounded-full bg-violet-500;
+  animation: agent-thinking-bounce 1.4s ease-in-out infinite;
+}
+.agent-thinking-dot-1 { animation-delay: 0s; }
+.agent-thinking-dot-2 { animation-delay: 0.2s; }
+.agent-thinking-dot-3 { animation-delay: 0.4s; }
+
+@keyframes agent-thinking-bounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-6px);
+    opacity: 1;
+  }
+}
+
+/* Tool card executing border animation */
+.agent-tool-executing {
+  position: relative;
+  overflow: hidden;
+  border-color: rgb(139 92 246 / 0.3);
+  animation: agent-tool-border-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes agent-tool-border-pulse {
+  0%, 100% { border-color: rgb(139 92 246 / 0.2); }
+  50% { border-color: rgb(139 92 246 / 0.5); }
+}
+
+/* Shimmer bar under executing tools */
+.agent-shimmer-bar {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(139 92 246 / 0.6) 50%,
+    transparent 100%
+  );
+  animation: agent-shimmer-slide 1.5s ease-in-out infinite;
+}
+
+@keyframes agent-shimmer-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+/* Shimmer text effect */
+.agent-shimmer-text {
+  background: linear-gradient(
+    90deg,
+    currentColor 0%,
+    rgb(139 92 246) 50%,
+    currentColor 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: agent-text-shimmer 2s ease-in-out infinite;
+}
+
+@keyframes agent-text-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+/* Pulse dot for active execution */
+.agent-pulse-dot {
+  @apply h-2 w-2 rounded-full bg-violet-500;
+  animation: agent-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes agent-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.8);
+  }
+}
+
+/* FAB glow effect */
+.agent-fab-glow {
+  box-shadow:
+    0 4px 14px 0 rgb(109 40 217 / 0.35),
+    0 0 0 0 rgb(109 40 217 / 0);
+}
+.agent-fab-glow:hover {
+  box-shadow:
+    0 6px 20px 0 rgb(109 40 217 / 0.45),
+    0 0 0 4px rgb(109 40 217 / 0.1);
+}
+
+/* Message entry animation */
+.agent-message-enter {
+  animation: agent-message-slide-in 0.25s ease-out;
+}
+
+@keyframes agent-message-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Agent prose - tighter spacing for markdown */
+.agent-prose p:last-child {
+  margin-bottom: 0;
+}
+.agent-prose > *:first-child {
+  margin-top: 0;
+}
