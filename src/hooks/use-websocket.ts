@@ -4,8 +4,13 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { Client, IMessage, StompSubscription } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-const WS_ENDPOINT = `${API_URL}/ws`;
+const DIRECT_API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+// HTTP calls go through proxy for cookie auth; WebSocket needs direct URL
+const API_URL =
+  typeof window !== "undefined" && process.env.NODE_ENV === "production"
+    ? "/api/proxy"
+    : DIRECT_API_URL;
+const WS_ENDPOINT = `${DIRECT_API_URL}/ws`;
 
 export interface UseWebSocketOptions {
   autoConnect?: boolean;
