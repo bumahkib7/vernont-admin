@@ -948,6 +948,17 @@ export async function getShippingConfig(): Promise<ShippingConfig> {
   return apiFetch<ShippingConfig>("/admin/orders/shipping/config");
 }
 
+export interface ServiceInfo {
+  code: string;
+  name: string;
+  domestic: boolean;
+  international: boolean;
+}
+
+export async function getCarrierServices(carrierId: string): Promise<{ services: ServiceInfo[] }> {
+  return apiFetch<{ services: ServiceInfo[] }>(`/admin/orders/shipping/carriers/${carrierId}/services`);
+}
+
 // ShipEngine rate quoting
 export interface ShippingRate {
   rateId: string;

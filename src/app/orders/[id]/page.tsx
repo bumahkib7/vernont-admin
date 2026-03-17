@@ -77,6 +77,7 @@ import {
   getShippingOptions,
   getShippingConfig,
   getShippingRates,
+  getCarrierServices,
   getOrderTracking,
   getOrderFulfillments,
   voidShippingLabel,
@@ -86,6 +87,7 @@ import {
   ShippingOption,
   ShippingConfig,
   ShippingRate,
+  ServiceInfo,
   FulfillmentDetail,
   TrackingInfo,
   TrackingEvent,
@@ -159,8 +161,8 @@ export default function OrderDetailsPage() {
   // ShipEngine state
   const [shippingConfig, setShippingConfig] = useState<ShippingConfig | null>(null);
   const [useShipEngine, setUseShipEngine] = useState(false);
-  const [selectedCarrier, setSelectedCarrier] = useState("se-358070");
-  const [selectedService, setSelectedService] = useState("ups_worldwide_expedited");
+  const [selectedCarrier, setSelectedCarrier] = useState("");
+  const [selectedService, setSelectedService] = useState("");
   const [packageDimensions, setPackageDimensions] = useState({
     weight: "",
     length: "",
@@ -173,6 +175,8 @@ export default function OrderDetailsPage() {
   // Rates, tracking, fulfillment state
   const [rates, setRates] = useState<ShippingRate[]>([]);
   const [ratesLoading, setRatesLoading] = useState(false);
+  const [carrierServices, setCarrierServices] = useState<ServiceInfo[]>([]);
+  const [servicesLoading, setServicesLoading] = useState(false);
   const [fulfillments, setFulfillments] = useState<FulfillmentDetail[]>([]);
   const [tracking, setTracking] = useState<TrackingInfo | null>(null);
   const [trackingLoading, setTrackingLoading] = useState(false);
@@ -224,6 +228,22 @@ export default function OrderDetailsPage() {
       setFulfillments(data.fulfillments || []);
     } catch (err) {
       console.error("Failed to load fulfillments:", err);
+    }
+  };
+
+  const fetchCarrierServices = async (carrierId: string) => {
+    setServicesLoading(true);
+    try {
+      const data = await getCarrierServices(carrierId);
+      setCarrierServices(data.services || []);
+      if (data.services?.length > 0) {
+        setSelectedService(data.services[0].code);
+      }
+    } catch (err) {
+      console.error("Failed to load carrier services:", err);
+      setCarrierServices([]);
+    } finally {
+      setServicesLoading(false);
     }
   };
 
@@ -972,7 +992,7 @@ export default function OrderDetailsPage() {
 
       {/* Ship Dialog */}
       <Dialog open={shipDialogOpen} onOpenChange={setShipDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-xl">
           <DialogHeader>
             <DialogTitle>Mark as Shipped</DialogTitle>
             <DialogDescription>
@@ -988,9 +1008,9 @@ export default function OrderDetailsPage() {
                 <div className="flex items-center gap-2">
                   <Package className="h-4 w-4" />
                   <div>
-                    <span className="text-sm font-medium">Auto-generate Label (ShipEngine)</span>
+                    <span className="text-sm font-medium">Auto-generate Label</span>
                     {shippingConfig.sandboxMode && (
-                      <span className="ml-2 text-xs text-orange-500">(Sandbox Mode)</span>
+                      <span className="ml-2 text-xs text-orange-500">(Sandbox)</span>
                     )}
                   </div>
                 </div>
@@ -1002,18 +1022,27 @@ export default function OrderDetailsPage() {
             )}
 
             {useShipEngine ? (
-              /* ShipEngine Options */
               <>
+                {/* Carrier & Service Selection */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Carrier</label>
-                    <Select value={selectedCarrier} onValueChange={setSelectedCarrier}>
+                    <Select
+                      value={selectedCarrier}
+                      onValueChange={(val) => {
+                        setSelectedCarrier(val);
+                        setRates([]);
+                        fetchCarrierServices(val);
+                      }}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select carrier" />
                       </SelectTrigger>
                       <SelectContent>
                         {(shippingConfig?.availableCarriers || []).map((c) => (
-                          <SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>
+                          <SelectItem key={c.code} value={c.code}>
+                            {c.name}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -1022,93 +1051,28 @@ export default function OrderDetailsPage() {
                     <label className="text-sm font-medium">Service</label>
                     <Select value={selectedService} onValueChange={setSelectedService}>
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder={servicesLoading ? "Loading..." : "Select service"} />
                       </SelectTrigger>
                       <SelectContent>
-                        {/* SANDBOX - UPS (se-358070) - Valid service codes */}
-                        <SelectItem value="ups_worldwide_expedited">UPS Worldwide Expedited</SelectItem>
-                        <SelectItem value="ups_worldwide_express">UPS Worldwide Express</SelectItem>
-                        <SelectItem value="ups_worldwide_saver">UPS Worldwide Saver</SelectItem>
-                        <SelectItem value="ups_standard">UPS Standard</SelectItem>
-                        <SelectItem value="ups_ground">UPS Ground (US only)</SelectItem>
-                        <SelectItem value="ups_next_day_air">UPS Next Day Air (US only)</SelectItem>
-                        {/* SANDBOX - FedEx (se-358071) */}
-                        <SelectItem value="fedex_international_economy">FedEx International Economy</SelectItem>
-                        <SelectItem value="fedex_international_priority">FedEx International Priority</SelectItem>
-                        <SelectItem value="fedex_ground">FedEx Ground (US only)</SelectItem>
-                        {/* SANDBOX - Stamps.com/USPS (se-358069) - US origin only */}
-                        <SelectItem value="usps_priority_mail_international">USPS Priority Mail Intl (US origin)</SelectItem>
-                        <SelectItem value="usps_priority_mail">USPS Priority Mail (US only)</SelectItem>
+                        {carrierServices.length > 0 ? (
+                          carrierServices.map((s) => (
+                            <SelectItem key={s.code} value={s.code}>
+                              {s.name}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value={selectedService} disabled>
+                            {servicesLoading ? "Loading services..." : "Select a carrier first"}
+                          </SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
 
-                <Separator />
-
-                {/* Rate Comparison */}
+                {/* Package Dimensions */}
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium">Compare Rates</label>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={fetchRates}
-                      disabled={ratesLoading}
-                    >
-                      {ratesLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <DollarSign className="h-3 w-3 mr-1" />}
-                      {ratesLoading ? "Loading..." : "Get Rates"}
-                    </Button>
-                  </div>
-                  {rates.length > 0 && (
-                    <div className="space-y-1 max-h-48 overflow-y-auto">
-                      {rates
-                        .sort((a, b) => a.shippingAmount.amount - b.shippingAmount.amount)
-                        .map((rate) => (
-                          <button
-                            key={rate.rateId}
-                            className={`w-full text-left p-2 rounded border text-sm hover:bg-muted/50 transition-colors ${
-                              selectedCarrier === rate.carrierId && selectedService === rate.serviceCode
-                                ? "border-blue-500 bg-blue-50 dark:bg-blue-950/20"
-                                : "border-border"
-                            }`}
-                            onClick={() => {
-                              setSelectedCarrier(rate.carrierId);
-                              setSelectedService(rate.serviceCode);
-                            }}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <span className="font-medium capitalize">{rate.carrierCode}</span>
-                                <span className="text-muted-foreground ml-1">{rate.serviceCode.replace(/_/g, " ")}</span>
-                              </div>
-                              <span className="font-semibold">
-                                {new Intl.NumberFormat("en-US", {
-                                  style: "currency",
-                                  currency: rate.shippingAmount.currency || "USD",
-                                }).format(rate.shippingAmount.amount)}
-                              </span>
-                            </div>
-                            {rate.deliveryDays && (
-                              <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-                                <Clock className="h-3 w-3" />
-                                {rate.deliveryDays} day{rate.deliveryDays > 1 ? "s" : ""}
-                                {rate.estimatedDeliveryDate && ` (est. ${new Date(rate.estimatedDeliveryDate).toLocaleDateString()})`}
-                              </div>
-                            )}
-                          </button>
-                        ))}
-                    </div>
-                  )}
-                </div>
-
-                <Separator />
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Package Dimensions (optional)</label>
-                  <p className="text-xs text-muted-foreground">
-                    Leave blank to auto-calculate from product data
-                  </p>
+                  <label className="text-sm font-medium text-muted-foreground">Package Dimensions</label>
                   <div className="grid grid-cols-4 gap-2">
                     <div>
                       <label className="text-xs text-muted-foreground">Weight (oz)</label>
@@ -1159,6 +1123,87 @@ export default function OrderDetailsPage() {
                       />
                     </div>
                   </div>
+                </div>
+
+                <Separator />
+
+                {/* Rate Comparison */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium">Compare Rates</label>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={fetchRates}
+                      disabled={ratesLoading}
+                    >
+                      {ratesLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <DollarSign className="h-3 w-3 mr-1" />}
+                      {ratesLoading ? "Fetching..." : "Get Rates"}
+                    </Button>
+                  </div>
+                  {rates.length > 0 && (
+                    <div className="space-y-2 max-h-56 overflow-y-auto">
+                      {rates
+                        .sort((a, b) => a.shippingAmount.amount - b.shippingAmount.amount)
+                        .map((rate, idx) => {
+                          const isSelected = selectedCarrier === rate.carrierId && selectedService === rate.serviceCode;
+                          const isCheapest = idx === 0;
+                          const deliveryDate = rate.estimatedDeliveryDate
+                            ? new Date(rate.estimatedDeliveryDate).toLocaleDateString("en-GB", { weekday: "short", month: "short", day: "numeric" })
+                            : null;
+                          return (
+                            <button
+                              key={rate.rateId}
+                              className={`w-full text-left p-3 rounded-lg border transition-all ${
+                                isSelected
+                                  ? "border-primary bg-primary/5 ring-1 ring-primary"
+                                  : "border-border hover:border-muted-foreground/30 hover:bg-muted/30"
+                              }`}
+                              onClick={() => {
+                                setSelectedCarrier(rate.carrierId);
+                                setSelectedService(rate.serviceCode);
+                              }}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <div className={`h-3 w-3 rounded-full border-2 ${isSelected ? "border-primary bg-primary" : "border-muted-foreground/40"}`} />
+                                  <div>
+                                    <span className="font-medium text-sm capitalize">{rate.carrierCode?.replace(/_/g, " ")}</span>
+                                    <span className="text-muted-foreground text-sm ml-1.5">
+                                      {rate.serviceType || rate.serviceCode?.replace(/_/g, " ")}
+                                    </span>
+                                  </div>
+                                  {isCheapest && (
+                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-1.5 py-0.5 rounded">
+                                      Best price
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="font-semibold text-sm">
+                                  {new Intl.NumberFormat("en-GB", {
+                                    style: "currency",
+                                    currency: rate.shippingAmount.currency || "GBP",
+                                  }).format(rate.shippingAmount.amount)}
+                                </span>
+                              </div>
+                              {(rate.deliveryDays || deliveryDate) && (
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1 ml-5">
+                                  <Clock className="h-3 w-3" />
+                                  {deliveryDate
+                                    ? `Arrives by ${deliveryDate}`
+                                    : `${rate.deliveryDays} business day${rate.deliveryDays! > 1 ? "s" : ""}`}
+                                </div>
+                              )}
+                            </button>
+                          );
+                        })}
+                    </div>
+                  )}
+                  {rates.length === 0 && !ratesLoading && (
+                    <p className="text-xs text-muted-foreground text-center py-2">
+                      Click &quot;Get Rates&quot; to compare shipping prices across carriers.
+                    </p>
+                  )}
                 </div>
               </>
             ) : (
@@ -1214,6 +1259,8 @@ export default function OrderDetailsPage() {
                 setShipDialogOpen(false);
                 setTrackingNumber("");
                 setUseShipEngine(false);
+                setRates([]);
+                setCarrierServices([]);
                 setPackageDimensions({ weight: "", length: "", width: "", height: "" });
                 setCarrier(order?.shippingMethodId || "");
               }}
