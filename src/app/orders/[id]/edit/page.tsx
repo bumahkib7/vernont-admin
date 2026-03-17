@@ -272,8 +272,8 @@ export default function OrderEditPage() {
                           {isEditing ? (
                             <div className="flex items-center justify-end gap-2">
                               <Input
-                                type="number"
-                                min="1"
+                                type="text"
+                                inputMode="numeric"
                                 value={editQuantity}
                                 onChange={(e) => setEditQuantity(parseInt(e.target.value) || 1)}
                                 className="w-20 text-right"

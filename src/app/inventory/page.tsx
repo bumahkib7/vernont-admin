@@ -710,8 +710,8 @@ export default function InventoryPage() {
               </Label>
               <Input
                 id="quantity"
-                type="number"
-                min={adjustmentDialog.type === "adjust" ? 0 : 1}
+                type="text"
+                inputMode="numeric"
                 value={adjustmentQuantity}
                 onChange={(e) => setAdjustmentQuantity(parseInt(e.target.value) || 0)}
               />

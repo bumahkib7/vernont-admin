@@ -1113,7 +1113,8 @@ export default function OrderDetailsPage() {
                     <div>
                       <label className="text-xs text-muted-foreground">Weight (oz)</label>
                       <Input
-                        type="number"
+                        type="text"
+                        inputMode="decimal"
                         placeholder="16"
                         value={packageDimensions.weight}
                         onChange={(e) => setPackageDimensions(prev => ({
@@ -1124,7 +1125,8 @@ export default function OrderDetailsPage() {
                     <div>
                       <label className="text-xs text-muted-foreground">Length (in)</label>
                       <Input
-                        type="number"
+                        type="text"
+                        inputMode="decimal"
                         placeholder="10"
                         value={packageDimensions.length}
                         onChange={(e) => setPackageDimensions(prev => ({
@@ -1135,7 +1137,8 @@ export default function OrderDetailsPage() {
                     <div>
                       <label className="text-xs text-muted-foreground">Width (in)</label>
                       <Input
-                        type="number"
+                        type="text"
+                        inputMode="decimal"
                         placeholder="8"
                         value={packageDimensions.width}
                         onChange={(e) => setPackageDimensions(prev => ({
@@ -1146,7 +1149,8 @@ export default function OrderDetailsPage() {
                     <div>
                       <label className="text-xs text-muted-foreground">Height (in)</label>
                       <Input
-                        type="number"
+                        type="text"
+                        inputMode="decimal"
                         placeholder="4"
                         value={packageDimensions.height}
                         onChange={(e) => setPackageDimensions(prev => ({

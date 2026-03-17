@@ -544,10 +544,8 @@ export function PricingRuleDialog({
                       <div className="relative">
                         <Input
                           id="percentage"
-                          type="number"
-                          min={0}
-                          max={100}
-                          step={0.1}
+                          type="text"
+                          inputMode="decimal"
                           placeholder="10"
                           value={formData.config.percentage || ""}
                           onChange={(e) =>
@@ -594,9 +592,8 @@ export function PricingRuleDialog({
                         </span>
                         <Input
                           id="amount"
-                          type="number"
-                          min={0}
-                          step={0.01}
+                          type="text"
+                          inputMode="decimal"
                           placeholder="5.00"
                           value={formData.config.amount || ""}
                           onChange={(e) => updateConfig("amount", parseFloat(e.target.value) || 0)}
@@ -630,8 +627,8 @@ export function PricingRuleDialog({
                         <Label htmlFor="minQuantity">Minimum Quantity *</Label>
                         <Input
                           id="minQuantity"
-                          type="number"
-                          min={1}
+                          type="text"
+                          inputMode="numeric"
                           placeholder="3"
                           value={formData.config.minQuantity || ""}
                           onChange={(e) =>
@@ -644,10 +641,8 @@ export function PricingRuleDialog({
                         <div className="relative">
                           <Input
                             id="qtyPercentage"
-                            type="number"
-                            min={0}
-                            max={100}
-                            step={0.1}
+                            type="text"
+                            inputMode="decimal"
                             placeholder="15"
                             value={formData.config.percentage || ""}
                             onChange={(e) =>
@@ -694,8 +689,8 @@ export function PricingRuleDialog({
                             <div className="space-y-1">
                               <Label className="text-xs">Min Quantity</Label>
                               <Input
-                                type="number"
-                                min={1}
+                                type="text"
+                                inputMode="numeric"
                                 value={tier.minQty}
                                 onChange={(e) =>
                                   updateTier(index, "minQty", parseInt(e.target.value) || 1)
@@ -705,9 +700,8 @@ export function PricingRuleDialog({
                             <div className="space-y-1">
                               <Label className="text-xs">Price per Unit (£)</Label>
                               <Input
-                                type="number"
-                                min={0}
-                                step={0.01}
+                                type="text"
+                                inputMode="decimal"
                                 value={tier.price}
                                 onChange={(e) =>
                                   updateTier(index, "price", parseFloat(e.target.value) || 0)

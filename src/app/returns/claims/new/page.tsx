@@ -179,8 +179,8 @@ export default function NewClaimPage() {
                   <div>
                     <label className="text-xs text-muted-foreground">Quantity</label>
                     <Input
-                      type="number"
-                      min={1}
+                      type="text"
+                      inputMode="numeric"
                       value={item.quantity}
                       onChange={(e) => updateItem(item._key, { quantity: parseInt(e.target.value) || 1 })}
                       className="mt-1"

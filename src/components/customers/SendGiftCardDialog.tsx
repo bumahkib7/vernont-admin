@@ -97,9 +97,8 @@ export function SendGiftCardDialog({
                 </span>
                 <Input
                   id="amount"
-                  type="number"
-                  step="0.01"
-                  min="1"
+                  type="text"
+                  inputMode="decimal"
                   placeholder="0.00"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}

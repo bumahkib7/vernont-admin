@@ -100,6 +100,7 @@ export default function PricingPage() {
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [pendingChanges, setPendingChanges] = useState<Map<string, PendingChange>>(new Map());
   const [saving, setSaving] = useState(false);
+  const [editingValues, setEditingValues] = useState<Map<string, string>>(new Map());
   const [pagination, setPagination] = useState({
     offset: 0,
     limit: 50,
@@ -280,6 +281,10 @@ export default function PricingPage() {
   }, [searchQuery, pagination.offset]);
 
   const handlePriceChange = (variantId: string, originalPrice: number, newValue: string) => {
+    // Always update the editing value so the user sees what they type
+    setEditingValues((prev) => new Map(prev).set(variantId, newValue));
+
+    // Also update pending changes if the value is a valid number
     const numericValue = parseFloat(newValue.replace(/[^0-9.]/g, ""));
     if (isNaN(numericValue)) return;
 
@@ -299,6 +304,18 @@ export default function PricingPage() {
         })
       );
     }
+  };
+
+  const handlePriceFocus = (variantId: string, item: WorkbenchItem) => {
+    setEditingValues((prev) => new Map(prev).set(variantId, getPriceDisplay(item).toFixed(2)));
+  };
+
+  const handlePriceBlur = (variantId: string) => {
+    setEditingValues((prev) => {
+      const next = new Map(prev);
+      next.delete(variantId);
+      return next;
+    });
   };
 
   const handleSaveChanges = async () => {
@@ -593,12 +610,15 @@ export default function PricingPage() {
                                   <span className="text-muted-foreground">£</span>
                                   <Input
                                     type="text"
+                                    inputMode="decimal"
                                     className={`w-24 text-right ${
                                       hasPriceChanged(item.variantId)
                                         ? "border-yellow-400 bg-yellow-50"
                                         : ""
                                     }`}
-                                    value={getPriceDisplay(item).toFixed(2)}
+                                    value={editingValues.get(item.variantId) ?? getPriceDisplay(item).toFixed(2)}
+                                    onFocus={() => handlePriceFocus(item.variantId, item)}
+                                    onBlur={() => handlePriceBlur(item.variantId)}
                                     onChange={(e) =>
                                       handlePriceChange(item.variantId, item.currentPrice, e.target.value)
                                     }

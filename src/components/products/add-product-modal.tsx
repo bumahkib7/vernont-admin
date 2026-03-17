@@ -912,7 +912,8 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                                 £
                               </span>
                               <Input
-                                type="number"
+                                type="text"
+                                inputMode="decimal"
                                 placeholder="0.00"
                                 className="pl-7"
                                 value={formData.price}
@@ -929,7 +930,8 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                                 £
                               </span>
                               <Input
-                                type="number"
+                                type="text"
+                                inputMode="decimal"
                                 placeholder="0.00"
                                 className="pl-7"
                                 value={formData.compareAtPrice}
@@ -946,7 +948,8 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                                 £
                               </span>
                               <Input
-                                type="number"
+                                type="text"
+                                inputMode="decimal"
                                 placeholder="0.00"
                                 className="pl-7"
                                 value={formData.costPerItem}
@@ -987,7 +990,8 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                           <div className="space-y-2">
                             <Label>Quantity</Label>
                             <Input
-                              type="number"
+                              type="text"
+                              inputMode="numeric"
                               placeholder="0"
                               value={formData.quantity}
                               onChange={(e) => updateFormData("quantity", e.target.value)}
@@ -1108,7 +1112,8 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                                     £
                                   </span>
                                   <Input
-                                    type="number"
+                                    type="text"
+                                    inputMode="decimal"
                                     placeholder="0.00"
                                     className="pl-7 h-8 text-sm"
                                     onChange={(e) => setAllVariantPrices(e.target.value)}
@@ -1139,7 +1144,8 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                                             £
                                           </span>
                                           <Input
-                                            type="number"
+                                            type="text"
+                                            inputMode="decimal"
                                             placeholder="0.00"
                                             className="h-8 pl-5 text-sm"
                                             value={variant.price}
@@ -1157,7 +1163,8 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                                       </td>
                                       <td className="px-4 py-2">
                                         <Input
-                                          type="number"
+                                          type="text"
+                                          inputMode="numeric"
                                           placeholder="0"
                                           className="h-8 text-sm"
                                           value={variant.quantity}

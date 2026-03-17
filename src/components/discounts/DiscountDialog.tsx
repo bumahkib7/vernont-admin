@@ -438,9 +438,8 @@ export function DiscountDialog({
                     <div className="flex items-center gap-2">
                       <Input
                         id="value"
-                        type="number"
-                        min="0"
-                        max="100"
+                        type="text"
+                        inputMode="decimal"
                         value={formData.value || ""}
                         onChange={(e) =>
                           setFormData({ ...formData, value: parseFloat(e.target.value) || 0 })
@@ -460,9 +459,8 @@ export function DiscountDialog({
                       <span className="text-muted-foreground">£</span>
                       <Input
                         id="value"
-                        type="number"
-                        min="0"
-                        step="0.01"
+                        type="text"
+                        inputMode="decimal"
                         value={formData.value || ""}
                         onChange={(e) =>
                           setFormData({ ...formData, value: parseFloat(e.target.value) || 0 })
@@ -481,8 +479,8 @@ export function DiscountDialog({
                         <Label htmlFor="buyQuantity">Buy Quantity *</Label>
                         <Input
                           id="buyQuantity"
-                          type="number"
-                          min="1"
+                          type="text"
+                          inputMode="numeric"
                           value={formData.buyQuantity || ""}
                           onChange={(e) =>
                             setFormData({
@@ -497,8 +495,8 @@ export function DiscountDialog({
                         <Label htmlFor="getQuantity">Get Quantity *</Label>
                         <Input
                           id="getQuantity"
-                          type="number"
-                          min="1"
+                          type="text"
+                          inputMode="numeric"
                           value={formData.getQuantity || ""}
                           onChange={(e) =>
                             setFormData({
@@ -514,9 +512,8 @@ export function DiscountDialog({
                       <Label htmlFor="getDiscountValue">Discount on free items (%)</Label>
                       <Input
                         id="getDiscountValue"
-                        type="number"
-                        min="0"
-                        max="100"
+                        type="text"
+                        inputMode="decimal"
                         value={formData.getDiscountValue || ""}
                         onChange={(e) =>
                           setFormData({
@@ -538,9 +535,8 @@ export function DiscountDialog({
                     <span className="text-muted-foreground">£</span>
                     <Input
                       id="minimumAmount"
-                      type="number"
-                      min="0"
-                      step="0.01"
+                      type="text"
+                      inputMode="decimal"
                       value={formData.minimumAmount || ""}
                       onChange={(e) =>
                         setFormData({
@@ -561,9 +557,8 @@ export function DiscountDialog({
                       <span className="text-muted-foreground">£</span>
                       <Input
                         id="maximumDiscount"
-                        type="number"
-                        min="0"
-                        step="0.01"
+                        type="text"
+                        inputMode="decimal"
                         value={formData.maximumDiscount || ""}
                         onChange={(e) =>
                           setFormData({

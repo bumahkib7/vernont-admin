@@ -206,9 +206,8 @@ export default function CreatePlanPage() {
               <Label htmlFor="price">Price</Label>
               <Input
                 id="price"
-                type="number"
-                step="0.01"
-                min="0"
+                type="text"
+                inputMode="decimal"
                 placeholder="0.00"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}

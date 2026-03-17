@@ -519,13 +519,11 @@ export default function RegionsSettingsPage() {
               <Label htmlFor="create-tax-rate">Tax Rate (%)</Label>
               <Input
                 id="create-tax-rate"
-                type="number"
+                type="text"
+                inputMode="decimal"
                 placeholder="e.g., 10"
                 value={createTaxRate}
                 onChange={(e) => setCreateTaxRate(e.target.value)}
-                step="0.01"
-                min="0"
-                max="100"
               />
             </div>
 
@@ -622,12 +620,10 @@ export default function RegionsSettingsPage() {
               <Label htmlFor="edit-tax-rate">Tax Rate (%)</Label>
               <Input
                 id="edit-tax-rate"
-                type="number"
+                type="text"
+                inputMode="decimal"
                 value={editTaxRate}
                 onChange={(e) => setEditTaxRate(e.target.value)}
-                step="0.01"
-                min="0"
-                max="100"
               />
             </div>
 

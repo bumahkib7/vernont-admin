@@ -701,9 +701,8 @@ export default function GiftCardsPage() {
               <Label htmlFor="amount">Amount (GBP) *</Label>
               <Input
                 id="amount"
-                type="number"
-                step="0.01"
-                min="0.01"
+                type="text"
+                inputMode="decimal"
                 placeholder="25.00"
                 value={createForm.amount}
                 onChange={(e) =>
@@ -790,8 +789,8 @@ export default function GiftCardsPage() {
               <Label htmlFor="balanceAmount">Amount (GBP)</Label>
               <Input
                 id="balanceAmount"
-                type="number"
-                step="0.01"
+                type="text"
+                inputMode="decimal"
                 placeholder="10.00 (negative to deduct)"
                 value={balanceForm.amount}
                 onChange={(e) =>

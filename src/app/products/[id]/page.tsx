@@ -1411,8 +1411,8 @@ export default function ProductDetailPage() {
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">£</span>
                   <Input
                     id="variant-price"
-                    type="number"
-                    step="0.01"
+                    type="text"
+                    inputMode="decimal"
                     value={variantForm.price}
                     onChange={(e) => setVariantForm({ ...variantForm, price: e.target.value })}
                     className="pl-7"
@@ -1426,8 +1426,8 @@ export default function ProductDetailPage() {
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">£</span>
                   <Input
                     id="variant-compare"
-                    type="number"
-                    step="0.01"
+                    type="text"
+                    inputMode="decimal"
                     value={variantForm.compareAtPrice}
                     onChange={(e) => setVariantForm({ ...variantForm, compareAtPrice: e.target.value })}
                     className="pl-7"
@@ -1547,8 +1547,8 @@ export default function ProductDetailPage() {
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">£</span>
                   <Input
                     id="edit-variant-price"
-                    type="number"
-                    step="0.01"
+                    type="text"
+                    inputMode="decimal"
                     value={variantForm.price}
                     onChange={(e) => setVariantForm({ ...variantForm, price: e.target.value })}
                     className="pl-7"
@@ -1562,8 +1562,8 @@ export default function ProductDetailPage() {
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">£</span>
                   <Input
                     id="edit-variant-compare"
-                    type="number"
-                    step="0.01"
+                    type="text"
+                    inputMode="decimal"
                     value={variantForm.compareAtPrice}
                     onChange={(e) => setVariantForm({ ...variantForm, compareAtPrice: e.target.value })}
                     className="pl-7"

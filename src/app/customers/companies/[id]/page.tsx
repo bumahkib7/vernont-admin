@@ -860,9 +860,8 @@ export default function CompanyDetailPage() {
               <div className="space-y-2">
                 <Label>Price Override (in currency units)</Label>
                 <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
+                  type="text"
+                  inputMode="decimal"
                   placeholder="e.g. 49.99"
                   value={newPricingOverride}
                   onChange={(e) => setNewPricingOverride(e.target.value)}
@@ -871,10 +870,8 @@ export default function CompanyDetailPage() {
               <div className="space-y-2">
                 <Label>Discount %</Label>
                 <Input
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  max="100"
+                  type="text"
+                  inputMode="decimal"
                   placeholder="e.g. 15"
                   value={newPricingDiscount}
                   onChange={(e) => setNewPricingDiscount(e.target.value)}
@@ -884,8 +881,8 @@ export default function CompanyDetailPage() {
             <div className="space-y-2">
               <Label>Minimum Quantity</Label>
               <Input
-                type="number"
-                min="1"
+                type="text"
+                inputMode="numeric"
                 placeholder="e.g. 10"
                 value={newPricingMinQty}
                 onChange={(e) => setNewPricingMinQty(e.target.value)}

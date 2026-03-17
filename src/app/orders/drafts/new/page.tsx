@@ -362,8 +362,8 @@ export default function CreateDraftOrderPage() {
                         </TableCell>
                         <TableCell>
                           <Input
-                            type="number"
-                            min={1}
+                            type="text"
+                            inputMode="numeric"
                             value={item.quantity}
                             onChange={(e) =>
                               updateItem(item._key, { quantity: Math.max(1, parseInt(e.target.value) || 1) })
@@ -373,9 +373,8 @@ export default function CreateDraftOrderPage() {
                         </TableCell>
                         <TableCell>
                           <Input
-                            type="number"
-                            min={0}
-                            step={0.01}
+                            type="text"
+                            inputMode="decimal"
                             value={(item.unitPrice / 100).toFixed(2)}
                             onChange={(e) =>
                               updateItem(item._key, {
