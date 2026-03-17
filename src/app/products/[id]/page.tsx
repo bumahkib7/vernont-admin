@@ -74,6 +74,8 @@ import {
   updateProduct,
   deleteProduct,
   getCategories,
+  getCollections,
+  type ProductCollection,
   createVariant,
   updateVariant,
   deleteVariant,
@@ -125,6 +127,7 @@ export default function ProductDetailPage() {
 
   const [product, setProduct] = useState<Product | null>(null);
   const [categories, setCategories] = useState<ProductCategory[]>([]);
+  const [collections, setCollections] = useState<ProductCollection[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -179,6 +182,7 @@ export default function ProductDetailPage() {
     originCountry: "",
     tags: [] as string[],
     categoryId: "",
+    collectionId: "",
   });
 
   // New tag input
@@ -192,6 +196,7 @@ export default function ProductDetailPage() {
   useEffect(() => {
     fetchProduct();
     fetchCategories();
+    fetchCollections();
   }, [productId]);
 
   const fetchProduct = async () => {
@@ -211,6 +216,7 @@ export default function ProductDetailPage() {
         originCountry: data.originCountry || "",
         tags: data.tags || [],
         categoryId: data.categories?.[0] || "",
+        collectionId: data.collectionId || "",
       });
       setHasChanges(false);
     } catch (err) {
@@ -226,6 +232,15 @@ export default function ProductDetailPage() {
       setCategories(response.categories || []);
     } catch (err) {
       console.error("Failed to load categories:", err);
+    }
+  };
+
+  const fetchCollections = async () => {
+    try {
+      const response = await getCollections({ limit: 100 });
+      setCollections(response.collections || []);
+    } catch (err) {
+      console.error("Failed to load collections:", err);
     }
   };
 
@@ -256,6 +271,7 @@ export default function ProductDetailPage() {
         originCountry: formData.originCountry || undefined,
         tags: formData.tags.length > 0 ? formData.tags : undefined,
         categories: formData.categoryId ? [formData.categoryId] : undefined,
+        collectionId: formData.collectionId || undefined,
       };
 
       await updateProduct(product.id, updateData);
@@ -862,6 +878,26 @@ export default function ProductDetailPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="collection">Collection</Label>
+                  <Select
+                    value={formData.collectionId}
+                    onValueChange={(value) => updateField("collectionId", value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select collection" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {collections.map((col) => (
+                        <SelectItem key={col.id} value={col.id}>
+                          {col.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
                   <Label htmlFor="material">Material</Label>
                   <Input
                     id="material"
@@ -1306,16 +1342,54 @@ export default function ProductDetailPage() {
                   <Label>SKU</Label>
                   <Input
                     value={product.variants[0]?.sku || ""}
-                    disabled
-                    className="bg-muted font-mono text-sm"
+                    onChange={(e) => {
+                      if (product.variants[0]) {
+                        const updatedVariants = [...product.variants];
+                        updatedVariants[0] = { ...updatedVariants[0], sku: e.target.value };
+                        setProduct({ ...product, variants: updatedVariants });
+                        setHasChanges(true);
+                      }
+                    }}
+                    onBlur={async () => {
+                      if (product.variants[0]) {
+                        try {
+                          await updateVariant(product.variants[0].id, {
+                            sku: product.variants[0].sku || undefined,
+                          });
+                        } catch (err) {
+                          toast.error("Failed to update SKU");
+                        }
+                      }
+                    }}
+                    className="font-mono text-sm"
+                    placeholder="Auto-generated"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Barcode</Label>
                   <Input
                     value={product.variants[0]?.barcode || ""}
-                    disabled
-                    className="bg-muted font-mono text-sm"
+                    onChange={(e) => {
+                      if (product.variants[0]) {
+                        const updatedVariants = [...product.variants];
+                        updatedVariants[0] = { ...updatedVariants[0], barcode: e.target.value };
+                        setProduct({ ...product, variants: updatedVariants });
+                        setHasChanges(true);
+                      }
+                    }}
+                    onBlur={async () => {
+                      if (product.variants[0]) {
+                        try {
+                          await updateVariant(product.variants[0].id, {
+                            barcode: product.variants[0].barcode || undefined,
+                          });
+                        } catch (err) {
+                          toast.error("Failed to update barcode");
+                        }
+                      }
+                    }}
+                    className="font-mono text-sm"
+                    placeholder="Auto-generated"
                   />
                 </div>
               </div>
