@@ -207,7 +207,7 @@ export default function ProductDetailPage() {
         description: data.description || "",
         status: data.status,
         material: data.material || "",
-        weight: data.weight || "",
+        weight: data.weight ? (typeof data.weight === "number" ? (data.weight / 1000).toString() : data.weight) : "",
         originCountry: data.originCountry || "",
         tags: data.tags || [],
         categoryId: data.categories?.[0] || "",
@@ -244,6 +244,7 @@ export default function ProductDetailPage() {
     setSuccess(null);
 
     try {
+      const parsedWeight = formData.weight ? parseFloat(formData.weight) : undefined;
       const updateData: UpdateProductInput = {
         title: formData.title,
         handle: formData.handle,
@@ -251,6 +252,7 @@ export default function ProductDetailPage() {
         description: formData.description || undefined,
         status: formData.status,
         material: formData.material || undefined,
+        weight: parsedWeight && !isNaN(parsedWeight) ? Math.round(parsedWeight * 1000) : undefined,
         originCountry: formData.originCountry || undefined,
         tags: formData.tags.length > 0 ? formData.tags : undefined,
         categories: formData.categoryId ? [formData.categoryId] : undefined,
