@@ -1,34 +1,32 @@
 // Admin API client
 
-// In production, route through Next.js rewrite proxy (/api/proxy) so cookies
+// Direct backend URL — used for images (public, no auth needed)
+const DIRECT_API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+
+// In production, route API fetch calls through Next.js rewrite proxy so cookies
 // are same-origin — required for mobile Safari which blocks third-party cookies.
-// In development, connect directly to the backend.
 const API_BASE_URL =
   typeof window !== "undefined" && process.env.NODE_ENV === "production"
     ? "/api/proxy"
-    : process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+    : DIRECT_API_URL;
 const AUTH_REFRESH_ENDPOINT = "/api/v1/internal/auth/refresh";
 
 /**
  * Resolve an image URL from the backend.
- * - Old MinIO URLs (vernont-minio*.runixcloud.dev) are rewritten to use the /files proxy
- * - Relative URLs (e.g. /files?key=...) are prefixed with API_BASE_URL
- * - Other absolute URLs are returned as-is
- * - Null/undefined returns null
+ * Always uses direct backend URL (not proxy) because images are public
+ * and don't need cookie auth.
  */
 export function resolveImageUrl(url: string | null | undefined): string | null {
   if (!url) return null;
 
   // Rewrite old MinIO URLs to use backend proxy
-  // Old format: https://vernont-minio*.runixcloud.dev/BUCKET/key
   if (url.includes("vernont-minio") && url.includes("runixcloud.dev")) {
     try {
       const parsed = new URL(url);
       const parts = parsed.pathname.split("/").filter(Boolean);
-      // First segment is bucket name, rest is the S3 key
       if (parts.length > 1) {
         const key = parts.slice(1).join("/");
-        return `${API_BASE_URL}/files?key=${encodeURIComponent(key)}`;
+        return `${DIRECT_API_URL}/files?key=${encodeURIComponent(key)}`;
       }
     } catch { /* fall through */ }
   }
@@ -36,8 +34,8 @@ export function resolveImageUrl(url: string | null | undefined): string | null {
   // Other absolute URLs — return as-is
   if (url.startsWith("http://") || url.startsWith("https://")) return url;
 
-  // Relative URLs — prefix with API base
-  return `${API_BASE_URL}${url.startsWith("/") ? "" : "/"}${url}`;
+  // Relative URLs — prefix with direct API URL
+  return `${DIRECT_API_URL}${url.startsWith("/") ? "" : "/"}${url}`;
 }
 
 // Token refresh state management
