@@ -168,7 +168,9 @@ const navItems: NavItem[] = [
     children: [
       { title: "Overview", url: "/marketing" },
       { title: "Abandoned Carts", url: "/marketing/abandoned-carts" },
-      { title: "Campaigns", url: "/marketing/advertising/campaigns" },
+      { title: "Email Campaigns", url: "/marketing/email-campaigns" },
+      { title: "Email Templates", url: "/settings/email-templates" },
+      { title: "Ad Campaigns", url: "/marketing/advertising/campaigns" },
       { title: "Ad Platforms", url: "/marketing/advertising" },
       { title: "Product Catalog", url: "/marketing/advertising/catalogs" },
     ],
