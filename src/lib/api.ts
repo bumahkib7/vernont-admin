@@ -746,6 +746,11 @@ export async function adjustInventory(data: AdjustInventoryRequest): Promise<Adj
   });
 }
 
+// Backfill inventory — creates missing inventory records for all product variants
+export async function backfillInventory(): Promise<{ backfilled: number; skipped: number; details: Array<{ variantId: string; sku: string }> }> {
+  return apiFetch("/admin/inventory/backfill", { method: "POST" });
+}
+
 // List inventory stock locations (for inventory management)
 export async function getInventoryStockLocations(params?: {
   limit?: number;

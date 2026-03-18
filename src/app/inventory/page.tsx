@@ -67,6 +67,7 @@ import {
   adjustInventory,
   getInventoryMovements,
   getMovementTypeDisplay,
+  backfillInventory,
   type InventoryLevel,
   type InventoryStockLocation,
   type InventoryMovement,
@@ -129,6 +130,8 @@ export default function InventoryPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [movementTypeFilter, setMovementTypeFilter] = useState<string>("all");
 
+  const [isBackfilling, setIsBackfilling] = useState(false);
+
   // Adjustment dialog state
   const [adjustmentDialog, setAdjustmentDialog] = useState<AdjustmentDialogState>({
     isOpen: false,
@@ -139,6 +142,24 @@ export default function InventoryPage() {
   const [adjustmentReason, setAdjustmentReason] = useState<string>("RESTOCK");
   const [adjustmentNote, setAdjustmentNote] = useState<string>("");
   const [isAdjusting, setIsAdjusting] = useState(false);
+
+  const handleBackfill = async () => {
+    setIsBackfilling(true);
+    try {
+      const result = await backfillInventory();
+      if (result.backfilled > 0) {
+        toast.success(`Created inventory for ${result.backfilled} variant${result.backfilled !== 1 ? "s" : ""}`);
+        await fetchData();
+      } else {
+        toast.info("All variants already have inventory records");
+      }
+    } catch (err) {
+      console.error("Backfill failed:", err);
+      toast.error(err instanceof Error ? err.message : "Failed to backfill inventory");
+    } finally {
+      setIsBackfilling(false);
+    }
+  };
 
   const fetchData = useCallback(async () => {
     try {
@@ -302,6 +323,21 @@ export default function InventoryPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          {inventoryLevels.length === 0 && !isLoading && (
+            <Button
+              variant="default"
+              className="gap-2"
+              onClick={handleBackfill}
+              disabled={isBackfilling}
+            >
+              {isBackfilling ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Package className="h-4 w-4" />
+              )}
+              {isBackfilling ? "Syncing..." : "Sync Inventory"}
+            </Button>
+          )}
           <Button variant="outline" className="gap-2" onClick={fetchData}>
             <RefreshCcw className="h-4 w-4" />
             Refresh
