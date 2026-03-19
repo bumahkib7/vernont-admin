@@ -419,8 +419,8 @@ export default function CustomersPage() {
 
       {/* Error State */}
       {error && (
-        <Card className="border-red-200 bg-red-50">
-          <CardContent className="py-4 text-center text-red-600">
+        <Card className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/20">
+          <CardContent className="py-4 text-center text-red-600 dark:text-red-400">
             {error}
             <Button variant="link" onClick={fetchCustomers} className="ml-2">
               Retry

@@ -259,7 +259,7 @@ export default function LocationsPage() {
                   <TableRow key={location.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <div className="rounded-full bg-blue-100 p-2 text-blue-600">
+                        <div className="rounded-full bg-blue-100 dark:bg-blue-950/30 p-2 text-blue-600">
                           <Warehouse className="h-4 w-4" />
                         </div>
                         <span className="font-medium">{location.name}</span>

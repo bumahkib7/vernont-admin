@@ -72,21 +72,21 @@ import { usePageContext } from "@/hooks/use-page-context";
 function getStatusBadge(status: ProductStatus) {
   switch (status) {
     case "published":
-      return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Published</Badge>;
+      return <Badge className="bg-green-100 dark:bg-green-950/30 text-green-800 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-950/30">Published</Badge>;
     case "ready":
-      return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Ready</Badge>;
+      return <Badge className="bg-blue-100 dark:bg-blue-950/30 text-blue-800 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-950/30">Ready</Badge>;
     case "draft":
-      return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">Draft</Badge>;
+      return <Badge className="bg-gray-100 dark:bg-gray-800/30 text-gray-800 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800/30">Draft</Badge>;
     case "pending_assets":
-      return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Processing...</Badge>;
+      return <Badge className="bg-yellow-100 dark:bg-yellow-950/30 text-yellow-800 dark:text-yellow-400 hover:bg-yellow-100 dark:hover:bg-yellow-950/30">Processing...</Badge>;
     case "proposed":
-      return <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">Proposed</Badge>;
+      return <Badge className="bg-amber-100 dark:bg-amber-950/30 text-amber-800 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/30">Proposed</Badge>;
     case "rejected":
-      return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Rejected</Badge>;
+      return <Badge className="bg-red-100 dark:bg-red-950/30 text-red-800 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-950/30">Rejected</Badge>;
     case "failed":
-      return <Badge className="bg-red-200 text-red-900 hover:bg-red-200">Failed</Badge>;
+      return <Badge className="bg-red-200 dark:bg-red-950/40 text-red-900 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-950/40">Failed</Badge>;
     case "archived":
-      return <Badge className="bg-gray-200 text-gray-500 hover:bg-gray-200">Archived</Badge>;
+      return <Badge className="bg-gray-200 dark:bg-gray-800/40 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-800/40">Archived</Badge>;
     default:
       return <Badge variant="secondary">{status}</Badge>;
   }
@@ -424,7 +424,7 @@ export default function ProductsPage() {
         <CardContent>
           {/* Error State */}
           {error && (
-            <div className="flex items-center gap-2 p-4 mb-4 bg-red-50 text-red-700 rounded-lg">
+            <div className="flex items-center gap-2 p-4 mb-4 bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 rounded-lg">
               <AlertCircle className="h-5 w-5" />
               <span>{error}</span>
               <Button variant="ghost" size="sm" onClick={fetchProducts} className="ml-auto">

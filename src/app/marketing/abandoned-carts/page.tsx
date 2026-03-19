@@ -33,9 +33,9 @@ function StatusBadge({ status }: { status: string }) {
     case "SENT":
       return <Badge variant="secondary"><Mail className="h-3 w-3 mr-1" />Sent</Badge>;
     case "OPENED":
-      return <Badge variant="secondary" className="bg-blue-100 text-blue-800"><Eye className="h-3 w-3 mr-1" />Opened</Badge>;
+      return <Badge variant="secondary" className="bg-blue-100 dark:bg-blue-950/30 text-blue-800 dark:text-blue-400"><Eye className="h-3 w-3 mr-1" />Opened</Badge>;
     case "CLICKED":
-      return <Badge variant="secondary" className="bg-amber-100 text-amber-800"><MousePointer className="h-3 w-3 mr-1" />Clicked</Badge>;
+      return <Badge variant="secondary" className="bg-amber-100 dark:bg-amber-950/30 text-amber-800 dark:text-amber-400"><MousePointer className="h-3 w-3 mr-1" />Clicked</Badge>;
     case "RECOVERED":
       return <Badge variant="default" className="bg-green-600"><CheckCircle2 className="h-3 w-3 mr-1" />Recovered</Badge>;
     case "EXPIRED":

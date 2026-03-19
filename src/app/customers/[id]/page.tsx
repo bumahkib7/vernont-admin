@@ -374,6 +374,7 @@ export default function CustomerDetailPage() {
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="icon">
                 <MoreHorizontal className="h-4 w-4" />
+                <span className="sr-only">Open menu</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">

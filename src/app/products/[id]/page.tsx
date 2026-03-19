@@ -108,13 +108,13 @@ import { useConfirm } from "@/hooks/use-confirm";
 function getStatusBadge(status: ProductStatus) {
   switch (status) {
     case "published":
-      return <Badge className="bg-green-100 text-green-800">Published</Badge>;
+      return <Badge className="bg-green-100 dark:bg-green-950/30 text-green-800 dark:text-green-400">Published</Badge>;
     case "draft":
-      return <Badge className="bg-gray-100 text-gray-800">Draft</Badge>;
+      return <Badge className="bg-gray-100 dark:bg-gray-800/30 text-gray-800 dark:text-gray-400">Draft</Badge>;
     case "proposed":
-      return <Badge className="bg-yellow-100 text-yellow-800">Proposed</Badge>;
+      return <Badge className="bg-yellow-100 dark:bg-yellow-950/30 text-yellow-800 dark:text-yellow-400">Proposed</Badge>;
     case "rejected":
-      return <Badge className="bg-red-100 text-red-800">Rejected</Badge>;
+      return <Badge className="bg-red-100 dark:bg-red-950/30 text-red-800 dark:text-red-400">Rejected</Badge>;
     default:
       return <Badge variant="secondary">{status}</Badge>;
   }
@@ -798,7 +798,7 @@ export default function ProductDetailPage() {
 
       {/* Success message */}
       {success && (
-        <div className="flex items-center gap-2 p-4 bg-green-50 text-green-700 rounded-lg">
+        <div className="flex items-center gap-2 p-4 bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400 rounded-lg">
           <Check className="h-5 w-5" />
           <span>{success}</span>
         </div>
@@ -806,11 +806,12 @@ export default function ProductDetailPage() {
 
       {/* Error message */}
       {error && (
-        <div className="flex items-center gap-2 p-4 bg-red-50 text-red-700 rounded-lg">
+        <div className="flex items-center gap-2 p-4 bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 rounded-lg">
           <AlertCircle className="h-5 w-5" />
           <span>{error}</span>
           <button onClick={() => setError(null)} className="ml-auto">
             <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
           </button>
         </div>
       )}
@@ -1109,7 +1110,7 @@ export default function ProductDetailPage() {
                 </div>
               </div>
               {mainPrice && mainPrice.compareAtPrice && mainPrice.compareAtPrice > mainPrice.amount && (
-                <div className="mt-4 rounded-lg bg-green-50 p-4">
+                <div className="mt-4 rounded-lg bg-green-50 dark:bg-green-950/20 p-4">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Discount</span>
                     <span className="font-medium text-green-600">
@@ -1175,6 +1176,7 @@ export default function ProductDetailPage() {
                               <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-8 w-8">
                                   <MoreHorizontal className="h-4 w-4" />
+                                  <span className="sr-only">Open menu</span>
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
@@ -1456,7 +1458,7 @@ export default function ProductDetailPage() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             {variantError && (
-              <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md">
+              <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 p-3 rounded-md">
                 {variantError}
               </div>
             )}
@@ -1592,7 +1594,7 @@ export default function ProductDetailPage() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             {variantError && (
-              <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md">
+              <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 p-3 rounded-md">
                 {variantError}
               </div>
             )}
@@ -1728,7 +1730,7 @@ export default function ProductDetailPage() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             {optionError && (
-              <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md">
+              <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 p-3 rounded-md">
                 {optionError}
               </div>
             )}
@@ -1777,7 +1779,7 @@ export default function ProductDetailPage() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             {optionError && (
-              <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md">
+              <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 p-3 rounded-md">
                 {optionError}
               </div>
             )}

@@ -161,7 +161,7 @@ export default function ReturnDetailPage() {
   if (error || !returnData) {
     return (
       <div className="p-6">
-        <div className="flex items-center gap-2 p-4 bg-red-50 text-red-700 rounded-lg">
+        <div className="flex items-center gap-2 p-4 bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 rounded-lg">
           <AlertCircle className="h-5 w-5" />
           <span>{error || "Return not found"}</span>
           <Button variant="ghost" size="sm" onClick={fetchReturn} className="ml-auto">
@@ -275,7 +275,7 @@ export default function ReturnDetailPage() {
 
       {/* Action Error Display */}
       {actionError && (
-        <div className="flex items-center gap-2 p-4 bg-red-50 text-red-700 rounded-lg">
+        <div className="flex items-center gap-2 p-4 bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 rounded-lg">
           <AlertCircle className="h-5 w-5" />
           <span>{actionError}</span>
           <Button variant="ghost" size="sm" onClick={() => setActionError(null)} className="ml-auto">
@@ -356,14 +356,14 @@ export default function ReturnDetailPage() {
 
           {/* Rejection Reason (if rejected) */}
           {returnData.status === "rejected" && returnData.rejectionReason && (
-            <Card className="border-red-200 bg-red-50">
+            <Card className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/20">
               <CardHeader>
-                <CardTitle className="text-red-700">Rejection Reason</CardTitle>
+                <CardTitle className="text-red-700 dark:text-red-400">Rejection Reason</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-red-700">{returnData.rejectionReason}</p>
+                <p className="text-red-700 dark:text-red-400">{returnData.rejectionReason}</p>
                 {returnData.rejectedAt && (
-                  <p className="text-sm text-red-600 mt-2">
+                  <p className="text-sm text-red-600 dark:text-red-400 mt-2">
                     Rejected on {formatDateTime(returnData.rejectedAt)}
                   </p>
                 )}
@@ -414,7 +414,7 @@ export default function ReturnDetailPage() {
               <div className="space-y-4">
                 {/* Requested */}
                 <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-950/30 flex items-center justify-center shrink-0">
                     <Check className="h-4 w-4 text-green-600" />
                   </div>
                   <div>
@@ -429,7 +429,7 @@ export default function ReturnDetailPage() {
                 <div className="flex items-start gap-3">
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                      returnData.approvedAt ? "bg-green-100" : "bg-muted"
+                      returnData.approvedAt ? "bg-green-100 dark:bg-green-950/30" : "bg-muted"
                     }`}
                   >
                     {returnData.approvedAt ? (
@@ -454,7 +454,7 @@ export default function ReturnDetailPage() {
                 <div className="flex items-start gap-3">
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                      returnData.receivedAt ? "bg-green-100" : "bg-muted"
+                      returnData.receivedAt ? "bg-green-100 dark:bg-green-950/30" : "bg-muted"
                     }`}
                   >
                     {returnData.receivedAt ? (
@@ -479,7 +479,7 @@ export default function ReturnDetailPage() {
                 <div className="flex items-start gap-3">
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                      returnData.refundedAt ? "bg-green-100" : "bg-muted"
+                      returnData.refundedAt ? "bg-green-100 dark:bg-green-950/30" : "bg-muted"
                     }`}
                   >
                     {returnData.refundedAt ? (

@@ -489,7 +489,7 @@ export default function LocationsSettingsPage() {
         <CardContent>
           {/* Error state */}
           {locationsError && (
-            <div className="flex items-center gap-2 p-4 mb-4 text-red-600 bg-red-50 rounded-lg">
+            <div className="flex items-center gap-2 p-4 mb-4 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 rounded-lg">
               <AlertCircle className="h-5 w-5" />
               <span>{locationsError}</span>
               <Button variant="outline" size="sm" onClick={fetchLocations} className="ml-auto">
@@ -542,7 +542,7 @@ export default function LocationsSettingsPage() {
                         </TableCell>
                         <TableCell>
                           {location.fulfillment_enabled ? (
-                            <Badge className="bg-green-100 text-green-800">Active</Badge>
+                            <Badge className="bg-green-100 dark:bg-green-950/30 text-green-800 dark:text-green-400">Active</Badge>
                           ) : (
                             <Badge variant="secondary">Disabled</Badge>
                           )}
@@ -552,6 +552,7 @@ export default function LocationsSettingsPage() {
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon">
                                 <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Open menu</span>
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
@@ -612,7 +613,7 @@ export default function LocationsSettingsPage() {
         <CardContent>
           {/* Error state */}
           {profilesError && (
-            <div className="flex items-center gap-2 p-4 mb-4 text-red-600 bg-red-50 rounded-lg">
+            <div className="flex items-center gap-2 p-4 mb-4 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 rounded-lg">
               <AlertCircle className="h-5 w-5" />
               <span>{profilesError}</span>
               <Button variant="outline" size="sm" onClick={fetchProfiles} className="ml-auto">
@@ -664,6 +665,7 @@ export default function LocationsSettingsPage() {
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon">
                                 <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Open menu</span>
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
@@ -719,7 +721,7 @@ export default function LocationsSettingsPage() {
 
           <div className="grid gap-4 py-4">
             {createLocationError && (
-              <div className="flex items-center gap-2 p-3 text-sm text-red-600 bg-red-50 rounded-lg">
+              <div className="flex items-center gap-2 p-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 rounded-lg">
                 <AlertCircle className="h-4 w-4" />
                 {createLocationError}
               </div>
@@ -861,7 +863,7 @@ export default function LocationsSettingsPage() {
 
           <div className="grid gap-4 py-4">
             {editLocationError && (
-              <div className="flex items-center gap-2 p-3 text-sm text-red-600 bg-red-50 rounded-lg">
+              <div className="flex items-center gap-2 p-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 rounded-lg">
                 <AlertCircle className="h-4 w-4" />
                 {editLocationError}
               </div>
@@ -1038,7 +1040,7 @@ export default function LocationsSettingsPage() {
 
           <div className="grid gap-4 py-4">
             {createProfileError && (
-              <div className="flex items-center gap-2 p-3 text-sm text-red-600 bg-red-50 rounded-lg">
+              <div className="flex items-center gap-2 p-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 rounded-lg">
                 <AlertCircle className="h-4 w-4" />
                 {createProfileError}
               </div>
@@ -1098,7 +1100,7 @@ export default function LocationsSettingsPage() {
 
           <div className="grid gap-4 py-4">
             {editProfileError && (
-              <div className="flex items-center gap-2 p-3 text-sm text-red-600 bg-red-50 rounded-lg">
+              <div className="flex items-center gap-2 p-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 rounded-lg">
                 <AlertCircle className="h-4 w-4" />
                 {editProfileError}
               </div>

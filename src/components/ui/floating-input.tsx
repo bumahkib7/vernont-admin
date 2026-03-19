@@ -71,6 +71,7 @@ const FloatingInput = React.forwardRef<HTMLInputElement, FloatingInputProps>(
               type="button"
               onClick={() => setShowPassword(!showPassword)}
               className="text-muted-foreground px-4 focus:outline-none transition-all duration-150 outline-none focus:text-foreground absolute right-0 top-3"
+              aria-label="Toggle visibility"
             >
               {showPassword ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
             </button>

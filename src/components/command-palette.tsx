@@ -107,10 +107,15 @@ export function CommandPalette() {
           apiFetch(`/admin/orders/search?q=${encodeURIComponent(search)}&size=5`),
           apiFetch(`/admin/customers/search?q=${encodeURIComponent(search)}&size=5`),
         ]);
+        const toList = <T,>(result: PromiseSettledResult<unknown>, key: string): T[] => {
+          if (result.status !== "fulfilled") return [];
+          const data = result.value as Record<string, unknown>;
+          return ((data?.[key] ?? data?.content ?? []) as T[]).slice(0, 5);
+        };
         setSearchResults({
-          products: products.status === "fulfilled" ? ((products.value as any)?.products || (products.value as any)?.content || []).slice(0, 5) : [],
-          orders: orders.status === "fulfilled" ? ((orders.value as any)?.orders || (orders.value as any)?.content || []).slice(0, 5) : [],
-          customers: customers.status === "fulfilled" ? ((customers.value as any)?.customers || (customers.value as any)?.content || []).slice(0, 5) : [],
+          products: toList<{ id: string; title: string; thumbnail?: string; status: string }>(products, "products"),
+          orders: toList<{ id: string; displayId: string; status: string; total: number }>(orders, "orders"),
+          customers: toList<{ id: string; name: string; email: string }>(customers, "customers"),
         });
       } catch (err) {
         console.error("Search failed:", err);
@@ -125,7 +130,7 @@ export function CommandPalette() {
     const item = { label, url, type };
     try {
       const stored = JSON.parse(localStorage.getItem("vernont-recent-items") || "[]");
-      const filtered = stored.filter((i: any) => i.url !== url);
+      const filtered = stored.filter((i: { url: string }) => i.url !== url);
       localStorage.setItem("vernont-recent-items", JSON.stringify([item, ...filtered].slice(0, 10)));
     } catch {}
     router.push(url);

@@ -218,6 +218,7 @@ export function NodeDetailPanel({
         </div>
         <Button variant="ghost" size="icon" onClick={onClose}>
           <X className="h-4 w-4" />
+          <span className="sr-only">Close</span>
         </Button>
       </div>
 

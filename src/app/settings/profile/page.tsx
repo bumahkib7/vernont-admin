@@ -306,7 +306,7 @@ export default function ProfileSettingsPage() {
 
           <div className="grid gap-4 py-4">
             {editError && (
-              <div className="flex items-center gap-2 p-3 text-sm text-red-600 bg-red-50 rounded-lg">
+              <div className="flex items-center gap-2 p-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 rounded-lg">
                 <AlertCircle className="h-4 w-4" />
                 {editError}
               </div>
@@ -374,7 +374,7 @@ export default function ProfileSettingsPage() {
 
           <div className="grid gap-4 py-4">
             {passwordError && (
-              <div className="flex items-center gap-2 p-3 text-sm text-red-600 bg-red-50 rounded-lg">
+              <div className="flex items-center gap-2 p-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 rounded-lg">
                 <AlertCircle className="h-4 w-4" />
                 {passwordError}
               </div>
@@ -396,6 +396,7 @@ export default function ProfileSettingsPage() {
                   onClick={() => setShowCurrentPassword(!showCurrentPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   tabIndex={-1}
+                  aria-label="Toggle visibility"
                 >
                   {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -418,6 +419,7 @@ export default function ProfileSettingsPage() {
                   onClick={() => setShowNewPassword(!showNewPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   tabIndex={-1}
+                  aria-label="Toggle visibility"
                 >
                   {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -451,6 +453,7 @@ export default function ProfileSettingsPage() {
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   tabIndex={-1}
+                  aria-label="Toggle visibility"
                 >
                   {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>

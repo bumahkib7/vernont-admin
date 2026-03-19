@@ -61,6 +61,11 @@ export default function NewWebhookPage() {
       return;
     }
 
+    if (!url.startsWith("http://") && !url.startsWith("https://")) {
+      toast.error("Webhook URL must start with http:// or https://");
+      return;
+    }
+
     setSaving(true);
     try {
       await createWebhookEndpoint({ url, secret, events: selectedEvents, description: description || undefined });

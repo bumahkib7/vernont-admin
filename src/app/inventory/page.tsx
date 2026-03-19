@@ -107,11 +107,11 @@ function getStockStatus(available: number, stocked: number) {
 function getStatusBadge(status: string) {
   switch (status) {
     case "in_stock":
-      return <Badge className="bg-green-100 text-green-800">In Stock</Badge>;
+      return <Badge className="bg-green-100 dark:bg-green-950/30 text-green-800 dark:text-green-400">In Stock</Badge>;
     case "low_stock":
-      return <Badge className="bg-yellow-100 text-yellow-800">Low Stock</Badge>;
+      return <Badge className="bg-yellow-100 dark:bg-yellow-950/30 text-yellow-800 dark:text-yellow-400">Low Stock</Badge>;
     case "out_of_stock":
-      return <Badge className="bg-red-100 text-red-800">Out of Stock</Badge>;
+      return <Badge className="bg-red-100 dark:bg-red-950/30 text-red-800 dark:text-red-400">Out of Stock</Badge>;
     default:
       return <Badge variant="secondary">{status}</Badge>;
   }
@@ -449,7 +449,7 @@ export default function InventoryPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardContent className="flex items-center gap-4 p-4">
-            <div className="rounded-full bg-blue-100 p-2 text-blue-600">
+            <div className="rounded-full bg-blue-100 dark:bg-blue-950/30 p-2 text-blue-600">
               <Box className="h-5 w-5" />
             </div>
             <div>
@@ -460,7 +460,7 @@ export default function InventoryPage() {
         </Card>
         <Card>
           <CardContent className="flex items-center gap-4 p-4">
-            <div className="rounded-full bg-green-100 p-2 text-green-600">
+            <div className="rounded-full bg-green-100 dark:bg-green-950/30 p-2 text-green-600">
               <Package className="h-5 w-5" />
             </div>
             <div>
@@ -471,7 +471,7 @@ export default function InventoryPage() {
         </Card>
         <Card>
           <CardContent className="flex items-center gap-4 p-4">
-            <div className="rounded-full bg-purple-100 p-2 text-purple-600">
+            <div className="rounded-full bg-purple-100 dark:bg-purple-950/30 p-2 text-purple-600">
               <Warehouse className="h-5 w-5" />
             </div>
             <div>
@@ -482,7 +482,7 @@ export default function InventoryPage() {
         </Card>
         <Card>
           <CardContent className="flex items-center gap-4 p-4">
-            <div className="rounded-full bg-yellow-100 p-2 text-yellow-600">
+            <div className="rounded-full bg-yellow-100 dark:bg-yellow-950/30 p-2 text-yellow-600">
               <AlertTriangle className="h-5 w-5" />
             </div>
             <div>
@@ -495,14 +495,14 @@ export default function InventoryPage() {
 
       {/* Low Stock Alert */}
       {(stats.lowStock > 0 || stats.outOfStock > 0) && (
-        <Card className="border-yellow-200 bg-yellow-50">
+        <Card className="border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-950/20">
           <CardContent className="flex items-center gap-4 p-4">
             <div className="rounded-full bg-yellow-100 p-2">
               <AlertTriangle className="h-5 w-5 text-yellow-600" />
             </div>
             <div className="flex-1">
-              <p className="font-medium text-yellow-800">Low Stock Alert</p>
-              <p className="text-sm text-yellow-700">
+              <p className="font-medium text-yellow-800 dark:text-yellow-400">Low Stock Alert</p>
+              <p className="text-sm text-yellow-700 dark:text-yellow-400">
                 {stats.lowStock + stats.outOfStock} items need attention
                 {stats.outOfStock > 0 && ` (${stats.outOfStock} out of stock)`}
               </p>
@@ -510,7 +510,7 @@ export default function InventoryPage() {
             <Button
               variant="outline"
               size="sm"
-              className="border-yellow-300 text-yellow-800 hover:bg-yellow-100"
+              className="border-yellow-300 dark:border-yellow-700 text-yellow-800 dark:text-yellow-400 hover:bg-yellow-100 dark:hover:bg-yellow-950/30"
               onClick={() => {
                 setStatusFilter("low_stock");
                 setActiveTab("levels");

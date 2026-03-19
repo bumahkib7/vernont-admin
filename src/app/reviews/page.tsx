@@ -90,10 +90,10 @@ function ModerationBadge({ label, score }: { label: string; score?: number }) {
   if (score === undefined || score === null) return null;
   const color =
     score > 0.7
-      ? "bg-red-100 text-red-800"
+      ? "bg-red-100 dark:bg-red-950/30 text-red-800 dark:text-red-400"
       : score > 0.4
-      ? "bg-yellow-100 text-yellow-800"
-      : "bg-green-100 text-green-800";
+      ? "bg-yellow-100 dark:bg-yellow-950/30 text-yellow-800 dark:text-yellow-400"
+      : "bg-green-100 dark:bg-green-950/30 text-green-800 dark:text-green-400";
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${color}`}>
       {label}: {(score * 100).toFixed(0)}%
@@ -609,7 +609,7 @@ export default function ReviewsPage() {
 
       {/* Error */}
       {error && (
-        <div className="flex items-center gap-2 p-4 bg-red-50 text-red-700 rounded-lg">
+        <div className="flex items-center gap-2 p-4 bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 rounded-lg">
           <AlertCircle className="h-5 w-5" />
           <span>{error}</span>
           <Button variant="ghost" size="sm" onClick={fetchAll} className="ml-auto">
@@ -642,6 +642,7 @@ export default function ReviewsPage() {
           </TabsList>
           <Button variant="outline" size="icon" onClick={fetchAll} disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            <span className="sr-only">Refresh</span>
           </Button>
         </div>
 
@@ -825,6 +826,7 @@ export default function ReviewsPage() {
                                   disabled={actionLoading === review.id}
                                 >
                                   <Trash2 className="h-4 w-4" />
+                                  <span className="sr-only">Delete</span>
                                 </Button>
                               </div>
                             </TableCell>

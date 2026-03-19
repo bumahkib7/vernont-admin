@@ -350,7 +350,7 @@ export default function RefundReasonsSettingsPage() {
         <CardContent>
           {/* Error state */}
           {error && (
-            <div className="flex items-center gap-2 p-4 mb-4 text-red-600 bg-red-50 rounded-lg">
+            <div className="flex items-center gap-2 p-4 mb-4 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 rounded-lg">
               <AlertCircle className="h-5 w-5" />
               <span>{error}</span>
               <Button variant="outline" size="sm" onClick={fetchReasons} className="ml-auto">
@@ -405,7 +405,7 @@ export default function RefundReasonsSettingsPage() {
                         <TableCell>
                           <div className="flex items-center gap-2">
                             {reason.is_active ? (
-                              <Badge className="bg-green-100 text-green-800">Active</Badge>
+                              <Badge className="bg-green-100 dark:bg-green-950/30 text-green-800 dark:text-green-400">Active</Badge>
                             ) : (
                               <Badge variant="secondary">Inactive</Badge>
                             )}
@@ -419,6 +419,7 @@ export default function RefundReasonsSettingsPage() {
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon">
                                 <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Open menu</span>
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
@@ -472,7 +473,7 @@ export default function RefundReasonsSettingsPage() {
 
           <div className="grid gap-4 py-4">
             {createError && (
-              <div className="flex items-center gap-2 p-3 text-sm text-red-600 bg-red-50 rounded-lg">
+              <div className="flex items-center gap-2 p-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 rounded-lg">
                 <AlertCircle className="h-4 w-4" />
                 {createError}
               </div>
@@ -588,7 +589,7 @@ export default function RefundReasonsSettingsPage() {
 
           <div className="grid gap-4 py-4">
             {editError && (
-              <div className="flex items-center gap-2 p-3 text-sm text-red-600 bg-red-50 rounded-lg">
+              <div className="flex items-center gap-2 p-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 rounded-lg">
                 <AlertCircle className="h-4 w-4" />
                 {editError}
               </div>

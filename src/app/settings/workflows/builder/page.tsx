@@ -130,9 +130,9 @@ function TriggerNode({ data }: { data: TriggerNodeData }) {
   const trigger = TRIGGER_OPTIONS.find((t) => t.value === data.triggerType);
   const Icon = trigger?.icon ?? Zap;
   return (
-    <div className="bg-blue-50 border-2 border-blue-300 rounded-lg px-4 py-3 min-w-[180px] shadow-sm">
+    <div className="bg-blue-50 dark:bg-blue-950/20 border-2 border-blue-300 rounded-lg px-4 py-3 min-w-[180px] shadow-sm">
       <div className="flex items-center gap-2">
-        <div className="bg-blue-100 rounded p-1">
+        <div className="bg-blue-100 dark:bg-blue-950/30 rounded p-1">
           <Icon className="h-4 w-4 text-blue-600" />
         </div>
         <div>
@@ -146,9 +146,9 @@ function TriggerNode({ data }: { data: TriggerNodeData }) {
 
 function ConditionNode({ data }: { data: ConditionNodeData }) {
   return (
-    <div className="bg-amber-50 border-2 border-amber-300 rounded-lg px-4 py-3 min-w-[180px] shadow-sm">
+    <div className="bg-amber-50 dark:bg-amber-950/20 border-2 border-amber-300 rounded-lg px-4 py-3 min-w-[180px] shadow-sm">
       <div className="flex items-center gap-2">
-        <div className="bg-amber-100 rounded p-1">
+        <div className="bg-amber-100 dark:bg-amber-950/30 rounded p-1">
           <GitBranch className="h-4 w-4 text-amber-600" />
         </div>
         <div>
@@ -169,9 +169,9 @@ function ActionNode({ data }: { data: ActionNodeData }) {
   const action = ACTION_OPTIONS.find((a) => a.value === data.actionType);
   const Icon = action?.icon ?? Zap;
   return (
-    <div className="bg-green-50 border-2 border-green-300 rounded-lg px-4 py-3 min-w-[180px] shadow-sm">
+    <div className="bg-green-50 dark:bg-green-950/20 border-2 border-green-300 rounded-lg px-4 py-3 min-w-[180px] shadow-sm">
       <div className="flex items-center gap-2">
-        <div className="bg-green-100 rounded p-1">
+        <div className="bg-green-100 dark:bg-green-950/30 rounded p-1">
           <Icon className="h-4 w-4 text-green-600" />
         </div>
         <div>
@@ -366,7 +366,7 @@ export default function WorkflowBuilderPage() {
                 return (
                   <button
                     key={t.value}
-                    className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm hover:bg-blue-50 hover:text-blue-700 transition-colors text-left"
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm hover:bg-blue-50 dark:hover:bg-blue-950/20 hover:text-blue-700 transition-colors text-left"
                     onClick={() =>
                       addNode("trigger", { label: t.label, triggerType: t.value })
                     }
@@ -382,7 +382,7 @@ export default function WorkflowBuilderPage() {
           <div>
             <h3 className="text-xs font-semibold uppercase text-muted-foreground mb-2">Conditions</h3>
             <button
-              className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm hover:bg-amber-50 hover:text-amber-700 transition-colors text-left"
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm hover:bg-amber-50 dark:hover:bg-amber-950/20 hover:text-amber-700 transition-colors text-left"
               onClick={() =>
                 addNode("condition", { label: "If/Then", field: "", operator: "equals", value: "" })
               }
@@ -400,7 +400,7 @@ export default function WorkflowBuilderPage() {
                 return (
                   <button
                     key={a.value}
-                    className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm hover:bg-green-50 hover:text-green-700 transition-colors text-left"
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm hover:bg-green-50 dark:hover:bg-green-950/20 hover:text-green-700 transition-colors text-left"
                     onClick={() =>
                       addNode("action", { label: a.label, actionType: a.value, config: {} })
                     }

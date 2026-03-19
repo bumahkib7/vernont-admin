@@ -199,7 +199,7 @@ function DraggableCategoryRow({
         }}
         className={`group transition-colors ${
           isDragging ? "opacity-50" : ""
-        } ${isOver || isDragOver ? "bg-blue-50 border-blue-300" : ""}`}
+        } ${isOver || isDragOver ? "bg-blue-50 dark:bg-blue-950/20 border-blue-300" : ""}`}
         style={style}
       >
         <TableCell>
@@ -263,7 +263,7 @@ function DraggableCategoryRow({
         <TableCell className="text-center">{category.product_count}</TableCell>
         <TableCell>
           {category.is_active ? (
-            <Badge className="bg-green-100 text-green-800">Active</Badge>
+            <Badge className="bg-green-100 dark:bg-green-950/30 text-green-800 dark:text-green-400">Active</Badge>
           ) : (
             <Badge variant="secondary">Inactive</Badge>
           )}
@@ -451,7 +451,7 @@ function RootDropZone({ isOver }: { isOver: boolean }) {
       ref={setNodeRef}
       className={`p-4 border-2 border-dashed rounded-lg text-center transition-colors ${
         isOver
-          ? "border-blue-400 bg-blue-50 text-blue-600"
+          ? "border-blue-400 bg-blue-50 dark:bg-blue-950/20 text-blue-600"
           : "border-muted text-muted-foreground"
       }`}
     >
@@ -1047,13 +1047,13 @@ export default function CategoriesPage() {
 
       {/* Success/Error Messages */}
       {success && (
-        <div className="flex items-center gap-2 p-4 bg-green-50 text-green-700 rounded-lg">
+        <div className="flex items-center gap-2 p-4 bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-400 rounded-lg">
           <Check className="h-5 w-5" />
           <span>{success}</span>
         </div>
       )}
       {error && (
-        <div className="flex items-center gap-2 p-4 bg-red-50 text-red-700 rounded-lg">
+        <div className="flex items-center gap-2 p-4 bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 rounded-lg">
           <AlertCircle className="h-5 w-5" />
           <span>{error}</span>
           <button onClick={() => setError(null)} className="ml-auto">
@@ -1080,7 +1080,7 @@ export default function CategoriesPage() {
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardContent className="flex items-center gap-4 p-4">
-            <div className="rounded-full bg-blue-100 p-2">
+            <div className="rounded-full bg-blue-100 dark:bg-blue-950/30 p-2">
               <Layers className="h-5 w-5 text-blue-600" />
             </div>
             <div>
@@ -1091,7 +1091,7 @@ export default function CategoriesPage() {
         </Card>
         <Card>
           <CardContent className="flex items-center gap-4 p-4">
-            <div className="rounded-full bg-green-100 p-2">
+            <div className="rounded-full bg-green-100 dark:bg-green-950/30 p-2">
               <Folder className="h-5 w-5 text-green-600" />
             </div>
             <div>
@@ -1102,7 +1102,7 @@ export default function CategoriesPage() {
         </Card>
         <Card>
           <CardContent className="flex items-center gap-4 p-4">
-            <div className="rounded-full bg-purple-100 p-2">
+            <div className="rounded-full bg-purple-100 dark:bg-purple-950/30 p-2">
               <Package className="h-5 w-5 text-purple-600" />
             </div>
             <div>
