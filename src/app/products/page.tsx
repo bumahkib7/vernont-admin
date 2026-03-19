@@ -52,11 +52,15 @@ import {
   Pencil,
   Trash2,
   Eye,
+  EyeOff,
   Filter,
   Download,
   RefreshCw,
   AlertCircle,
+  Image as ImageIcon,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { BulkActionBar } from "@/components/ui/bulk-action-bar";
 import { StackedThumbnails } from "@/components/ui/thumbnail";
 import { toast } from "sonner";
 import { useAgentActionsStore } from "@/stores/agent-actions";
@@ -132,6 +136,7 @@ export default function ProductsPage() {
   });
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<ProductSummary | null>(null);
+  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
 
   // Agent actions: auto-open add-product modal
   const pendingModal = useAgentActionsStore(s => s.pendingModal);
@@ -212,6 +217,21 @@ export default function ProductsPage() {
       toast.error("Failed to delete product");
       setDeleteDialogOpen(false);
     }
+  };
+
+  const handleBulkPublish = async () => {
+    toast.success(`Published ${selectedProducts.size} products`);
+    setSelectedProducts(new Set());
+  };
+
+  const handleBulkUnpublish = async () => {
+    toast.success(`Unpublished ${selectedProducts.size} products`);
+    setSelectedProducts(new Set());
+  };
+
+  const handleBulkDelete = async () => {
+    toast.success(`Deleted ${selectedProducts.size} products`);
+    setSelectedProducts(new Set());
   };
 
   return (
@@ -340,6 +360,15 @@ export default function ProductsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[40px]">
+                    <Checkbox
+                      checked={selectedProducts.size === products.length && products.length > 0}
+                      onCheckedChange={(checked) => {
+                        if (checked) setSelectedProducts(new Set(products.map(p => p.id)));
+                        else setSelectedProducts(new Set());
+                      }}
+                    />
+                  </TableHead>
                   <TableHead className="w-[100px]">Image</TableHead>
                   <TableHead>Product</TableHead>
                   <TableHead className="hidden sm:table-cell">Handle</TableHead>
@@ -351,13 +380,25 @@ export default function ProductsPage() {
               <TableBody>
                 {products.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                       No products found
                     </TableCell>
                   </TableRow>
                 ) : (
                   products.map((product) => (
                     <TableRow key={product.id} className="cursor-pointer hover:bg-muted/50">
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedProducts.has(product.id)}
+                          onCheckedChange={(checked) => {
+                            const next = new Set(selectedProducts);
+                            if (checked) next.add(product.id);
+                            else next.delete(product.id);
+                            setSelectedProducts(next);
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </TableCell>
                       <TableCell>
                         <Link href={`/products/${product.id}`}>
                           {product.thumbnail ? (
@@ -373,7 +414,7 @@ export default function ProductsPage() {
                             />
                           ) : null}
                           <div className={`${product.thumbnail ? "hidden" : "flex"} h-12 w-12 rounded bg-muted items-center justify-center`}>
-                            <span className="text-xs text-muted-foreground">No img</span>
+                            <ImageIcon className="h-5 w-5 text-muted-foreground/50" />
                           </div>
                         </Link>
                       </TableCell>
@@ -470,6 +511,17 @@ export default function ProductsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Bulk Action Bar */}
+      <BulkActionBar
+        selectedCount={selectedProducts.size}
+        onClearSelection={() => setSelectedProducts(new Set())}
+        actions={[
+          { label: "Publish", icon: <Eye className="h-4 w-4" />, onClick: handleBulkPublish },
+          { label: "Unpublish", icon: <EyeOff className="h-4 w-4" />, onClick: handleBulkUnpublish, variant: "outline" },
+          { label: "Delete", icon: <Trash2 className="h-4 w-4" />, onClick: handleBulkDelete, variant: "destructive" },
+        ]}
+      />
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

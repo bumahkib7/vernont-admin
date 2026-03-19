@@ -10,7 +10,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { NotificationBell } from "@/components/notification-bell";
 import { NotificationHandlerProvider } from "@/hooks/use-notification-handler";
 import { useAuth } from "@/lib/auth-context";
-import { Loader2 } from "lucide-react";
+
 import { PageBreadcrumbs } from "@/components/page-breadcrumbs";
 import { AiChatButton } from "@/components/ai/ai-chat-button";
 import { useAgentNavigation } from "@/hooks/use-agent-navigation";
@@ -41,13 +41,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const isPublicRoute = PUBLIC_ROUTES.some((route) => pathname?.startsWith(route));
 
-  // Show loading spinner while checking auth
+  // Show branded loading screen while checking auth
   if (isLoading && !isPublicRoute) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">Loading...</p>
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-6 animate-pulse">
+          <span className="text-2xl font-bold tracking-widest text-foreground">VERNONT</span>
+          <span className="text-xs text-muted-foreground tracking-wide uppercase">Admin</span>
         </div>
       </div>
     );
@@ -61,10 +61,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // Not authenticated and not on public route: show nothing (redirect happens in auth-context)
   if (!isAuthenticated) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">Redirecting to login...</p>
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-6 animate-pulse">
+          <span className="text-2xl font-bold tracking-widest text-foreground">VERNONT</span>
+          <span className="text-xs text-muted-foreground tracking-wide uppercase">Redirecting...</span>
         </div>
       </div>
     );
@@ -76,7 +76,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <SidebarProvider>
         <ConditionalSidebar />
         <SidebarInset>
-          <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b px-3 sm:px-4">
+          <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-b-transparent px-3 sm:px-4 relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-px after:bg-gradient-to-r after:from-indigo-500/40 after:via-border after:to-border">
             <div className="flex min-w-0 flex-1 items-center gap-2">
               <SidebarTrigger className="-ml-1" />
               <Separator orientation="vertical" className="mr-2 h-4" />

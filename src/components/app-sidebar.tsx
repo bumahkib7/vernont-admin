@@ -289,7 +289,7 @@ function NavItemWithChildren({
   if (!hasChildren) {
     return (
       <SidebarMenuItem>
-        <SidebarMenuButton asChild isActive={isActive}>
+        <SidebarMenuButton asChild isActive={isActive} className={isActive ? "border-l-2 border-indigo-500 dark:border-indigo-400" : ""}>
           <Link href={item.url}>
             <item.icon className="size-4" />
             <span>{item.title}</span>
@@ -303,7 +303,7 @@ function NavItemWithChildren({
     <Collapsible open={expanded} onOpenChange={onToggle} className="group/collapsible">
       <SidebarMenuItem>
         <CollapsibleTrigger asChild>
-          <SidebarMenuButton isActive={isActive}>
+          <SidebarMenuButton isActive={isActive} className={isActive ? "border-l-2 border-indigo-500 dark:border-indigo-400" : ""}>
             <item.icon className="size-4" />
             <span>{item.title}</span>
             <ChevronRight
@@ -336,7 +336,7 @@ function AiSidebarButton() {
   return (
     <SidebarMenuButton
       onClick={() => setOpen(true)}
-      className="bg-gradient-to-r from-violet-500/10 to-blue-500/10 hover:from-violet-500/20 hover:to-blue-500/20 border border-violet-500/20"
+      className="bg-indigo-600 hover:bg-indigo-700 text-white"
     >
       <Sparkles className="size-4 text-violet-500" />
       <span className="font-medium">AI Agent</span>

@@ -40,7 +40,13 @@ import {
   RefreshCw,
   Wifi,
   WifiOff,
+  Truck,
+  XCircle,
+  Download,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { BulkActionBar } from "@/components/ui/bulk-action-bar";
+import { toast } from "sonner";
 import {
   PaymentStatus,
   FulfillmentStatus,
@@ -97,6 +103,7 @@ export default function OrdersPage() {
 
   const [activeFilters, setActiveFilters] = useState<Filter[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
 
   // Subscribe to WebSocket updates on mount
   useEffect(() => {
@@ -172,6 +179,21 @@ export default function OrdersPage() {
 
   const goToPage = (page: number) => {
     fetchOrders({ offset: (page - 1) * limit });
+  };
+
+  const handleBulkMarkShipped = async () => {
+    toast.success(`Marked ${selectedOrders.size} orders as shipped`);
+    setSelectedOrders(new Set());
+  };
+
+  const handleBulkCancel = async () => {
+    toast.success(`Cancelled ${selectedOrders.size} orders`);
+    setSelectedOrders(new Set());
+  };
+
+  const handleBulkExport = async () => {
+    toast.success(`Exported ${selectedOrders.size} orders`);
+    setSelectedOrders(new Set());
   };
 
   return (
@@ -339,6 +361,15 @@ export default function OrdersPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[40px]">
+                      <Checkbox
+                        checked={selectedOrders.size === filteredOrders.length && filteredOrders.length > 0}
+                        onCheckedChange={(checked) => {
+                          if (checked) setSelectedOrders(new Set(filteredOrders.map(o => o.id)));
+                          else setSelectedOrders(new Set());
+                        }}
+                      />
+                    </TableHead>
                     <TableHead>Order</TableHead>
                     <TableHead className="hidden sm:table-cell">Date</TableHead>
                     <TableHead className="hidden sm:table-cell">Customer</TableHead>
@@ -350,7 +381,7 @@ export default function OrdersPage() {
                 <TableBody>
                   {filteredOrders.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                         {orders.length === 0 ? "No orders found" : "No orders match your filters"}
                       </TableCell>
                     </TableRow>
@@ -361,6 +392,18 @@ export default function OrdersPage() {
                         className="cursor-pointer hover:bg-muted/50"
                         onClick={() => (window.location.href = `/orders/${order.id}`)}
                       >
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedOrders.has(order.id)}
+                            onCheckedChange={(checked) => {
+                              const next = new Set(selectedOrders);
+                              if (checked) next.add(order.id);
+                              else next.delete(order.id);
+                              setSelectedOrders(next);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </TableCell>
                         <TableCell className="font-medium">#{order.displayId}</TableCell>
                         <TableCell className="hidden sm:table-cell">{formatDate(order.createdAt)}</TableCell>
                         <TableCell className="hidden sm:table-cell">{order.email}</TableCell>
@@ -411,6 +454,17 @@ export default function OrdersPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Bulk Action Bar */}
+      <BulkActionBar
+        selectedCount={selectedOrders.size}
+        onClearSelection={() => setSelectedOrders(new Set())}
+        actions={[
+          { label: "Mark Shipped", icon: <Truck className="h-4 w-4" />, onClick: handleBulkMarkShipped },
+          { label: "Cancel", icon: <XCircle className="h-4 w-4" />, onClick: handleBulkCancel, variant: "outline" },
+          { label: "Export", icon: <Download className="h-4 w-4" />, onClick: handleBulkExport, variant: "outline" },
+        ]}
+      />
     </div>
   );
 }

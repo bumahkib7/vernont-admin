@@ -49,8 +49,10 @@ import {
   Star,
   Keyboard,
   Sparkles,
+  Loader2,
 } from "lucide-react";
 import { useAiPanelStore } from "@/stores/ai-panel";
+import { apiFetch } from "@/lib/api";
 
 type CommandAction = {
   id: string;
@@ -72,6 +74,63 @@ export function CommandPalette() {
   const [shortcutsOpen, setShortcutsOpen] = React.useState(false);
   const router = useRouter();
   const [ConfirmDialog, confirmAction] = useConfirm();
+
+  // Live search state
+  const [searchResults, setSearchResults] = React.useState<{
+    products: Array<{ id: string; title: string; thumbnail?: string; status: string }>;
+    orders: Array<{ id: string; displayId: string; status: string; total: number }>;
+    customers: Array<{ id: string; name: string; email: string }>;
+  }>({ products: [], orders: [], customers: [] });
+  const [isSearching, setIsSearching] = React.useState(false);
+
+  // Recently viewed state
+  const [recentItems, setRecentItems] = React.useState<Array<{ label: string; url: string; type: string }>>([]);
+
+  React.useEffect(() => {
+    try {
+      const stored = localStorage.getItem("vernont-recent-items");
+      if (stored) setRecentItems(JSON.parse(stored).slice(0, 5));
+    } catch {}
+  }, [open]);
+
+  // Debounced live search
+  React.useEffect(() => {
+    if (!search || search.length < 2) {
+      setSearchResults({ products: [], orders: [], customers: [] });
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const [products, orders, customers] = await Promise.allSettled([
+          apiFetch(`/admin/products/search?q=${encodeURIComponent(search)}&size=5`),
+          apiFetch(`/admin/orders/search?q=${encodeURIComponent(search)}&size=5`),
+          apiFetch(`/admin/customers/search?q=${encodeURIComponent(search)}&size=5`),
+        ]);
+        setSearchResults({
+          products: products.status === "fulfilled" ? ((products.value as any)?.products || (products.value as any)?.content || []).slice(0, 5) : [],
+          orders: orders.status === "fulfilled" ? ((orders.value as any)?.orders || (orders.value as any)?.content || []).slice(0, 5) : [],
+          customers: customers.status === "fulfilled" ? ((customers.value as any)?.customers || (customers.value as any)?.content || []).slice(0, 5) : [],
+        });
+      } catch (err) {
+        console.error("Search failed:", err);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  function navigateAndSave(label: string, url: string, type: string) {
+    const item = { label, url, type };
+    try {
+      const stored = JSON.parse(localStorage.getItem("vernont-recent-items") || "[]");
+      const filtered = stored.filter((i: any) => i.url !== url);
+      localStorage.setItem("vernont-recent-items", JSON.stringify([item, ...filtered].slice(0, 10)));
+    } catch {}
+    router.push(url);
+    setOpen(false);
+  }
 
   // Handle keyboard shortcut
   React.useEffect(() => {
@@ -510,6 +569,75 @@ export function CommandPalette() {
               </p>
             </div>
           </CommandEmpty>
+
+          {/* Recently Viewed */}
+          {!search && recentItems.length > 0 && (
+            <CommandGroup heading="Recently Viewed">
+              {recentItems.map((item, i) => (
+                <CommandItem key={i} onSelect={() => navigateAndSave(item.label, item.url, item.type)}>
+                  <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
+                  <span>{item.label}</span>
+                  <span className="ml-auto text-xs text-muted-foreground capitalize">{item.type}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          )}
+
+          {/* Live search results */}
+          {search.length >= 2 && (
+            <>
+              {isSearching && (
+                <div className="flex flex-col items-center gap-2 py-4">
+                  <Loader2 className="h-4 w-4 animate-spin mx-auto" />
+                  <span className="text-sm text-muted-foreground mt-2">Searching...</span>
+                </div>
+              )}
+
+              {searchResults.products.length > 0 && (
+                <CommandGroup heading="Products">
+                  {searchResults.products.map((p) => (
+                    <CommandItem key={p.id} onSelect={() => navigateAndSave(p.title, `/products/${p.id}`, "product")}>
+                      <Package className="mr-2 h-4 w-4" />
+                      <span>{p.title}</span>
+                      <span className="ml-auto text-xs text-muted-foreground">{p.status}</span>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              )}
+
+              {searchResults.orders.length > 0 && (
+                <CommandGroup heading="Orders">
+                  {searchResults.orders.map((o) => (
+                    <CommandItem key={o.id} onSelect={() => navigateAndSave(`#${o.displayId || o.id.slice(0, 8)}`, `/orders/${o.id}`, "order")}>
+                      <ShoppingCart className="mr-2 h-4 w-4" />
+                      <span>#{o.displayId || o.id.slice(0, 8)}</span>
+                      <span className="ml-auto text-xs text-muted-foreground">{o.status}</span>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              )}
+
+              {searchResults.customers.length > 0 && (
+                <CommandGroup heading="Customers">
+                  {searchResults.customers.map((c) => (
+                    <CommandItem key={c.id} onSelect={() => navigateAndSave(c.name || c.email, `/customers/${c.id}`, "customer")}>
+                      <Users className="mr-2 h-4 w-4" />
+                      <span>{c.name || c.email}</span>
+                      <span className="ml-auto text-xs text-muted-foreground">{c.email}</span>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              )}
+
+              {!isSearching && searchResults.products.length === 0 && searchResults.orders.length === 0 && searchResults.customers.length === 0 && (
+                <div className="py-6 text-center text-sm text-muted-foreground">
+                  No results found for &quot;{search}&quot;
+                </div>
+              )}
+
+              <CommandSeparator />
+            </>
+          )}
 
           {allGroups.map((group, groupIndex) => (
             <React.Fragment key={group.heading}>

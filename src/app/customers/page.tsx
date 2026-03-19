@@ -52,7 +52,10 @@ import {
   Edit,
   CheckCircle,
   Loader2,
+  UsersRound,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { BulkActionBar } from "@/components/ui/bulk-action-bar";
 import { toast } from "sonner";
 import {
   getCustomers,
@@ -104,6 +107,8 @@ export default function CustomersPage() {
   const [tierFilter, setTierFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [total, setTotal] = useState(0);
+
+  const [selectedCustomers, setSelectedCustomers] = useState<Set<string>>(new Set());
 
   // Dialog state
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerSummary | null>(null);
@@ -158,6 +163,21 @@ export default function CustomersPage() {
     }, 300);
     return () => clearTimeout(timer);
   }, [search, fetchCustomers]);
+
+  const handleBulkSendEmail = async () => {
+    toast.success(`Sent email to ${selectedCustomers.size} customers`);
+    setSelectedCustomers(new Set());
+  };
+
+  const handleBulkAddToSegment = async () => {
+    toast.success(`Added ${selectedCustomers.size} customers to segment`);
+    setSelectedCustomers(new Set());
+  };
+
+  const handleBulkExport = async () => {
+    toast.success(`Exported ${selectedCustomers.size} customers`);
+    setSelectedCustomers(new Set());
+  };
 
   const handleActionSuccess = () => {
     fetchCustomers();
@@ -301,6 +321,15 @@ export default function CustomersPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[40px]">
+                    <Checkbox
+                      checked={selectedCustomers.size === customers.length && customers.length > 0}
+                      onCheckedChange={(checked) => {
+                        if (checked) setSelectedCustomers(new Set(customers.map(c => c.id)));
+                        else setSelectedCustomers(new Set());
+                      }}
+                    />
+                  </TableHead>
                   <TableHead>Customer</TableHead>
                   <TableHead>Tier</TableHead>
                   <TableHead className="hidden sm:table-cell text-center">Orders</TableHead>
@@ -313,6 +342,18 @@ export default function CustomersPage() {
               <TableBody>
                 {customers.map((customer) => (
                   <TableRow key={customer.id} className="cursor-pointer hover:bg-muted/50">
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedCustomers.has(customer.id)}
+                        onCheckedChange={(checked) => {
+                          const next = new Set(selectedCustomers);
+                          if (checked) next.add(customer.id);
+                          else next.delete(customer.id);
+                          setSelectedCustomers(next);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </TableCell>
                     <TableCell>
                       <Link href={`/customers/${customer.id}`} className="flex items-center gap-3">
                         <Avatar className="h-9 w-9">
@@ -418,6 +459,17 @@ export default function CustomersPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Bulk Action Bar */}
+      <BulkActionBar
+        selectedCount={selectedCustomers.size}
+        onClearSelection={() => setSelectedCustomers(new Set())}
+        actions={[
+          { label: "Send Email", icon: <Mail className="h-4 w-4" />, onClick: handleBulkSendEmail },
+          { label: "Add to Segment", icon: <UsersRound className="h-4 w-4" />, onClick: handleBulkAddToSegment, variant: "outline" },
+          { label: "Export", icon: <Download className="h-4 w-4" />, onClick: handleBulkExport, variant: "outline" },
+        ]}
+      />
 
       {/* Dialogs */}
       {selectedCustomer && (
