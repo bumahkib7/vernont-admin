@@ -52,6 +52,7 @@
     "react-resizable-panels": "^4.3.0",
     "react-simple-maps": "^3.0.0",
     "recharts": "2.15.4",
+    "remark-gfm": "^4.0.1",
     "sockjs-client": "^1.6.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",

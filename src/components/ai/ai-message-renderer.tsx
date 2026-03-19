@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
 import { resolveImageUrl } from "@/lib/api";
 import { ExternalLink } from "lucide-react";
@@ -26,6 +27,7 @@ export function AgentMessageRenderer({
   return (
     <div className={cn("agent-prose text-sm leading-relaxed break-words [overflow-wrap:anywhere]", className)}>
       <Markdown
+        remarkPlugins={[remarkGfm]}
         components={{
           p: ({ children }) => (
             <p className="mb-2 last:mb-0">{children}</p>

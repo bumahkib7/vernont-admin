@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   getAiSessions,
   getAiSessionMessages,
@@ -152,8 +153,49 @@ function MessageBubble({ message }: { message: AiSessionMessage }) {
           {isUser ? (
             <p className="text-[13px] whitespace-pre-wrap break-words">{message.content}</p>
           ) : (
-            <div className="text-[13px] prose prose-sm dark:prose-invert max-w-none break-words [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0">
-              <ReactMarkdown>{message.content}</ReactMarkdown>
+            <div className="text-[13px] max-w-none break-words">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  p: ({ children }) => <p className="mb-1.5 last:mb-0">{children}</p>,
+                  strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                  ul: ({ children }) => <ul className="mb-1.5 ml-3 list-disc space-y-0.5 last:mb-0">{children}</ul>,
+                  ol: ({ children }) => <ol className="mb-1.5 ml-3 list-decimal space-y-0.5 last:mb-0">{children}</ol>,
+                  li: ({ children }) => <li className="text-[13px]">{children}</li>,
+                  table: ({ children }) => (
+                    <div className="my-2 overflow-x-auto rounded-md border border-border">
+                      <table className="w-full text-xs">{children}</table>
+                    </div>
+                  ),
+                  thead: ({ children }) => <thead className="bg-muted/50">{children}</thead>,
+                  th: ({ children }) => <th className="px-2.5 py-1.5 text-left font-medium border-b">{children}</th>,
+                  td: ({ children }) => <td className="px-2.5 py-1.5 border-t border-border/50">{children}</td>,
+                  tr: ({ children }) => <tr className="border-b border-border/30 last:border-0">{children}</tr>,
+                  code: ({ children, className: codeClassName }) => {
+                    const isBlock = codeClassName?.includes("language-");
+                    if (isBlock) {
+                      return (
+                        <pre className="my-1.5 overflow-x-auto rounded-md bg-black/5 dark:bg-white/5 p-2 text-xs">
+                          <code className="font-mono">{children}</code>
+                        </pre>
+                      );
+                    }
+                    return (
+                      <code className="rounded bg-black/5 dark:bg-white/10 px-1 py-0.5 text-xs font-mono">{children}</code>
+                    );
+                  },
+                  pre: ({ children }) => <>{children}</>,
+                  blockquote: ({ children }) => (
+                    <blockquote className="my-1.5 border-l-2 border-muted-foreground/30 pl-2.5 text-muted-foreground italic">{children}</blockquote>
+                  ),
+                  h3: ({ children }) => <h3 className="mb-1 mt-2 text-sm font-semibold first:mt-0">{children}</h3>,
+                  a: ({ href, children }) => (
+                    <a href={href} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 underline">{children}</a>
+                  ),
+                }}
+              >
+                {message.content}
+              </ReactMarkdown>
             </div>
           )}
         </div>
