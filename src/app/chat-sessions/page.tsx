@@ -228,7 +228,7 @@ export default function ChatSessionsPage() {
       if (agentFilter !== "all") params.agentType = agentFilter as AgentType;
       if (search.trim()) params.search = search.trim();
       const data = await getAiSessions(params);
-      setSessions(data.content);
+      setSessions(data.sessions ?? []);
       setTotalPages(data.totalPages);
       setTotalElements(data.totalElements);
     } catch (err) {

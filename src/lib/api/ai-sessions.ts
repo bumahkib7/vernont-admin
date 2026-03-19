@@ -17,10 +17,10 @@ export interface AiSessionSummary {
 }
 
 export interface AiSessionsPage {
-  content: AiSessionSummary[];
+  sessions: AiSessionSummary[];
   totalElements: number;
   totalPages: number;
-  number: number;
+  page: number;
   size: number;
 }
 
@@ -65,10 +65,17 @@ export async function getAiSessions(
   );
 }
 
+interface AiSessionMessagesResponse {
+  sessionId: string;
+  messages: AiSessionMessage[];
+  count: number;
+}
+
 export async function getAiSessionMessages(
   sessionId: string
 ): Promise<AiSessionMessage[]> {
-  return apiFetch<AiSessionMessage[]>(
+  const data = await apiFetch<AiSessionMessagesResponse>(
     `/admin/ai/sessions/${encodeURIComponent(sessionId)}/messages`
   );
+  return data.messages ?? [];
 }
