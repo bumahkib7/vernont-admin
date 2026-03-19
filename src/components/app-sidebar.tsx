@@ -463,6 +463,14 @@ export function AppSidebar() {
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={isActive("/chat-sessions")}>
+              <Link href="/chat-sessions">
+                <MessageSquare className="size-4" />
+                <span>Chat Sessions</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
             <SidebarMenuButton asChild isActive={isActive("/settings/webhooks")}>
               <Link href="/settings/webhooks">
                 <Webhook className="size-4" />
