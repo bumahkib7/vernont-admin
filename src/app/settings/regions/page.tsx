@@ -334,7 +334,7 @@ export default function RegionsSettingsPage() {
 
           {/* Error state */}
           {error && (
-            <div className="flex items-center gap-2 p-4 mb-4 text-red-600 bg-red-50 rounded-lg">
+            <div className="flex items-center gap-2 p-4 mb-4 text-red-600 bg-red-50 dark:bg-red-950/20 dark:text-red-400 rounded-lg">
               <AlertCircle className="h-5 w-5" />
               <span>{error}</span>
               <Button variant="outline" size="sm" onClick={fetchRegions} className="ml-auto">
@@ -488,7 +488,7 @@ export default function RegionsSettingsPage() {
 
           <div className="grid gap-4 py-4">
             {createError && (
-              <div className="flex items-center gap-2 p-3 text-sm text-red-600 bg-red-50 rounded-lg">
+              <div className="flex items-center gap-2 p-3 text-sm text-red-600 bg-red-50 dark:bg-red-950/20 dark:text-red-400 rounded-lg">
                 <AlertCircle className="h-4 w-4" />
                 {createError}
               </div>
@@ -591,7 +591,7 @@ export default function RegionsSettingsPage() {
 
           <div className="grid gap-4 py-4">
             {editError && (
-              <div className="flex items-center gap-2 p-3 text-sm text-red-600 bg-red-50 rounded-lg">
+              <div className="flex items-center gap-2 p-3 text-sm text-red-600 bg-red-50 dark:bg-red-950/20 dark:text-red-400 rounded-lg">
                 <AlertCircle className="h-4 w-4" />
                 {editError}
               </div>

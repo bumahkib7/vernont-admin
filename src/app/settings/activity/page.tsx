@@ -49,10 +49,10 @@ const ENTITY_ICONS: Record<string, React.ReactNode> = {
 function ActionBadge({ type }: { type: string }) {
   const upper = type.toUpperCase();
   if (upper.includes("CREATE") || upper.includes("ADD")) {
-    return <Badge className="bg-green-100 text-green-800 text-xs">Create</Badge>;
+    return <Badge className="bg-green-100 text-green-800 dark:bg-green-950/30 dark:text-green-400 text-xs">Create</Badge>;
   }
   if (upper.includes("UPDATE") || upper.includes("EDIT") || upper.includes("MODIFY")) {
-    return <Badge className="bg-blue-100 text-blue-800 text-xs">Update</Badge>;
+    return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-950/30 dark:text-blue-400 text-xs">Update</Badge>;
   }
   if (upper.includes("DELETE") || upper.includes("REMOVE")) {
     return <Badge variant="destructive" className="text-xs">Delete</Badge>;

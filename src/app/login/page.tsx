@@ -26,15 +26,11 @@ export default function LoginPage() {
     setError(null);
     setIsSubmitting(true);
 
-    console.log("[Login] Starting login...");
     const result = await login({ email, password, rememberMe });
-    console.log("[Login] Result:", result);
 
     if (result.success) {
-      console.log("[Login] Success! Redirecting to /");
       router.push("/");
     } else {
-      console.log("[Login] Failed:", result.error);
       setError(result.error || "Login failed");
     }
 

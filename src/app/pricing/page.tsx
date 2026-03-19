@@ -411,7 +411,7 @@ export default function PricingPage() {
         </div>
         {pendingChanges.size > 0 && (
           <div className="flex items-center gap-2">
-            <Badge className="bg-yellow-100 text-yellow-800">
+            <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-950/30 dark:text-yellow-400">
               {pendingChanges.size} unsaved changes
             </Badge>
             <Button variant="outline" size="sm" onClick={handleDiscardChanges} disabled={saving}>
@@ -517,7 +517,7 @@ export default function PricingPage() {
                 </CardHeader>
                 <CardContent>
                   {error && (
-                    <div className="flex items-center gap-2 p-4 mb-4 bg-red-50 text-red-700 rounded-lg">
+                    <div className="flex items-center gap-2 p-4 mb-4 bg-red-50 text-red-700 dark:bg-red-950/20 dark:text-red-400 rounded-lg">
                       <AlertCircle className="h-5 w-5" />
                       <span>{error}</span>
                       <Button variant="ghost" size="sm" onClick={fetchWorkbench} className="ml-auto">
@@ -567,7 +567,7 @@ export default function PricingPage() {
                           items.map((item) => (
                             <TableRow
                               key={item.variantId}
-                              className={hasPriceChanged(item.variantId) ? "bg-yellow-50" : ""}
+                              className={hasPriceChanged(item.variantId) ? "bg-yellow-50 dark:bg-yellow-950/20" : ""}
                             >
                               <TableCell>
                                 <Checkbox

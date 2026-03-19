@@ -105,15 +105,15 @@ function getStatusBadge(status: string) {
 
 function getFulfillmentStatusBadge(status: FulfillmentStatus) {
   const styles: Record<string, string> = {
-    NOT_FULFILLED: "bg-gray-100 text-gray-800",
-    PARTIALLY_FULFILLED: "bg-yellow-100 text-yellow-800",
-    FULFILLED: "bg-blue-100 text-blue-800",
-    PARTIALLY_SHIPPED: "bg-purple-100 text-purple-800",
-    SHIPPED: "bg-purple-100 text-purple-800",
-    PARTIALLY_RETURNED: "bg-orange-100 text-orange-800",
-    RETURNED: "bg-orange-100 text-orange-800",
-    CANCELED: "bg-red-100 text-red-800",
-    REQUIRES_ACTION: "bg-yellow-100 text-yellow-800",
+    NOT_FULFILLED: "bg-gray-100 text-gray-800 dark:bg-gray-950/30 dark:text-gray-400",
+    PARTIALLY_FULFILLED: "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/30 dark:text-yellow-400",
+    FULFILLED: "bg-blue-100 text-blue-800 dark:bg-blue-950/30 dark:text-blue-400",
+    PARTIALLY_SHIPPED: "bg-purple-100 text-purple-800 dark:bg-purple-950/30 dark:text-purple-400",
+    SHIPPED: "bg-purple-100 text-purple-800 dark:bg-purple-950/30 dark:text-purple-400",
+    PARTIALLY_RETURNED: "bg-orange-100 text-orange-800 dark:bg-orange-950/30 dark:text-orange-400",
+    RETURNED: "bg-orange-100 text-orange-800 dark:bg-orange-950/30 dark:text-orange-400",
+    CANCELED: "bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-400",
+    REQUIRES_ACTION: "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/30 dark:text-yellow-400",
   };
   const labels: Record<string, string> = {
     NOT_FULFILLED: "Not Fulfilled",
@@ -126,20 +126,20 @@ function getFulfillmentStatusBadge(status: FulfillmentStatus) {
     CANCELED: "Canceled",
     REQUIRES_ACTION: "Action Required",
   };
-  return <Badge className={styles[status] || "bg-gray-100 text-gray-800"}>{labels[status] || status}</Badge>;
+  return <Badge className={styles[status] || "bg-gray-100 text-gray-800 dark:bg-gray-950/30 dark:text-gray-400"}>{labels[status] || status}</Badge>;
 }
 
 function getPaymentStatusBadge(status: PaymentStatus) {
   const styles: Record<string, string> = {
-    NOT_PAID: "bg-gray-100 text-gray-800",
-    AWAITING: "bg-yellow-100 text-yellow-800",
-    CAPTURED: "bg-green-100 text-green-800",
-    PAID: "bg-green-100 text-green-800",
-    PARTIALLY_REFUNDED: "bg-orange-100 text-orange-800",
-    REFUNDED: "bg-orange-100 text-orange-800",
-    CANCELED: "bg-red-100 text-red-800",
-    REQUIRES_ACTION: "bg-yellow-100 text-yellow-800",
-    PARTIALLY_PAID: "bg-blue-100 text-blue-800",
+    NOT_PAID: "bg-gray-100 text-gray-800 dark:bg-gray-950/30 dark:text-gray-400",
+    AWAITING: "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/30 dark:text-yellow-400",
+    CAPTURED: "bg-green-100 text-green-800 dark:bg-green-950/30 dark:text-green-400",
+    PAID: "bg-green-100 text-green-800 dark:bg-green-950/30 dark:text-green-400",
+    PARTIALLY_REFUNDED: "bg-orange-100 text-orange-800 dark:bg-orange-950/30 dark:text-orange-400",
+    REFUNDED: "bg-orange-100 text-orange-800 dark:bg-orange-950/30 dark:text-orange-400",
+    CANCELED: "bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-400",
+    REQUIRES_ACTION: "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/30 dark:text-yellow-400",
+    PARTIALLY_PAID: "bg-blue-100 text-blue-800 dark:bg-blue-950/30 dark:text-blue-400",
   };
   const labels: Record<string, string> = {
     NOT_PAID: "Not Paid",
@@ -152,7 +152,7 @@ function getPaymentStatusBadge(status: PaymentStatus) {
     REQUIRES_ACTION: "Action Required",
     PARTIALLY_PAID: "Partial",
   };
-  return <Badge className={styles[status] || "bg-gray-100 text-gray-800"}>{labels[status] || status}</Badge>;
+  return <Badge className={styles[status] || "bg-gray-100 text-gray-800 dark:bg-gray-950/30 dark:text-gray-400"}>{labels[status] || status}</Badge>;
 }
 
 function getActivityIcon(type: CustomerActivityType) {
@@ -408,7 +408,7 @@ export default function CustomerDetailPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardContent className="flex items-center gap-4 p-4">
-            <div className="rounded-full bg-blue-100 p-2">
+            <div className="rounded-full bg-blue-100 dark:bg-blue-950/30 p-2">
               <Package className="h-5 w-5 text-blue-600" />
             </div>
             <div>
@@ -419,7 +419,7 @@ export default function CustomerDetailPage() {
         </Card>
         <Card>
           <CardContent className="flex items-center gap-4 p-4">
-            <div className="rounded-full bg-green-100 p-2">
+            <div className="rounded-full bg-green-100 dark:bg-green-950/30 p-2">
               <TrendingUp className="h-5 w-5 text-green-600" />
             </div>
             <div>
@@ -430,7 +430,7 @@ export default function CustomerDetailPage() {
         </Card>
         <Card>
           <CardContent className="flex items-center gap-4 p-4">
-            <div className="rounded-full bg-purple-100 p-2">
+            <div className="rounded-full bg-purple-100 dark:bg-purple-950/30 p-2">
               <ShoppingBag className="h-5 w-5 text-purple-600" />
             </div>
             <div>
@@ -441,7 +441,7 @@ export default function CustomerDetailPage() {
         </Card>
         <Card>
           <CardContent className="flex items-center gap-4 p-4">
-            <div className="rounded-full bg-yellow-100 p-2">
+            <div className="rounded-full bg-yellow-100 dark:bg-yellow-950/30 p-2">
               <Star className="h-5 w-5 text-yellow-600" />
             </div>
             <div>
@@ -592,7 +592,7 @@ export default function CustomerDetailPage() {
                         >
                           <div className="flex items-center gap-2 mb-3">
                             {address.isDefault && (
-                              <Badge className="bg-green-100 text-green-800">Default</Badge>
+                              <Badge className="bg-green-100 text-green-800 dark:bg-green-950/30 dark:text-green-400">Default</Badge>
                             )}
                           </div>
                           <div className="text-sm space-y-1">
@@ -745,18 +745,18 @@ export default function CustomerDetailPage() {
 
           {/* Account Status */}
           {customer.status !== "ACTIVE" && (
-            <Card className="border-yellow-200 bg-yellow-50">
+            <Card className="border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950/20">
               <CardHeader>
-                <CardTitle className="text-yellow-800">Account Suspended</CardTitle>
+                <CardTitle className="text-yellow-800 dark:text-yellow-400">Account Suspended</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
                 {customer.suspendedAt && (
-                  <p className="text-sm text-yellow-700">
+                  <p className="text-sm text-yellow-700 dark:text-yellow-400">
                     Suspended on {formatDateTime(customer.suspendedAt)}
                   </p>
                 )}
                 {customer.suspendedReason && (
-                  <p className="text-sm text-yellow-700">
+                  <p className="text-sm text-yellow-700 dark:text-yellow-400">
                     Reason: {customer.suspendedReason}
                   </p>
                 )}

@@ -117,7 +117,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(
     async (credentials: LoginRequest): Promise<{ success: boolean; error?: string }> => {
       try {
-        console.log("[AuthContext] login() called");
         const response = await fetch(
           `${AUTH_CONFIG.apiUrl}${AUTH_CONFIG.endpoints.login}`,
           {
@@ -130,16 +129,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         );
 
-        console.log("[AuthContext] Response status:", response.status);
-
         if (!response.ok) {
           const errorData: AuthError = await response.json();
-          console.log("[AuthContext] Login failed:", errorData);
           return { success: false, error: errorData.message };
         }
 
         const data: AuthResponse = await response.json();
-        console.log("[AuthContext] Login success, user:", data.user);
 
         // Mark as just authenticated to prevent re-fetch on navigation
         justAuthenticatedRef.current = true;
@@ -154,7 +149,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Start proactive token refresh
         startTokenRefreshInterval();
 
-        console.log("[AuthContext] State updated, returning success");
         return { success: true };
       } catch (error) {
         console.error("[AuthContext] Login error:", error);
@@ -206,11 +200,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Initial auth check
   useEffect(() => {
     const initAuth = async () => {
-      console.log("[AuthContext] initAuth running, isPublicRoute:", isPublicRoute, "pathname:", pathname);
-
       // Skip auth check on public routes during initial load
       if (isPublicRoute) {
-        console.log("[AuthContext] Skipping auth check on public route");
         setState((prev) => ({ ...prev, isLoading: false }));
         return;
       }
@@ -218,16 +209,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // If we just authenticated via login, skip the re-fetch
       // The state is already set correctly from the login response
       if (justAuthenticatedRef.current) {
-        console.log("[AuthContext] Just authenticated, skipping re-fetch");
         justAuthenticatedRef.current = false; // Reset for future use
         // Restart the refresh interval that was stopped by the effect cleanup
         startTokenRefreshInterval();
         return;
       }
 
-      console.log("[AuthContext] Fetching user...");
       const user = await fetchUser();
-      console.log("[AuthContext] fetchUser returned:", user);
       initialCheckDoneRef.current = true;
 
       setState({
@@ -243,7 +231,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Redirect to login if not authenticated and not on public route
       if (!user && !isPublicRoute) {
-        console.log("[AuthContext] No user, redirecting to login");
         router.push("/login");
       }
     };
@@ -258,9 +245,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Redirect authenticated users away from login page
   useEffect(() => {
-    console.log("[AuthContext] Redirect effect - isAuthenticated:", state.isAuthenticated, "isPublicRoute:", isPublicRoute, "pathname:", pathname);
     if (state.isAuthenticated && isPublicRoute && pathname === "/login") {
-      console.log("[AuthContext] Redirecting authenticated user from login to /");
       router.push("/");
     }
   }, [state.isAuthenticated, isPublicRoute, pathname, router]);

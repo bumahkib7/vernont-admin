@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import {
   Card,
@@ -73,6 +73,7 @@ import {
   type InventoryMovement,
   type MovementType,
 } from "@/lib/api";
+import { DataTable, type Column } from "@/components/ui/data-table";
 import { toast } from "sonner";
 import { usePageContext } from "@/hooks/use-page-context";
 
@@ -293,6 +294,99 @@ export default function InventoryPage() {
     }
   };
 
+  const stockLevelColumns: Column<InventoryLevel>[] = useMemo(
+    () => [
+      {
+        id: "sku",
+        header: "SKU",
+        cell: (level) => (
+          <span className="font-mono text-sm">{level.sku || "-"}</span>
+        ),
+      },
+      {
+        id: "location",
+        header: "Location",
+        hideOnTablet: true,
+        cell: (level) => (
+          <span className="text-muted-foreground">{level.locationName || "-"}</span>
+        ),
+      },
+      {
+        id: "inStock",
+        header: "In Stock",
+        className: "text-center",
+        cell: (level) => (
+          <span className="font-medium">{level.stockedQuantity}</span>
+        ),
+      },
+      {
+        id: "reserved",
+        header: "Reserved",
+        className: "text-center",
+        hideOnMobile: true,
+        cell: (level) => (
+          <span className="text-muted-foreground">{level.reservedQuantity}</span>
+        ),
+      },
+      {
+        id: "available",
+        header: "Available",
+        className: "text-center",
+        cell: (level) => (
+          <span className={level.availableQuantity <= 2 ? "text-yellow-600 font-medium" : ""}>
+            {level.availableQuantity}
+          </span>
+        ),
+      },
+      {
+        id: "incoming",
+        header: "Incoming",
+        className: "text-center",
+        hideOnTablet: true,
+        cell: (level) => (
+          <span className="text-muted-foreground">{level.incomingQuantity}</span>
+        ),
+      },
+      {
+        id: "status",
+        header: "Status",
+        cell: (level) => getStatusBadge(getStockStatus(level.availableQuantity, level.stockedQuantity)),
+      },
+      {
+        id: "actions",
+        header: "",
+        className: "w-[50px]",
+        cell: (level) => (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreHorizontal className="h-4 w-4" />
+                <span className="sr-only">Open menu</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => openAdjustmentDialog("add", level)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Stock
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => openAdjustmentDialog("remove", level)}>
+                <Minus className="mr-2 h-4 w-4" />
+                Remove Stock
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => openAdjustmentDialog("adjust", level)}>
+                <RefreshCcw className="mr-2 h-4 w-4" />
+                Adjust Inventory
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ),
+      },
+    ],
+    []
+  );
+
   if (isLoading) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
@@ -505,90 +599,18 @@ export default function InventoryPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {filteredLevels.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Package className="h-12 w-12 text-muted-foreground/50" />
-              <p className="mt-4 text-lg font-medium">No inventory items</p>
-              <p className="text-muted-foreground">
-                {inventoryLevels.length === 0
-                  ? "Add products with inventory tracking to see stock levels here"
-                  : "No items match your current filters"}
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>SKU</TableHead>
-                  <TableHead className="hidden md:table-cell">Location</TableHead>
-                  <TableHead className="text-center">In Stock</TableHead>
-                  <TableHead className="hidden sm:table-cell text-center">Reserved</TableHead>
-                  <TableHead className="text-center">Available</TableHead>
-                  <TableHead className="hidden md:table-cell text-center">Incoming</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredLevels.map((level) => {
-                  const status = getStockStatus(level.availableQuantity, level.stockedQuantity);
-                  return (
-                    <TableRow key={level.id}>
-                      <TableCell className="font-mono text-sm">
-                        {level.sku || "-"}
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell text-muted-foreground">
-                        {level.locationName || "-"}
-                      </TableCell>
-                      <TableCell className="text-center font-medium">
-                        {level.stockedQuantity}
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell text-center text-muted-foreground">
-                        {level.reservedQuantity}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span className={level.availableQuantity <= 2 ? "text-yellow-600 font-medium" : ""}>
-                          {level.availableQuantity}
-                        </span>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell text-center text-muted-foreground">
-                        {level.incomingQuantity}
-                      </TableCell>
-                      <TableCell>{getStatusBadge(status)}</TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreHorizontal className="h-4 w-4" />
-                              <span className="sr-only">Open menu</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => openAdjustmentDialog("add", level)}>
-                              <Plus className="mr-2 h-4 w-4" />
-                              Add Stock
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => openAdjustmentDialog("remove", level)}>
-                              <Minus className="mr-2 h-4 w-4" />
-                              Remove Stock
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => openAdjustmentDialog("adjust", level)}>
-                              <RefreshCcw className="mr-2 h-4 w-4" />
-                              Adjust Inventory
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-            </div>
-          )}
+          <DataTable
+            columns={stockLevelColumns}
+            data={filteredLevels}
+            getRowId={(level) => level.id}
+            emptyIcon={<Package className="h-10 w-10 opacity-40" />}
+            emptyTitle="No inventory items"
+            emptyDescription={
+              inventoryLevels.length === 0
+                ? "Add products with inventory tracking to see stock levels here"
+                : "No items match your current filters"
+            }
+          />
         </CardContent>
       </Card>
         </TabsContent>

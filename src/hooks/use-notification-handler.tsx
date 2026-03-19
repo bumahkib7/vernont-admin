@@ -80,8 +80,6 @@ export function useNotificationHandler() {
       const msg = message as NotificationWebSocketMessage;
       const notification = toNotification(msg);
 
-      console.log("[NotificationHandler] Received notification:", notification);
-
       // Update React Query cache
       handleNewNotification(notification);
 
@@ -136,21 +134,16 @@ export function useNotificationHandler() {
 
   // Subscribe to notification queue when connected
   useEffect(() => {
-    console.log("[NotificationHandler] Effect triggered, isConnected:", isConnected);
-
     if (!isConnected) {
-      console.log("[NotificationHandler] Not connected, resetting subscription state");
       hasSubscribedRef.current = false;
       return;
     }
 
     // Prevent duplicate subscriptions
     if (hasSubscribedRef.current) {
-      console.log("[NotificationHandler] Already subscribed, skipping");
       return;
     }
 
-    console.log("[NotificationHandler] Subscribing to:", USER_NOTIFICATION_QUEUE);
     hasSubscribedRef.current = true;
 
     const subscription = subscribe(
@@ -158,15 +151,12 @@ export function useNotificationHandler() {
       handleNotificationMessage
     );
 
-    console.log("[NotificationHandler] Subscription result:", subscription ? "success" : "null (pending)");
-
     if (subscription) {
       subscriptionRef.current = subscription;
     }
 
     return () => {
       if (subscriptionRef.current) {
-        console.log("[NotificationHandler] Cleanup: unsubscribing from notifications queue");
         unsubscribe(subscriptionRef.current);
         subscriptionRef.current = null;
         hasSubscribedRef.current = false;

@@ -291,25 +291,25 @@ export async function generateDiscountCode(): Promise<{ code: string }> {
 // Discount display helpers
 export function getPromotionTypeDisplay(type: string): { label: string; color: string; icon: string } {
   const config: Record<string, { label: string; color: string; icon: string }> = {
-    PERCENTAGE: { label: "Percentage Off", color: "bg-green-100 text-green-800", icon: "%" },
-    FIXED: { label: "Fixed Amount", color: "bg-blue-100 text-blue-800", icon: "\u00A3" },
-    FREE_SHIPPING: { label: "Free Shipping", color: "bg-purple-100 text-purple-800", icon: "\uD83D\uDE9A" },
-    BUY_X_GET_Y: { label: "Buy X Get Y", color: "bg-orange-100 text-orange-800", icon: "\uD83C\uDF81" },
+    PERCENTAGE: { label: "Percentage Off", color: "bg-green-100 text-green-800 dark:bg-green-950/30 dark:text-green-400", icon: "%" },
+    FIXED: { label: "Fixed Amount", color: "bg-blue-100 text-blue-800 dark:bg-blue-950/30 dark:text-blue-400", icon: "\u00A3" },
+    FREE_SHIPPING: { label: "Free Shipping", color: "bg-purple-100 text-purple-800 dark:bg-purple-950/30 dark:text-purple-400", icon: "\uD83D\uDE9A" },
+    BUY_X_GET_Y: { label: "Buy X Get Y", color: "bg-orange-100 text-orange-800 dark:bg-orange-950/30 dark:text-orange-400", icon: "\uD83C\uDF81" },
   };
-  return config[type] || { label: type, color: "bg-gray-100 text-gray-800", icon: "?" };
+  return config[type] || { label: type, color: "bg-gray-100 text-gray-800 dark:bg-gray-950/30 dark:text-gray-400", icon: "?" };
 }
 
 export function getPromotionStatusDisplay(status: string): { label: string; color: string } {
   const config: Record<string, { label: string; color: string }> = {
-    ACTIVE: { label: "Active", color: "bg-green-100 text-green-800" },
-    INACTIVE: { label: "Inactive", color: "bg-gray-100 text-gray-800" },
-    SCHEDULED: { label: "Scheduled", color: "bg-blue-100 text-blue-800" },
-    EXPIRED: { label: "Expired", color: "bg-red-100 text-red-800" },
-    DISABLED: { label: "Disabled", color: "bg-yellow-100 text-yellow-800" },
-    LIMIT_REACHED: { label: "Limit Reached", color: "bg-orange-100 text-orange-800" },
-    DELETED: { label: "Deleted", color: "bg-red-100 text-red-800" },
+    ACTIVE: { label: "Active", color: "bg-green-100 text-green-800 dark:bg-green-950/30 dark:text-green-400" },
+    INACTIVE: { label: "Inactive", color: "bg-gray-100 text-gray-800 dark:bg-gray-950/30 dark:text-gray-400" },
+    SCHEDULED: { label: "Scheduled", color: "bg-blue-100 text-blue-800 dark:bg-blue-950/30 dark:text-blue-400" },
+    EXPIRED: { label: "Expired", color: "bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-400" },
+    DISABLED: { label: "Disabled", color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/30 dark:text-yellow-400" },
+    LIMIT_REACHED: { label: "Limit Reached", color: "bg-orange-100 text-orange-800 dark:bg-orange-950/30 dark:text-orange-400" },
+    DELETED: { label: "Deleted", color: "bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-400" },
   };
-  return config[status] || { label: status, color: "bg-gray-100 text-gray-800" };
+  return config[status] || { label: status, color: "bg-gray-100 text-gray-800 dark:bg-gray-950/30 dark:text-gray-400" };
 }
 
 export function getPromotionRuleTypeDisplay(type: string): string {
@@ -526,10 +526,10 @@ export async function getGiftCardStats(): Promise<GiftCardStatsResponse> {
 // Gift card display helpers
 export function getGiftCardStatusDisplay(status: GiftCardStatus): { label: string; color: string } {
   const config: Record<GiftCardStatus, { label: string; color: string }> = {
-    ACTIVE: { label: "Active", color: "bg-green-100 text-green-800" },
-    FULLY_REDEEMED: { label: "Fully Redeemed", color: "bg-blue-100 text-blue-800" },
-    EXPIRED: { label: "Expired", color: "bg-red-100 text-red-800" },
-    DISABLED: { label: "Disabled", color: "bg-gray-100 text-gray-800" },
+    ACTIVE: { label: "Active", color: "bg-green-100 text-green-800 dark:bg-green-950/30 dark:text-green-400" },
+    FULLY_REDEEMED: { label: "Fully Redeemed", color: "bg-blue-100 text-blue-800 dark:bg-blue-950/30 dark:text-blue-400" },
+    EXPIRED: { label: "Expired", color: "bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-400" },
+    DISABLED: { label: "Disabled", color: "bg-gray-100 text-gray-800 dark:bg-gray-950/30 dark:text-gray-400" },
   };
-  return config[status] || { label: status, color: "bg-gray-100 text-gray-800" };
+  return config[status] || { label: status, color: "bg-gray-100 text-gray-800 dark:bg-gray-950/30 dark:text-gray-400" };
 }

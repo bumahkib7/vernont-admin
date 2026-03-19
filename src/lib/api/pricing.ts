@@ -323,24 +323,24 @@ export async function getPricingActivity(params?: {
 // Pricing display helpers
 export function getPricingRuleTypeDisplay(type: string): { label: string; color: string } {
   const config: Record<string, { label: string; color: string }> = {
-    PERCENTAGE_DISCOUNT: { label: "Percentage Discount", color: "bg-green-100 text-green-800" },
-    FIXED_DISCOUNT: { label: "Fixed Discount", color: "bg-blue-100 text-blue-800" },
-    MARKUP: { label: "Markup", color: "bg-orange-100 text-orange-800" },
-    TIME_BASED: { label: "Time-Based", color: "bg-purple-100 text-purple-800" },
-    QUANTITY_BASED: { label: "Quantity-Based", color: "bg-yellow-100 text-yellow-800" },
-    TIERED: { label: "Tiered", color: "bg-indigo-100 text-indigo-800" },
+    PERCENTAGE_DISCOUNT: { label: "Percentage Discount", color: "bg-green-100 text-green-800 dark:bg-green-950/30 dark:text-green-400" },
+    FIXED_DISCOUNT: { label: "Fixed Discount", color: "bg-blue-100 text-blue-800 dark:bg-blue-950/30 dark:text-blue-400" },
+    MARKUP: { label: "Markup", color: "bg-orange-100 text-orange-800 dark:bg-orange-950/30 dark:text-orange-400" },
+    TIME_BASED: { label: "Time-Based", color: "bg-purple-100 text-purple-800 dark:bg-purple-950/30 dark:text-purple-400" },
+    QUANTITY_BASED: { label: "Quantity-Based", color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/30 dark:text-yellow-400" },
+    TIERED: { label: "Tiered", color: "bg-indigo-100 text-indigo-800 dark:bg-indigo-950/30 dark:text-indigo-400" },
   };
-  return config[type] || { label: type, color: "bg-gray-100 text-gray-800" };
+  return config[type] || { label: type, color: "bg-gray-100 text-gray-800 dark:bg-gray-950/30 dark:text-gray-400" };
 }
 
 export function getPricingRuleStatusDisplay(status: string): { label: string; color: string } {
   const config: Record<string, { label: string; color: string }> = {
-    ACTIVE: { label: "Active", color: "bg-green-100 text-green-800" },
-    INACTIVE: { label: "Inactive", color: "bg-gray-100 text-gray-800" },
-    SCHEDULED: { label: "Scheduled", color: "bg-blue-100 text-blue-800" },
-    EXPIRED: { label: "Expired", color: "bg-red-100 text-red-800" },
+    ACTIVE: { label: "Active", color: "bg-green-100 text-green-800 dark:bg-green-950/30 dark:text-green-400" },
+    INACTIVE: { label: "Inactive", color: "bg-gray-100 text-gray-800 dark:bg-gray-950/30 dark:text-gray-400" },
+    SCHEDULED: { label: "Scheduled", color: "bg-blue-100 text-blue-800 dark:bg-blue-950/30 dark:text-blue-400" },
+    EXPIRED: { label: "Expired", color: "bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-400" },
   };
-  return config[status] || { label: status, color: "bg-gray-100 text-gray-800" };
+  return config[status] || { label: status, color: "bg-gray-100 text-gray-800 dark:bg-gray-950/30 dark:text-gray-400" };
 }
 
 export function getPriceChangeTypeDisplay(type: string): { label: string; color: string } {

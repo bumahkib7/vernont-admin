@@ -1385,10 +1385,10 @@ export default function OrderDetailsPage() {
                 {/* Status Summary */}
                 <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
                   <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                    tracking.statusCode === "DE" ? "bg-green-100 text-green-600" :
-                    tracking.statusCode === "IT" ? "bg-blue-100 text-blue-600" :
-                    tracking.statusCode === "AC" ? "bg-yellow-100 text-yellow-600" :
-                    "bg-gray-100 text-gray-600"
+                    tracking.statusCode === "DE" ? "bg-green-100 text-green-600 dark:bg-green-950/30 dark:text-green-400" :
+                    tracking.statusCode === "IT" ? "bg-blue-100 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400" :
+                    tracking.statusCode === "AC" ? "bg-yellow-100 text-yellow-600 dark:bg-yellow-950/30 dark:text-yellow-400" :
+                    "bg-gray-100 text-gray-600 dark:bg-gray-950/30 dark:text-gray-400"
                   }`}>
                     {tracking.statusCode === "DE" ? <CheckCircle className="h-5 w-5" /> :
                      tracking.statusCode === "IT" ? <Truck className="h-5 w-5" /> :

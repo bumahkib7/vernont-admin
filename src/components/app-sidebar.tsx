@@ -137,7 +137,6 @@ const navItems: NavItem[] = [
     icon: Users,
     children: [
       { title: "All Customers", url: "/customers" },
-      { title: "Customer Groups", url: "/customers/groups" },
       { title: "Segments", url: "/customers/segments" },
       { title: "Companies (B2B)", url: "/customers/companies" },
     ],

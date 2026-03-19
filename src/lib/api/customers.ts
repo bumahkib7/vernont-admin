@@ -392,21 +392,21 @@ export async function removeCustomerFromGroup(
 // Customer display helpers
 export function getTierDisplay(tier: CustomerTier): { label: string; color: string } {
   const config: Record<CustomerTier, { label: string; color: string }> = {
-    BRONZE: { label: "Bronze", color: "bg-orange-100 text-orange-800" },
-    SILVER: { label: "Silver", color: "bg-gray-100 text-gray-800" },
-    GOLD: { label: "Gold", color: "bg-yellow-100 text-yellow-800" },
-    PLATINUM: { label: "Platinum", color: "bg-purple-100 text-purple-800" },
+    BRONZE: { label: "Bronze", color: "bg-orange-100 text-orange-800 dark:bg-orange-950/30 dark:text-orange-400" },
+    SILVER: { label: "Silver", color: "bg-gray-100 text-gray-800 dark:bg-gray-950/30 dark:text-gray-400" },
+    GOLD: { label: "Gold", color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/30 dark:text-yellow-400" },
+    PLATINUM: { label: "Platinum", color: "bg-purple-100 text-purple-800 dark:bg-purple-950/30 dark:text-purple-400" },
   };
-  return config[tier] || { label: tier, color: "bg-gray-100 text-gray-800" };
+  return config[tier] || { label: tier, color: "bg-gray-100 text-gray-800 dark:bg-gray-950/30 dark:text-gray-400" };
 }
 
 export function getCustomerStatusDisplay(status: CustomerStatus): { label: string; color: string } {
   const config: Record<CustomerStatus, { label: string; color: string }> = {
-    ACTIVE: { label: "Active", color: "bg-green-100 text-green-800" },
-    SUSPENDED: { label: "Suspended", color: "bg-yellow-100 text-yellow-800" },
-    BANNED: { label: "Banned", color: "bg-red-100 text-red-800" },
+    ACTIVE: { label: "Active", color: "bg-green-100 text-green-800 dark:bg-green-950/30 dark:text-green-400" },
+    SUSPENDED: { label: "Suspended", color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/30 dark:text-yellow-400" },
+    BANNED: { label: "Banned", color: "bg-red-100 text-red-800 dark:bg-red-950/30 dark:text-red-400" },
   };
-  return config[status] || { label: status, color: "bg-gray-100 text-gray-800" };
+  return config[status] || { label: status, color: "bg-gray-100 text-gray-800 dark:bg-gray-950/30 dark:text-gray-400" };
 }
 
 export function getActivityTypeDisplay(type: CustomerActivityType): { label: string; icon: string } {

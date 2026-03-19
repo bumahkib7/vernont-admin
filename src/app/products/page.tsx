@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -13,14 +13,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,7 +28,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -53,15 +44,13 @@ import {
   Trash2,
   Eye,
   EyeOff,
-  Filter,
   Download,
   RefreshCw,
   AlertCircle,
   Image as ImageIcon,
 } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
 import { BulkActionBar } from "@/components/ui/bulk-action-bar";
-import { StackedThumbnails } from "@/components/ui/thumbnail";
+import { DataTable, type Column } from "@/components/ui/data-table";
 import { toast } from "sonner";
 import { useAgentActionsStore } from "@/stores/agent-actions";
 import { AddProductModal } from "@/components/products/add-product-modal";
@@ -195,7 +184,6 @@ export default function ProductsPage() {
 
   const handleProductSave = (data: any, isDraft: boolean) => {
     console.log("Product saved:", data, "Draft:", isDraft);
-    // Refresh the list after saving
     fetchProducts();
   };
 
@@ -233,6 +221,109 @@ export default function ProductsPage() {
     toast.success(`Deleted ${selectedProducts.size} products`);
     setSelectedProducts(new Set());
   };
+
+  const currentPage = Math.floor(pagination.start / 20) + 1;
+
+  const productColumns: Column<ProductSummary>[] = useMemo(
+    () => [
+      {
+        id: "image",
+        header: "Image",
+        className: "w-[100px]",
+        cell: (product) => (
+          <Link href={`/products/${product.id}`} onClick={(e) => e.stopPropagation()}>
+            {product.thumbnail ? (
+              <img
+                src={resolveImageUrl(product.thumbnail) || ""}
+                alt={product.title}
+                className="h-12 w-12 rounded object-cover"
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                  const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
+                  if (fallback) fallback.style.display = "flex";
+                }}
+              />
+            ) : null}
+            <div className={`${product.thumbnail ? "hidden" : "flex"} h-12 w-12 rounded bg-muted items-center justify-center`}>
+              <ImageIcon className="h-5 w-5 text-muted-foreground/50" />
+            </div>
+          </Link>
+        ),
+      },
+      {
+        id: "product",
+        header: "Product",
+        cell: (product) => (
+          <Link href={`/products/${product.id}`} className="flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <span className="font-medium hover:underline">{product.title}</span>
+            {product.subtitle && (
+              <span className="text-xs text-muted-foreground">
+                {product.subtitle}
+              </span>
+            )}
+          </Link>
+        ),
+      },
+      {
+        id: "handle",
+        header: "Handle",
+        hideOnMobile: true,
+        cell: (product) => <span className="text-muted-foreground">/{product.handle}</span>,
+      },
+      {
+        id: "variants",
+        header: "Variants",
+        className: "text-center",
+        hideOnMobile: true,
+        cell: (product) => <>{product.variantCount ?? 0}</>,
+      },
+      {
+        id: "status",
+        header: "Status",
+        cell: (product) => getStatusBadge(product.status),
+      },
+      {
+        id: "actions",
+        header: "",
+        className: "w-[50px]",
+        cell: (product) => (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.stopPropagation()}>
+                <MoreHorizontal className="h-4 w-4" />
+                <span className="sr-only">Open menu</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href={`/products/${product.id}`}>
+                  <Eye className="mr-2 h-4 w-4" />
+                  View
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href={`/products/${product.id}`}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-red-600"
+                onClick={() => handleDeleteProduct(product)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ),
+      },
+    ],
+    []
+  );
 
   return (
     <div className="flex flex-col gap-6 p-4 sm:p-6">
@@ -342,173 +433,28 @@ export default function ProductsPage() {
             </div>
           )}
 
-          {/* Loading State */}
-          {loading && products.length === 0 ? (
-            <div className="space-y-3">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="flex items-center gap-4">
-                  <Skeleton className="h-12 w-12 rounded" />
-                  <Skeleton className="h-4 w-48" />
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-4 w-20 ml-auto" />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[40px]">
-                    <Checkbox
-                      checked={selectedProducts.size === products.length && products.length > 0}
-                      onCheckedChange={(checked) => {
-                        if (checked) setSelectedProducts(new Set(products.map(p => p.id)));
-                        else setSelectedProducts(new Set());
-                      }}
-                    />
-                  </TableHead>
-                  <TableHead className="w-[100px]">Image</TableHead>
-                  <TableHead>Product</TableHead>
-                  <TableHead className="hidden sm:table-cell">Handle</TableHead>
-                  <TableHead className="hidden sm:table-cell text-center">Variants</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {products.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                      No products found
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  products.map((product) => (
-                    <TableRow key={product.id} className="cursor-pointer hover:bg-muted/50">
-                      <TableCell>
-                        <Checkbox
-                          checked={selectedProducts.has(product.id)}
-                          onCheckedChange={(checked) => {
-                            const next = new Set(selectedProducts);
-                            if (checked) next.add(product.id);
-                            else next.delete(product.id);
-                            setSelectedProducts(next);
-                          }}
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Link href={`/products/${product.id}`}>
-                          {product.thumbnail ? (
-                            <img
-                              src={resolveImageUrl(product.thumbnail) || ""}
-                              alt={product.title}
-                              className="h-12 w-12 rounded object-cover"
-                              onError={(e) => {
-                                e.currentTarget.style.display = "none";
-                                const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
-                                if (fallback) fallback.style.display = "flex";
-                              }}
-                            />
-                          ) : null}
-                          <div className={`${product.thumbnail ? "hidden" : "flex"} h-12 w-12 rounded bg-muted items-center justify-center`}>
-                            <ImageIcon className="h-5 w-5 text-muted-foreground/50" />
-                          </div>
-                        </Link>
-                      </TableCell>
-                      <TableCell>
-                        <Link href={`/products/${product.id}`} className="flex flex-col">
-                          <span className="font-medium hover:underline">{product.title}</span>
-                          {product.subtitle && (
-                            <span className="text-xs text-muted-foreground">
-                              {product.subtitle}
-                            </span>
-                          )}
-                        </Link>
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell text-muted-foreground">/{product.handle}</TableCell>
-                      <TableCell className="hidden sm:table-cell text-center">
-                        {product.variantCount ?? 0}
-                      </TableCell>
-                      <TableCell>{getStatusBadge(product.status)}</TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreHorizontal className="h-4 w-4" />
-                              <span className="sr-only">Open menu</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem asChild>
-                              <Link href={`/products/${product.id}`}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                View
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                              <Link href={`/products/${product.id}`}>
-                                <Pencil className="mr-2 h-4 w-4" />
-                                Edit
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-red-600"
-                              onClick={() => handleDeleteProduct(product)}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-            </div>
-          )}
-
-          {/* Pagination */}
-          {pagination.totalPages > 1 && (
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mt-4 text-sm text-muted-foreground">
-              <span>
-                {pagination.start + 1} — {Math.min(pagination.end, pagination.totalElements)} of {pagination.totalElements} products
-              </span>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={pagination.start === 0}
-                  onClick={() => setPagination((prev) => ({
-                    ...prev,
-                    start: Math.max(0, prev.start - 20),
-                    end: Math.max(20, prev.end - 20),
-                  }))}
-                >
-                  Prev
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={pagination.end >= pagination.totalElements}
-                  onClick={() => setPagination((prev) => ({
-                    ...prev,
-                    start: prev.start + 20,
-                    end: prev.end + 20,
-                  }))}
-                >
-                  Next
-                </Button>
-              </div>
-            </div>
-          )}
+          <DataTable
+            columns={productColumns}
+            data={products}
+            loading={loading}
+            selectable
+            selectedIds={selectedProducts}
+            onSelectionChange={setSelectedProducts}
+            getRowId={(p) => p.id}
+            onRowClick={(p) => (window.location.href = `/products/${p.id}`)}
+            pagination={pagination.totalPages > 1 ? {
+              page: currentPage,
+              pageSize: 20,
+              total: pagination.totalElements,
+              onPageChange: (page) => setPagination((prev) => ({
+                ...prev,
+                start: (page - 1) * 20,
+                end: page * 20,
+              })),
+            } : undefined}
+            emptyTitle="No products found"
+            emptyIcon={<ImageIcon className="h-10 w-10 opacity-40" />}
+          />
         </CardContent>
       </Card>
 

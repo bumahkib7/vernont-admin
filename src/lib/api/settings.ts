@@ -1543,11 +1543,11 @@ export function getInterventionSeverityDisplay(severity: InterventionSeverity): 
 // Intervention status display helper
 export function getInterventionStatusDisplay(status: InterventionStatus): { label: string; color: string } {
   const config: Record<InterventionStatus, { label: string; color: string }> = {
-    PENDING: { label: "Pending", color: "bg-yellow-100 text-yellow-800" },
-    IN_PROGRESS: { label: "In Progress", color: "bg-blue-100 text-blue-800" },
-    RESOLVED: { label: "Resolved", color: "bg-green-100 text-green-800" },
-    IGNORED: { label: "Ignored", color: "bg-gray-100 text-gray-800" },
-    AUTO_RETRYING: { label: "Auto Retrying", color: "bg-purple-100 text-purple-800" },
+    PENDING: { label: "Pending", color: "bg-yellow-100 text-yellow-800 dark:bg-yellow-950/30 dark:text-yellow-400" },
+    IN_PROGRESS: { label: "In Progress", color: "bg-blue-100 text-blue-800 dark:bg-blue-950/30 dark:text-blue-400" },
+    RESOLVED: { label: "Resolved", color: "bg-green-100 text-green-800 dark:bg-green-950/30 dark:text-green-400" },
+    IGNORED: { label: "Ignored", color: "bg-gray-100 text-gray-800 dark:bg-gray-950/30 dark:text-gray-400" },
+    AUTO_RETRYING: { label: "Auto Retrying", color: "bg-purple-100 text-purple-800 dark:bg-purple-950/30 dark:text-purple-400" },
   };
-  return config[status] || { label: status, color: "bg-gray-100 text-gray-800" };
+  return config[status] || { label: status, color: "bg-gray-100 text-gray-800 dark:bg-gray-950/30 dark:text-gray-400" };
 }

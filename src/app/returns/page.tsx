@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
+import { useState, useEffect, useMemo } from "react";
 import {
   Card,
   CardContent,
@@ -10,14 +9,6 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -29,7 +20,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Search,
   SlidersHorizontal,
@@ -43,6 +33,7 @@ import {
   DollarSign,
   CheckCircle,
 } from "lucide-react";
+import { DataTable, type Column } from "@/components/ui/data-table";
 import {
   getReturns,
   getReturnStats,
@@ -164,6 +155,67 @@ export default function ReturnsPage() {
       offset: (page - 1) * prev.limit,
     }));
   };
+
+  const returnColumns: Column<ReturnSummary>[] = useMemo(
+    () => [
+      {
+        id: "returnId",
+        header: "Return ID",
+        cell: (ret) => (
+          <span className="font-mono text-sm">{ret.id.slice(0, 8)}...</span>
+        ),
+      },
+      {
+        id: "order",
+        header: "Order",
+        cell: (ret) => (
+          <span className="font-medium">
+            #{ret.orderDisplayId || ret.orderId.slice(0, 8)}
+          </span>
+        ),
+      },
+      {
+        id: "customer",
+        header: "Customer",
+        hideOnMobile: true,
+        cell: (ret) => <>{ret.customerEmail || "-"}</>,
+      },
+      {
+        id: "status",
+        header: "Status",
+        cell: (ret) => <ReturnStatusBadge status={ret.status} />,
+      },
+      {
+        id: "reason",
+        header: "Reason",
+        hideOnTablet: true,
+        cell: (ret) => (
+          <span className="capitalize">
+            {ret.reason.replace(/_/g, " ").toLowerCase()}
+          </span>
+        ),
+      },
+      {
+        id: "items",
+        header: "Items",
+        hideOnMobile: true,
+        cell: (ret) => <>{ret.itemCount}</>,
+      },
+      {
+        id: "date",
+        header: "Date",
+        hideOnTablet: true,
+        cell: (ret) => <>{formatDate(ret.requestedAt)}</>,
+      },
+      {
+        id: "refundAmount",
+        header: "Refund Amount",
+        className: "text-right",
+        cell: (ret) => <>{formatPrice(ret.refundAmount / 100, ret.currencyCode)}</>,
+      },
+    ],
+    []
+  );
 
   return (
     <div className="flex flex-col gap-6 p-4 sm:p-6">
@@ -312,7 +364,7 @@ export default function ReturnsPage() {
 
           {/* Error State */}
           {error && (
-            <div className="flex items-center gap-2 p-4 mb-4 bg-red-50 text-red-700 rounded-lg">
+            <div className="flex items-center gap-2 p-4 mb-4 bg-red-50 text-red-700 dark:bg-red-950/20 dark:text-red-400 rounded-lg">
               <AlertCircle className="h-5 w-5" />
               <span>{error}</span>
               <Button variant="ghost" size="sm" onClick={fetchReturns} className="ml-auto">
@@ -321,105 +373,22 @@ export default function ReturnsPage() {
             </div>
           )}
 
-          {/* Loading State */}
-          {loading && returns.length === 0 ? (
-            <div className="space-y-3">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="flex items-center gap-4">
-                  <Skeleton className="h-4 w-16" />
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-4 w-40" />
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-4 w-20 ml-auto" />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <>
-              {/* Returns Table */}
-              <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Return ID</TableHead>
-                    <TableHead>Order</TableHead>
-                    <TableHead className="hidden sm:table-cell">Customer</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="hidden md:table-cell">Reason</TableHead>
-                    <TableHead className="hidden sm:table-cell">Items</TableHead>
-                    <TableHead className="hidden md:table-cell">Date</TableHead>
-                    <TableHead className="text-right">Refund Amount</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {returns.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                        No returns found
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    returns.map((ret) => (
-                      <TableRow
-                        key={ret.id}
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => (window.location.href = `/returns/${ret.id}`)}
-                      >
-                        <TableCell className="font-mono text-sm">
-                          {ret.id.slice(0, 8)}...
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          #{ret.orderDisplayId || ret.orderId.slice(0, 8)}
-                        </TableCell>
-                        <TableCell className="hidden sm:table-cell">{ret.customerEmail || "-"}</TableCell>
-                        <TableCell>
-                          <ReturnStatusBadge status={ret.status} />
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell capitalize">
-                          {ret.reason.replace(/_/g, " ").toLowerCase()}
-                        </TableCell>
-                        <TableCell className="hidden sm:table-cell">{ret.itemCount}</TableCell>
-                        <TableCell className="hidden md:table-cell">{formatDate(ret.requestedAt)}</TableCell>
-                        <TableCell className="text-right">
-                          {formatPrice(ret.refundAmount / 100, ret.currencyCode)}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-              </div>
-
-              {/* Pagination */}
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mt-4 text-sm text-muted-foreground">
-                <span>
-                  {pagination.offset + 1} — {Math.min(pagination.offset + pagination.limit, pagination.count)} of{" "}
-                  {pagination.count} results
-                </span>
-                <div className="flex items-center gap-2">
-                  <span>
-                    {currentPage} of {totalPages || 1} pages
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={currentPage <= 1}
-                    onClick={() => goToPage(currentPage - 1)}
-                  >
-                    Prev
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={currentPage >= totalPages}
-                    onClick={() => goToPage(currentPage + 1)}
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
-            </>
-          )}
+          {/* Returns Table */}
+          <DataTable
+            columns={returnColumns}
+            data={returns}
+            loading={loading}
+            getRowId={(r) => r.id}
+            onRowClick={(r) => (window.location.href = `/returns/${r.id}`)}
+            pagination={{
+              page: currentPage,
+              pageSize: pagination.limit,
+              total: pagination.count,
+              onPageChange: goToPage,
+            }}
+            emptyTitle="No returns found"
+            emptyIcon={<RotateCcw className="h-10 w-10 opacity-40" />}
+          />
         </CardContent>
       </Card>
     </div>

@@ -337,7 +337,7 @@ export default function SecuritySettingsPage() {
 
       {/* Error Alert */}
       {displayError && (
-        <div className="flex items-center gap-2 p-4 text-red-600 bg-red-50 rounded-lg">
+        <div className="flex items-center gap-2 p-4 text-red-600 bg-red-50 dark:bg-red-950/20 dark:text-red-400 rounded-lg">
           <AlertCircle className="h-5 w-5" />
           <span>{displayError}</span>
           <Button variant="ghost" size="sm" onClick={() => setDisplayError(null)} className="ml-auto">
@@ -928,7 +928,7 @@ export default function SecuritySettingsPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           {revokeError && (
-            <div className="flex items-center gap-2 p-3 text-sm text-red-600 bg-red-50 rounded-lg">
+            <div className="flex items-center gap-2 p-3 text-sm text-red-600 bg-red-50 dark:bg-red-950/20 dark:text-red-400 rounded-lg">
               <AlertCircle className="h-4 w-4" />
               {getErrorMessage(revokeError)}
             </div>
@@ -968,7 +968,7 @@ export default function SecuritySettingsPage() {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             {addIpError && (
-              <div className="flex items-center gap-2 p-3 text-sm text-red-600 bg-red-50 rounded-lg">
+              <div className="flex items-center gap-2 p-3 text-sm text-red-600 bg-red-50 dark:bg-red-950/20 dark:text-red-400 rounded-lg">
                 <AlertCircle className="h-4 w-4" />
                 {getErrorMessage(addIpError)}
               </div>
@@ -1059,7 +1059,7 @@ export default function SecuritySettingsPage() {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             {bulkResolveError && (
-              <div className="flex items-center gap-2 p-3 text-sm text-red-600 bg-red-50 rounded-lg">
+              <div className="flex items-center gap-2 p-3 text-sm text-red-600 bg-red-50 dark:bg-red-950/20 dark:text-red-400 rounded-lg">
                 <AlertCircle className="h-4 w-4" />
                 {getErrorMessage(bulkResolveError)}
               </div>

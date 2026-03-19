@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Card,
   CardContent,
@@ -9,14 +9,6 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -29,7 +21,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Search,
   SlidersHorizontal,
@@ -44,8 +35,8 @@ import {
   XCircle,
   Download,
 } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
 import { BulkActionBar } from "@/components/ui/bulk-action-bar";
+import { DataTable, type Column } from "@/components/ui/data-table";
 import { toast } from "sonner";
 import {
   PaymentStatus,
@@ -180,6 +171,45 @@ export default function OrdersPage() {
   const goToPage = (page: number) => {
     fetchOrders({ offset: (page - 1) * limit });
   };
+
+  const orderColumns: Column<(typeof filteredOrders)[number]>[] = useMemo(
+    () => [
+      {
+        id: "order",
+        header: "Order",
+        cell: (order) => <span className="font-medium">#{order.displayId}</span>,
+      },
+      {
+        id: "date",
+        header: "Date",
+        hideOnMobile: true,
+        cell: (order) => <>{formatDate(order.createdAt)}</>,
+      },
+      {
+        id: "customer",
+        header: "Customer",
+        hideOnMobile: true,
+        cell: (order) => <>{order.email}</>,
+      },
+      {
+        id: "payment",
+        header: "Payment",
+        cell: (order) => <PaymentStatusBadge status={order.paymentStatus as PaymentStatus} />,
+      },
+      {
+        id: "fulfillment",
+        header: "Fulfillment",
+        cell: (order) => <FulfillmentStatusBadge status={order.fulfillmentStatus as FulfillmentStatus} />,
+      },
+      {
+        id: "total",
+        header: "Total",
+        className: "text-right",
+        cell: (order) => <>{formatPrice(order.total, order.currencyCode)}</>,
+      },
+    ],
+    []
+  );
 
   const handleBulkMarkShipped = async () => {
     toast.success(`Marked ${selectedOrders.size} orders as shipped`);
@@ -331,7 +361,7 @@ export default function OrdersPage() {
 
           {/* Error State */}
           {error && (
-            <div className="flex items-center gap-2 p-4 mb-4 bg-red-50 text-red-700 rounded-lg">
+            <div className="flex items-center gap-2 p-4 mb-4 bg-red-50 text-red-700 dark:bg-red-950/20 dark:text-red-400 rounded-lg">
               <AlertCircle className="h-5 w-5" />
               <span>{error}</span>
               <Button variant="ghost" size="sm" onClick={() => fetchOrders()} className="ml-auto">
@@ -340,118 +370,24 @@ export default function OrdersPage() {
             </div>
           )}
 
-          {/* Loading State */}
-          {isLoading && orders.length === 0 ? (
-            <div className="space-y-3">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="flex items-center gap-4">
-                  <Skeleton className="h-4 w-16" />
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-4 w-40" />
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-4 w-20 ml-auto" />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <>
-              {/* Orders Table */}
-              <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[40px]">
-                      <Checkbox
-                        checked={selectedOrders.size === filteredOrders.length && filteredOrders.length > 0}
-                        onCheckedChange={(checked) => {
-                          if (checked) setSelectedOrders(new Set(filteredOrders.map(o => o.id)));
-                          else setSelectedOrders(new Set());
-                        }}
-                      />
-                    </TableHead>
-                    <TableHead>Order</TableHead>
-                    <TableHead className="hidden sm:table-cell">Date</TableHead>
-                    <TableHead className="hidden sm:table-cell">Customer</TableHead>
-                    <TableHead>Payment</TableHead>
-                    <TableHead>Fulfillment</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredOrders.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                        {orders.length === 0 ? "No orders found" : "No orders match your filters"}
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredOrders.map((order) => (
-                      <TableRow
-                        key={order.id}
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => (window.location.href = `/orders/${order.id}`)}
-                      >
-                        <TableCell>
-                          <Checkbox
-                            checked={selectedOrders.has(order.id)}
-                            onCheckedChange={(checked) => {
-                              const next = new Set(selectedOrders);
-                              if (checked) next.add(order.id);
-                              else next.delete(order.id);
-                              setSelectedOrders(next);
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                        </TableCell>
-                        <TableCell className="font-medium">#{order.displayId}</TableCell>
-                        <TableCell className="hidden sm:table-cell">{formatDate(order.createdAt)}</TableCell>
-                        <TableCell className="hidden sm:table-cell">{order.email}</TableCell>
-                        <TableCell>
-                          <PaymentStatusBadge status={order.paymentStatus as PaymentStatus} />
-                        </TableCell>
-                        <TableCell>
-                          <FulfillmentStatusBadge status={order.fulfillmentStatus as FulfillmentStatus} />
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatPrice(order.total, order.currencyCode)}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-              </div>
-
-              {/* Pagination */}
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mt-4 text-sm text-muted-foreground">
-                <span>
-                  {offset + 1} — {Math.min(offset + limit, count)} of {count} results
-                </span>
-                <div className="flex items-center gap-2">
-                  <span>
-                    {currentPage} of {totalPages || 1} pages
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={currentPage <= 1}
-                    onClick={() => goToPage(currentPage - 1)}
-                  >
-                    Prev
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={currentPage >= totalPages}
-                    onClick={() => goToPage(currentPage + 1)}
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
-            </>
-          )}
+          {/* Orders Table */}
+          <DataTable
+            columns={orderColumns}
+            data={filteredOrders}
+            loading={isLoading}
+            selectable
+            selectedIds={selectedOrders}
+            onSelectionChange={setSelectedOrders}
+            getRowId={(o) => o.id}
+            onRowClick={(o) => (window.location.href = `/orders/${o.id}`)}
+            pagination={{
+              page: currentPage,
+              pageSize: limit,
+              total: count,
+              onPageChange: goToPage,
+            }}
+            emptyTitle={orders.length === 0 ? "No orders found" : "No orders match your filters"}
+          />
         </CardContent>
       </Card>
 
