@@ -147,11 +147,6 @@ const navItems: NavItem[] = [
     icon: MessageSquare,
   },
   {
-    title: "Subscriptions",
-    url: "/subscriptions",
-    icon: Repeat,
-  },
-  {
     title: "Discounts",
     url: "/discounts",
     icon: Percent,
@@ -288,7 +283,7 @@ function NavItemWithChildren({
   if (!hasChildren) {
     return (
       <SidebarMenuItem>
-        <SidebarMenuButton asChild isActive={isActive} className={isActive ? "border-l-2 border-indigo-500 dark:border-indigo-400" : ""}>
+        <SidebarMenuButton asChild isActive={isActive} className={isActive ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground" : ""}>
           <Link href={item.url}>
             <item.icon className="size-4" />
             <span>{item.title}</span>
@@ -302,7 +297,7 @@ function NavItemWithChildren({
     <Collapsible open={expanded} onOpenChange={onToggle} className="group/collapsible">
       <SidebarMenuItem>
         <CollapsibleTrigger asChild>
-          <SidebarMenuButton isActive={isActive} className={isActive ? "border-l-2 border-indigo-500 dark:border-indigo-400" : ""}>
+          <SidebarMenuButton isActive={isActive} className={isActive ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground" : ""}>
             <item.icon className="size-4" />
             <span>{item.title}</span>
             <ChevronRight

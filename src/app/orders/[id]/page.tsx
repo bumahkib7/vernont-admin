@@ -554,40 +554,42 @@ export default function OrderDetailsPage() {
                   </Badge>
                   <PaymentStatusBadge status={order.paymentStatus} />
                   <FulfillmentStatusBadge status={order.fulfillmentStatus} />
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Open menu</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {canFulfill && (
-                        <DropdownMenuItem onClick={() => setFulfillDialogOpen(true)}>
-                          Mark as Fulfilled
-                        </DropdownMenuItem>
-                      )}
-                      {canShip && (
-                        <DropdownMenuItem onClick={() => setShipDialogOpen(true)}>
-                          Mark as Shipped
-                        </DropdownMenuItem>
-                      )}
-                      {canComplete && (
-                        <DropdownMenuItem onClick={() => setCompleteDialogOpen(true)}>
-                          Complete Order
-                        </DropdownMenuItem>
-                      )}
-                      {(canFulfill || canShip || canComplete) && <DropdownMenuSeparator />}
-                      {canCancel && (
-                        <DropdownMenuItem
-                          onClick={() => setCancelDialogOpen(true)}
-                          className="text-red-600"
-                        >
-                          Cancel Order
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  {(canFulfill || canShip || canComplete || canCancel) && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="h-4 w-4" />
+                          <span className="sr-only">Open menu</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {canFulfill && (
+                          <DropdownMenuItem onClick={() => setFulfillDialogOpen(true)}>
+                            Mark as Fulfilled
+                          </DropdownMenuItem>
+                        )}
+                        {canShip && (
+                          <DropdownMenuItem onClick={() => setShipDialogOpen(true)}>
+                            Mark as Shipped
+                          </DropdownMenuItem>
+                        )}
+                        {canComplete && (
+                          <DropdownMenuItem onClick={() => setCompleteDialogOpen(true)}>
+                            Complete Order
+                          </DropdownMenuItem>
+                        )}
+                        {(canFulfill || canShip || canComplete) && canCancel && <DropdownMenuSeparator />}
+                        {canCancel && (
+                          <DropdownMenuItem
+                            onClick={() => setCancelDialogOpen(true)}
+                            className="text-red-600 dark:text-red-400"
+                          >
+                            Cancel Order
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
               </div>
             </CardContent>
