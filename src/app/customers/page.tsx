@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -12,14 +13,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -49,13 +42,11 @@ import {
   Star,
   TrendingUp,
   Gift,
-  Edit,
   CheckCircle,
-  Loader2,
   UsersRound,
 } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
 import { BulkActionBar } from "@/components/ui/bulk-action-bar";
+import { DataTable, type Column } from "@/components/ui/data-table";
 import { toast } from "sonner";
 import {
   getCustomers,
@@ -99,6 +90,7 @@ function getStatusBadge(status: CustomerStatus) {
 
 export default function CustomersPage() {
   usePageContext("customers");
+  const router = useRouter();
   const [customers, setCustomers] = useState<CustomerSummary[]>([]);
   const [stats, setStats] = useState<CustomerStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -107,6 +99,7 @@ export default function CustomersPage() {
   const [tierFilter, setTierFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [total, setTotal] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const [selectedCustomers, setSelectedCustomers] = useState<Set<string>>(new Set());
 
@@ -184,6 +177,143 @@ export default function CustomersPage() {
     fetchStats();
     setSelectedCustomer(null);
   };
+
+  const columns: Column<CustomerSummary>[] = useMemo(
+    () => [
+      {
+        id: "customer",
+        header: "Customer",
+        cell: (customer) => (
+          <Link href={`/customers/${customer.id}`} className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+            <Avatar className="h-9 w-9">
+              <AvatarFallback className="bg-muted">
+                {getCustomerInitials(customer)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col">
+              <span className="font-medium hover:underline">
+                {getCustomerName(customer)}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {customer.email}
+              </span>
+            </div>
+          </Link>
+        ),
+      },
+      {
+        id: "tier",
+        header: "Tier",
+        cell: (customer) => getTierBadge(customer.tier),
+      },
+      {
+        id: "orders",
+        header: "Orders",
+        cell: (customer) => <>{customer.orderCount}</>,
+        className: "text-center",
+        hideOnMobile: true,
+      },
+      {
+        id: "totalSpent",
+        header: "Total Spent",
+        cell: (customer) => (
+          <span className="font-medium">{formatPrice(customer.totalSpent, "GBP")}</span>
+        ),
+        className: "text-right",
+        hideOnMobile: true,
+      },
+      {
+        id: "joined",
+        header: "Joined",
+        cell: (customer) => (
+          <span className="text-muted-foreground">{formatDate(customer.createdAt)}</span>
+        ),
+        hideOnTablet: true,
+      },
+      {
+        id: "status",
+        header: "Status",
+        cell: (customer) => getStatusBadge(customer.status),
+      },
+      {
+        id: "actions",
+        header: "",
+        className: "w-[50px]",
+        cell: (customer) => (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.stopPropagation()}>
+                <MoreHorizontal className="h-4 w-4" />
+                <span className="sr-only">Open menu</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href={`/customers/${customer.id}`}>
+                  <Eye className="mr-2 h-4 w-4" />
+                  View Profile
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  setSelectedCustomer(customer);
+                  setEmailDialogOpen(true);
+                }}
+              >
+                <Mail className="mr-2 h-4 w-4" />
+                Send Email
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  setSelectedCustomer(customer);
+                  setGiftCardDialogOpen(true);
+                }}
+              >
+                <Gift className="mr-2 h-4 w-4" />
+                Send Gift Card
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => {
+                  setSelectedCustomer(customer);
+                  setChangeTierDialogOpen(true);
+                }}
+              >
+                <Star className="mr-2 h-4 w-4" />
+                Change Tier
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              {customer.status === "ACTIVE" ? (
+                <DropdownMenuItem
+                  className="text-red-600"
+                  onClick={() => {
+                    setSelectedCustomer(customer);
+                    setSuspendDialogOpen(true);
+                  }}
+                >
+                  <Ban className="mr-2 h-4 w-4" />
+                  Suspend Account
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem
+                  className="text-green-600"
+                  onClick={() => {
+                    toast.info("Customer activation coming soon");
+                  }}
+                >
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Activate Account
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ),
+      },
+    ],
+    []
+  );
 
   const customerStats = [
     {
@@ -308,155 +438,25 @@ export default function CustomersPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : customers.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No customers found
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[40px]">
-                    <Checkbox
-                      checked={selectedCustomers.size === customers.length && customers.length > 0}
-                      onCheckedChange={(checked) => {
-                        if (checked) setSelectedCustomers(new Set(customers.map(c => c.id)));
-                        else setSelectedCustomers(new Set());
-                      }}
-                    />
-                  </TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Tier</TableHead>
-                  <TableHead className="hidden sm:table-cell text-center">Orders</TableHead>
-                  <TableHead className="hidden sm:table-cell text-right">Total Spent</TableHead>
-                  <TableHead className="hidden md:table-cell">Joined</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {customers.map((customer) => (
-                  <TableRow key={customer.id} className="cursor-pointer hover:bg-muted/50">
-                    <TableCell>
-                      <Checkbox
-                        checked={selectedCustomers.has(customer.id)}
-                        onCheckedChange={(checked) => {
-                          const next = new Set(selectedCustomers);
-                          if (checked) next.add(customer.id);
-                          else next.delete(customer.id);
-                          setSelectedCustomers(next);
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Link href={`/customers/${customer.id}`} className="flex items-center gap-3">
-                        <Avatar className="h-9 w-9">
-                          <AvatarFallback className="bg-muted">
-                            {getCustomerInitials(customer)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex flex-col">
-                          <span className="font-medium hover:underline">
-                            {getCustomerName(customer)}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {customer.email}
-                          </span>
-                        </div>
-                      </Link>
-                    </TableCell>
-                    <TableCell>{getTierBadge(customer.tier)}</TableCell>
-                    <TableCell className="hidden sm:table-cell text-center">{customer.orderCount}</TableCell>
-                    <TableCell className="hidden sm:table-cell text-right font-medium">
-                      {formatPrice(customer.totalSpent, "GBP")}
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell text-muted-foreground">
-                      {formatDate(customer.createdAt)}
-                    </TableCell>
-                    <TableCell>{getStatusBadge(customer.status)}</TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Open menu</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem asChild>
-                            <Link href={`/customers/${customer.id}`}>
-                              <Eye className="mr-2 h-4 w-4" />
-                              View Profile
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setSelectedCustomer(customer);
-                              setEmailDialogOpen(true);
-                            }}
-                          >
-                            <Mail className="mr-2 h-4 w-4" />
-                            Send Email
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setSelectedCustomer(customer);
-                              setGiftCardDialogOpen(true);
-                            }}
-                          >
-                            <Gift className="mr-2 h-4 w-4" />
-                            Send Gift Card
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setSelectedCustomer(customer);
-                              setChangeTierDialogOpen(true);
-                            }}
-                          >
-                            <Star className="mr-2 h-4 w-4" />
-                            Change Tier
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          {customer.status === "ACTIVE" ? (
-                            <DropdownMenuItem
-                              className="text-red-600"
-                              onClick={() => {
-                                setSelectedCustomer(customer);
-                                setSuspendDialogOpen(true);
-                              }}
-                            >
-                              <Ban className="mr-2 h-4 w-4" />
-                              Suspend Account
-                            </DropdownMenuItem>
-                          ) : (
-                            <DropdownMenuItem
-                              className="text-green-600"
-                              onClick={() => {
-                                toast.info("Customer activation coming soon");
-                              }}
-                            >
-                              <CheckCircle className="mr-2 h-4 w-4" />
-                              Activate Account
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            </div>
-          )}
+          <DataTable
+            columns={columns}
+            data={customers}
+            loading={loading}
+            selectable
+            selectedIds={selectedCustomers}
+            onSelectionChange={setSelectedCustomers}
+            getRowId={(c) => c.id}
+            onRowClick={(c) => router.push(`/customers/${c.id}`)}
+            pagination={{
+              page: currentPage,
+              pageSize: 20,
+              total: total,
+              onPageChange: setCurrentPage,
+            }}
+            emptyIcon={<Users className="h-10 w-10 opacity-40" />}
+            emptyTitle="No customers found"
+            emptyDescription="Customers will appear here when they register or place orders"
+          />
         </CardContent>
       </Card>
 
