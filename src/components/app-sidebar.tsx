@@ -25,6 +25,7 @@ import {
   Repeat,
   Building2,
   Sparkles,
+  MessageSquare,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -140,6 +141,11 @@ const navItems: NavItem[] = [
       { title: "Segments", url: "/customers/segments" },
       { title: "Companies (B2B)", url: "/customers/companies" },
     ],
+  },
+  {
+    title: "Reviews",
+    url: "/reviews",
+    icon: MessageSquare,
   },
   {
     title: "Subscriptions",

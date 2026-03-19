@@ -34,6 +34,7 @@ const ROUTE_LABELS: Record<string, string> = {
   payments: "Payments",
   "publishable-api-keys": "API Keys",
   analytics: "Analytics",
+  reviews: "Reviews",
   messages: "Messages",
   notifications: "Notifications",
   marketing: "Marketing",
