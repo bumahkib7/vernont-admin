@@ -97,6 +97,7 @@ import {
   type CreateOptionInput,
   type UpdateOptionInput,
   resolveImageUrl,
+  STOREFRONT_URL,
 } from "@/lib/api";
 import { useRef } from "react";
 import { toast } from "sonner";
@@ -754,7 +755,16 @@ export default function ProductDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const handle = product.handle || product.id;
+              window.open(`${STOREFRONT_URL}/product/${handle}`, "_blank");
+            }}
+            disabled={product.status !== "published"}
+            title={product.status !== "published" ? "Publish the product first to preview" : "Open in storefront"}
+          >
             <Eye className="mr-2 h-4 w-4" />
             Preview
           </Button>

@@ -52,6 +52,10 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "*.amazonaws.com",
       },
+      {
+        protocol: "https",
+        hostname: "*.workers.dev",
+      },
     ],
     // Disable image optimization in development to avoid private IP blocking
     unoptimized: isDev,

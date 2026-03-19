@@ -3,6 +3,12 @@
 // Direct backend URL — used for images (public, no auth needed)
 const DIRECT_API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
+// CDN URL for serving images through Cloudflare edge cache
+const IMAGE_CDN_URL = process.env.NEXT_PUBLIC_IMAGE_CDN_URL || '';
+
+// Storefront URL for product preview links
+export const STOREFRONT_URL = process.env.NEXT_PUBLIC_STOREFRONT_URL || "http://localhost:3000";
+
 // In production, route API fetch calls through Next.js rewrite proxy so cookies
 // are same-origin — required for mobile Safari which blocks third-party cookies.
 const API_BASE_URL =
@@ -13,19 +19,21 @@ const AUTH_REFRESH_ENDPOINT = "/api/v1/internal/auth/refresh";
 
 /**
  * Resolve an image URL from the backend.
- * Always uses direct backend URL (not proxy) because images are public
- * and don't need cookie auth.
+ * Routes through CDN when configured, falls back to backend proxy.
  */
 export function resolveImageUrl(url: string | null | undefined): string | null {
   if (!url) return null;
 
-  // Rewrite old MinIO URLs to use backend proxy
+  // MinIO URLs → CDN or backend proxy
   if (url.includes("vernont-minio") && url.includes("runixcloud.dev")) {
     try {
       const parsed = new URL(url);
       const parts = parsed.pathname.split("/").filter(Boolean);
       if (parts.length > 1) {
-        const key = parts.slice(1).join("/");
+        const key = parts.slice(1).join("/"); // strip bucket name
+        if (IMAGE_CDN_URL) {
+          return `${IMAGE_CDN_URL}/${key}`;
+        }
         return `${DIRECT_API_URL}/files?key=${encodeURIComponent(key)}`;
       }
     } catch { /* fall through */ }
@@ -33,6 +41,12 @@ export function resolveImageUrl(url: string | null | undefined): string | null {
 
   // Other absolute URLs — return as-is
   if (url.startsWith("http://") || url.startsWith("https://")) return url;
+
+  // Relative /files?key= URLs → CDN
+  if (url.startsWith("/files?key=") && IMAGE_CDN_URL) {
+    const key = decodeURIComponent(url.replace("/files?key=", ""));
+    return `${IMAGE_CDN_URL}/${key}`;
+  }
 
   // Relative URLs — prefix with direct API URL
   return `${DIRECT_API_URL}${url.startsWith("/") ? "" : "/"}${url}`;
