@@ -400,3 +400,75 @@
 .agent-prose > *:first-child {
   margin-top: 0;
 }
+
+/* ═══════════════════════════════════════
+   Visual Polish Animations
+   ═══════════════════════════════════════ */
+
+/* Fade in animation for cards and content */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* Stagger children animation */
+.stagger-children > * {
+  animation: fadeIn 0.3s ease-out forwards;
+  opacity: 0;
+}
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 50ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 100ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 150ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 200ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 250ms; }
+
+/* Smooth card hover lift */
+.card-hover {
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.08);
+}
+.dark .card-hover:hover {
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.3);
+}
+
+/* Table row highlight on hover */
+.table-row-hover {
+  transition: background-color 100ms ease;
+}
+
+/* Scroll shadow for overflow areas */
+.scroll-shadow-x {
+  background:
+    linear-gradient(to right, var(--background), transparent 20px),
+    linear-gradient(to left, var(--background), transparent 20px);
+  background-size: 20px 100%, 20px 100%;
+  background-position: left center, right center;
+  background-repeat: no-repeat;
+}
+
+/* ═══════════════════════════════════════
+   Dark Mode Fixes
+   ═══════════════════════════════════════ */
+
+/* Dark mode table improvements */
+.dark .hover\:bg-muted\/50:hover {
+  background-color: hsl(var(--muted) / 0.15);
+}
+
+/* Dark mode card shadows */
+.dark [data-slot="card"] {
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.3);
+}
+
+/* Scrollbar in dark mode */
+.dark ::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+}

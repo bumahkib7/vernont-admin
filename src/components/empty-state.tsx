@@ -9,6 +9,7 @@ interface EmptyStateProps {
     label: string;
     onClick: () => void;
   };
+  illustration?: React.ReactNode;
   className?: string;
 }
 
@@ -17,18 +18,26 @@ export function EmptyState({
   title,
   description,
   action,
+  illustration,
   className,
 }: EmptyStateProps) {
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center py-16 px-4 text-center",
+        "flex flex-col items-center justify-center py-16 px-4 text-center animate-fade-in",
         className
       )}
     >
-      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
-        {icon}
-      </div>
+      {illustration ? (
+        <div className="mb-6">{illustration}</div>
+      ) : (
+        <div className="relative mb-6">
+          <div className="absolute inset-0 rounded-full bg-muted/60 scale-150" />
+          <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+            {icon}
+          </div>
+        </div>
+      )}
       <h3 className="text-lg font-semibold mb-1">{title}</h3>
       <p className="text-sm text-muted-foreground max-w-sm mb-6">
         {description}

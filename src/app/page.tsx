@@ -7,8 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ChevronRight,
-  ArrowUpRight,
-  ArrowDownRight,
   Package,
   ShoppingBag,
   Users,
@@ -25,26 +23,10 @@ import { AiInsightsCard } from "@/components/ai/ai-insights-card";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/api";
-import { Wifi, WifiOff, Radio } from "lucide-react";
+import { WifiOff, Radio } from "lucide-react";
 import { usePageContext } from "@/hooks/use-page-context";
-
-function getStatusBadge(status: string) {
-  switch (status) {
-    case "completed":
-      return <Badge className="bg-green-50 text-green-700 border-green-200 font-normal">Completed</Badge>;
-    case "processing":
-      return <Badge className="bg-blue-50 text-blue-700 border-blue-200 font-normal">Processing</Badge>;
-    case "pending":
-      return <Badge className="bg-yellow-50 text-yellow-700 border-yellow-200 font-normal">Pending</Badge>;
-    case "shipped":
-      return <Badge className="bg-purple-50 text-purple-700 border-purple-200 font-normal">Shipped</Badge>;
-    case "canceled":
-    case "cancelled":
-      return <Badge className="bg-red-50 text-red-700 border-red-200 font-normal">Canceled</Badge>;
-    default:
-      return <Badge variant="outline" className="font-normal">{status}</Badge>;
-  }
-}
+import { StatusBadge } from "@/components/ui/status-badge";
+import { StatCard } from "@/components/ui/stat-card";
 
 function formatDate(dateString: string) {
   const date = new Date(dateString);
@@ -53,23 +35,6 @@ function formatDate(dateString: string) {
 
 function formatRelativeTime(timestamp: string) {
   return formatDistanceToNow(new Date(timestamp), { addSuffix: true });
-}
-
-function StatCardSkeleton() {
-  return (
-    <div className="rounded-lg border bg-card p-6">
-      <div className="flex items-center justify-between">
-        <Skeleton className="h-4 w-24" />
-        <Skeleton className="h-4 w-4" />
-      </div>
-      <div className="mt-3">
-        <Skeleton className="h-8 w-20" />
-      </div>
-      <div className="mt-2">
-        <Skeleton className="h-4 w-32" />
-      </div>
-    </div>
-  );
 }
 
 function OrderRowSkeleton() {
@@ -138,105 +103,49 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Overview */}
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Revenue */}
-        {isLoading ? (
-          <StatCardSkeleton />
-        ) : (
-          <div className="rounded-lg border bg-card p-6">
-            <div className="flex items-center justify-between">
-              <span className="text-small-regular text-muted-foreground">Today&apos;s Revenue</span>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <div className="mt-3">
-              <span className="text-2xl-semi">{formatPrice(stats?.revenue.today || 0)}</span>
-            </div>
-            <div className="mt-2 flex items-center gap-1 text-small-regular">
-              {stats?.revenue.trend === "up" ? (
-                <>
-                  <ArrowUpRight className="h-3.5 w-3.5 text-green-600" />
-                  <span className="text-green-600">+{stats?.revenue.changePercent}%</span>
-                </>
-              ) : (
-                <>
-                  <ArrowDownRight className="h-3.5 w-3.5 text-red-600" />
-                  <span className="text-red-600">{stats?.revenue.changePercent}%</span>
-                </>
-              )}
-              <span className="text-muted-foreground">from yesterday</span>
-            </div>
-          </div>
-        )}
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 stagger-children">
+        <StatCard
+          title="Today's Revenue"
+          value={formatPrice(stats?.revenue.today || 0)}
+          icon={<DollarSign />}
+          loading={isLoading}
+          trend={stats?.revenue.trend ? {
+            direction: stats.revenue.trend as "up" | "down",
+            value: `${stats.revenue.trend === "up" ? "+" : ""}${stats.revenue.changePercent}%`,
+            label: "from yesterday",
+          } : undefined}
+        />
 
-        {/* Orders */}
-        {isLoading ? (
-          <StatCardSkeleton />
-        ) : (
-          <div className="rounded-lg border bg-card p-6">
-            <div className="flex items-center justify-between">
-              <span className="text-small-regular text-muted-foreground">Today&apos;s Orders</span>
-              <ShoppingBag className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <div className="mt-3">
-              <span className="text-2xl-semi">{stats?.orders.today || 0}</span>
-            </div>
-            <div className="mt-2 flex items-center gap-3 text-small-regular text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <Clock className="h-3.5 w-3.5" />
-                {stats?.orders.pending || 0} pending
-              </span>
-              <span className="flex items-center gap-1">
-                <Package className="h-3.5 w-3.5" />
-                {stats?.orders.processing || 0} processing
-              </span>
-            </div>
-          </div>
-        )}
+        <StatCard
+          title="Today's Orders"
+          value={stats?.orders.today || 0}
+          icon={<ShoppingBag />}
+          loading={isLoading}
+          subtitle={`${stats?.orders.pending || 0} pending \u00b7 ${stats?.orders.processing || 0} processing`}
+        />
 
-        {/* Customers */}
-        {isLoading ? (
-          <StatCardSkeleton />
-        ) : (
-          <div className="rounded-lg border bg-card p-6">
-            <div className="flex items-center justify-between">
-              <span className="text-small-regular text-muted-foreground">Total Customers</span>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <div className="mt-3">
-              <span className="text-2xl-semi">{stats?.customers.total.toLocaleString() || 0}</span>
-            </div>
-            <div className="mt-2 flex items-center gap-1 text-small-regular">
-              <TrendingUp className="h-3.5 w-3.5 text-green-600" />
-              <span className="text-green-600">+{stats?.customers.newThisWeek || 0}</span>
-              <span className="text-muted-foreground">new this week</span>
-            </div>
-          </div>
-        )}
+        <StatCard
+          title="Total Customers"
+          value={stats?.customers.total.toLocaleString() || "0"}
+          icon={<Users />}
+          loading={isLoading}
+          trend={{
+            direction: "up",
+            value: `+${stats?.customers.newThisWeek || 0}`,
+            label: "new this week",
+          }}
+        />
 
-        {/* Products */}
-        {isLoading ? (
-          <StatCardSkeleton />
-        ) : (
-          <div className="rounded-lg border bg-card p-6">
-            <div className="flex items-center justify-between">
-              <span className="text-small-regular text-muted-foreground">Active Products</span>
-              <Package className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <div className="mt-3">
-              <span className="text-2xl-semi">{stats?.products.total || 0}</span>
-            </div>
-            <div className="mt-2 flex items-center gap-1 text-small-regular">
-              {(stats?.products.lowStock || 0) > 0 ? (
-                <>
-                  <AlertCircle className="h-3.5 w-3.5 text-yellow-600" />
-                  <span className="text-yellow-600">{stats?.products.lowStock} low stock</span>
-                </>
-              ) : (
-                <span className="text-muted-foreground">All stocked</span>
-              )}
-            </div>
-          </div>
-        )}
+        <StatCard
+          title="Active Products"
+          value={stats?.products.total || 0}
+          icon={<Package />}
+          loading={isLoading}
+          subtitle={(stats?.products.lowStock || 0) > 0
+            ? `${stats?.products.lowStock} low stock`
+            : "All stocked"
+          }
+        />
       </div>
 
       {/* Main Content Grid */}
@@ -307,7 +216,7 @@ export default function DashboardPage() {
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="text-base-semi">{order.displayId}</span>
-                        {getStatusBadge(order.status)}
+                        <StatusBadge status={order.status} type="order" />
                       </div>
                       <p className="text-small-regular text-muted-foreground mt-0.5">
                         {order.customerName} · {formatDate(order.date)}
@@ -341,17 +250,17 @@ export default function DashboardPage() {
               {/* Connection Status Badge */}
               <div className="flex items-center gap-1.5">
                 {connectionStatus === "live" ? (
-                  <Badge className="bg-green-50 text-green-700 border-green-200 font-normal flex items-center gap-1">
+                  <Badge className="bg-green-50 text-green-700 border-green-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800 font-normal flex items-center gap-1">
                     <Radio className="h-3 w-3 animate-pulse" />
                     Live
                   </Badge>
                 ) : connectionStatus === "polling" ? (
-                  <Badge className="bg-yellow-50 text-yellow-700 border-yellow-200 font-normal flex items-center gap-1">
+                  <Badge className="bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800 font-normal flex items-center gap-1">
                     <RefreshCw className="h-3 w-3" />
                     Polling
                   </Badge>
                 ) : (
-                  <Badge className="bg-gray-50 text-gray-700 border-gray-200 font-normal flex items-center gap-1">
+                  <Badge className="bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-950/30 dark:text-gray-400 dark:border-gray-800 font-normal flex items-center gap-1">
                     <WifiOff className="h-3 w-3" />
                     Offline
                   </Badge>
@@ -373,7 +282,7 @@ export default function DashboardPage() {
               activities.map((activity, index) => (
                 <div
                   key={activity.id}
-                  className={`p-4 transition-colors ${index === 0 && isConnected ? "bg-green-50/50" : ""}`}
+                  className={`p-4 transition-colors ${index === 0 && isConnected ? "bg-green-50/50 dark:bg-emerald-950/20" : ""}`}
                 >
                   <p className="text-small-regular">{activity.message}</p>
                   <p className="text-xsmall-regular text-muted-foreground mt-1">
@@ -397,7 +306,7 @@ export default function DashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Link
           href="/products/new"
-          className="flex items-center gap-4 rounded-lg border bg-card p-4 hover:bg-muted/50 transition-colors group"
+          className="flex items-center gap-4 rounded-lg border bg-card p-4 hover:bg-muted/50 transition-colors group card-hover"
         >
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
             <Package className="h-5 w-5 text-muted-foreground" />
@@ -411,7 +320,7 @@ export default function DashboardPage() {
 
         <Link
           href="/orders"
-          className="flex items-center gap-4 rounded-lg border bg-card p-4 hover:bg-muted/50 transition-colors group"
+          className="flex items-center gap-4 rounded-lg border bg-card p-4 hover:bg-muted/50 transition-colors group card-hover"
         >
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
             <ShoppingBag className="h-5 w-5 text-muted-foreground" />
@@ -425,7 +334,7 @@ export default function DashboardPage() {
 
         <Link
           href="/inventory"
-          className="flex items-center gap-4 rounded-lg border bg-card p-4 hover:bg-muted/50 transition-colors group"
+          className="flex items-center gap-4 rounded-lg border bg-card p-4 hover:bg-muted/50 transition-colors group card-hover"
         >
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
             <Truck className="h-5 w-5 text-muted-foreground" />
@@ -439,7 +348,7 @@ export default function DashboardPage() {
 
         <Link
           href="/customers"
-          className="flex items-center gap-4 rounded-lg border bg-card p-4 hover:bg-muted/50 transition-colors group"
+          className="flex items-center gap-4 rounded-lg border bg-card p-4 hover:bg-muted/50 transition-colors group card-hover"
         >
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
             <Users className="h-5 w-5 text-muted-foreground" />
