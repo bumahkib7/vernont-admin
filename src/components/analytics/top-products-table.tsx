@@ -12,21 +12,13 @@ import {
 import { ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { TopProductRow } from "@/hooks/use-analytics";
+import { formatCurrency } from "@/lib/format";
 
 interface TopProductsTableProps {
   data: TopProductRow[];
 }
 
 type SortKey = "revenue" | "orders" | "avgPrice";
-
-function formatCurrency(cents: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(cents / 100);
-}
 
 export function TopProductsTable({ data }: TopProductsTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>("revenue");

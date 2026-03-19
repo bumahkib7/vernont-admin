@@ -31,6 +31,7 @@ import {
   useMarkAllAsRead,
 } from "@/hooks/use-notifications";
 import type { Notification } from "@/lib/api";
+import { formatRelativeTime } from "@/lib/format";
 
 // Get icon for notification type
 function getNotificationIcon(eventType: string) {
@@ -74,31 +75,6 @@ function formatEventType(eventType: string): string {
     .replace(/_/g, " ")
     .toLowerCase()
     .replace(/\b\w/g, (l) => l.toUpperCase());
-}
-
-// Format relative time
-function formatRelativeTime(dateString: string): string {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-
-  if (diffMs < 0) return "Just now";
-
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMins / 60);
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffMins < 1) return "Just now";
-  if (diffMins < 60) return `${diffMins} minute${diffMins === 1 ? "" : "s"} ago`;
-  if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? "" : "s"} ago`;
-  if (diffDays < 7) return `${diffDays} day${diffDays === 1 ? "" : "s"} ago`;
-  return date.toLocaleDateString();
-}
-
-// Format full date
-function formatFullDate(dateString: string): string {
-  const date = new Date(dateString);
-  return date.toLocaleString();
 }
 
 // Notification row component

@@ -68,6 +68,7 @@ import {
   Target,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import { formatDateTime } from "@/lib/format";
 import { useConfirm } from "@/hooks/use-confirm";
 
 // -- Types --------------------------------------------------------------------
@@ -189,17 +190,6 @@ function statusBadgeClassName(status: string): string {
     default:
       return "";
   }
-}
-
-function formatDate(iso?: string): string {
-  if (!iso) return "-";
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 // -- Page ---------------------------------------------------------------------
@@ -436,7 +426,7 @@ export default function EmailCampaignsPage() {
                       {campaign.totalSent.toLocaleString()}
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
-                      {formatDate(
+                      {formatDateTime(
                         campaign.scheduledAt ??
                           campaign.startedAt ??
                           campaign.createdAt

@@ -66,6 +66,7 @@ import {
   Wifi,
   WifiOff,
 } from "lucide-react";
+import { toast } from "sonner";
 import {
   getRegions,
   createRegion,
@@ -273,6 +274,7 @@ export default function RegionsSettingsPage() {
       fetchRegions();
     } catch (err) {
       console.error("Failed to delete region:", err);
+      toast.error(err instanceof Error ? err.message : "Failed to delete region");
     } finally {
       setIsDeleting(false);
     }

@@ -36,14 +36,7 @@ import {
   resumeAdCampaign,
   type AdCampaign,
 } from "@/lib/api";
-
-function formatCurrency(cents: number | null, currency: string = "GBP"): string {
-  if (cents == null) return "-";
-  return new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency,
-  }).format(cents / 100);
-}
+import { formatCurrency } from "@/lib/format";
 
 function platformLabel(platform: string): string {
   switch (platform) {
@@ -160,7 +153,7 @@ export default function AdCampaignsPage() {
                   <TableCell>{statusBadge(campaign.status)}</TableCell>
                   <TableCell>{campaign.campaignType || "-"}</TableCell>
                   <TableCell>
-                    {formatCurrency(campaign.dailyBudgetCents, campaign.currency)}
+                    {campaign.dailyBudgetCents != null ? formatCurrency(campaign.dailyBudgetCents, campaign.currency) : "-"}
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>

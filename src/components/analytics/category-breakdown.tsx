@@ -15,20 +15,13 @@ interface CategoryBreakdownProps {
 
 const COLORS = ["#3b82f6", "#22c55e", "#a855f7", "#f59e0b", "#ec4899", "#06b6d4", "#ef4444", "#84cc16"];
 
+import { formatCurrency } from "@/lib/format";
+
 const chartConfig = {
   revenue: {
     label: "Revenue",
   },
 } satisfies ChartConfig;
-
-function formatCurrency(cents: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(cents / 100);
-}
 
 export function CategoryBreakdown({ data }: CategoryBreakdownProps) {
   if (data.length === 0) {

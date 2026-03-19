@@ -88,30 +88,7 @@ import { SessionMap } from "@/components/session-map";
 import { ApiError, type SecuritySession, type SecurityEvent, type SecurityConfig } from "@/lib/api";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { useSecurityDashboard, useSessionsWebSocketUpdate } from "@/hooks/use-security-dashboard";
-
-// Helper to format relative time
-function formatRelativeTime(dateString: string | null | undefined): string {
-  if (!dateString) return "-";
-
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return "-";
-
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-
-  // Handle future dates or very small differences
-  if (diffMs < 0) return "Just now";
-
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMins / 60);
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffMins < 1) return "Just now";
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 30) return `${diffDays}d ago`;
-  return date.toLocaleDateString();
-}
+import { formatRelativeTime } from "@/lib/format";
 
 // Get severity badge color
 function getSeverityColor(severity: string): string {

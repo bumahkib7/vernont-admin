@@ -22,16 +22,7 @@ import {
   deleteCustomerSegment,
   type CustomerSegment,
 } from "@/lib/api";
-
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return "Never";
-  return new Date(dateStr).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+import { formatDateTime } from "@/lib/format";
 
 export default function SegmentsPage() {
   const [segments, setSegments] = useState<CustomerSegment[]>([]);
@@ -159,7 +150,7 @@ export default function SegmentsPage() {
                       {segment.customerCount.toLocaleString()}
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
-                      {formatDate(segment.lastEvaluatedAt)}
+                      {formatDateTime(segment.lastEvaluatedAt)}
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1 justify-end">

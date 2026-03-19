@@ -84,6 +84,7 @@ import { SendEmailDialog } from "@/components/customers/SendEmailDialog";
 import { SendGiftCardDialog } from "@/components/customers/SendGiftCardDialog";
 import { SuspendCustomerDialog } from "@/components/customers/SuspendCustomerDialog";
 import { ChangeTierDialog } from "@/components/customers/ChangeTierDialog";
+import { toast } from "sonner";
 import { usePageContext } from "@/hooks/use-page-context";
 
 function getTierBadge(tier: string) {
@@ -247,9 +248,7 @@ export default function CustomerDetailPage() {
   }, [customerId]);
 
   useEffect(() => {
-    fetchCustomer();
-    fetchOrders();
-    fetchActivity();
+    Promise.all([fetchCustomer(), fetchOrders(), fetchActivity()]);
   }, [fetchCustomer, fetchOrders, fetchActivity]);
 
   const handleActionSuccess = () => {
@@ -265,6 +264,7 @@ export default function CustomerDetailPage() {
       fetchActivity();
     } catch (err) {
       console.error("Failed to activate customer:", err);
+      toast.error(err instanceof Error ? err.message : "Failed to activate customer");
     }
   };
 
@@ -284,6 +284,7 @@ export default function CustomerDetailPage() {
       fetchActivity();
     } catch (err) {
       console.error("Failed to save note:", err);
+      toast.error(err instanceof Error ? err.message : "Failed to save note");
     } finally {
       setSavingNote(false);
     }

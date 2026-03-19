@@ -72,6 +72,7 @@ import {
   Package,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useConfirm } from "@/hooks/use-confirm";
 import {
   Company,
   CompanyContact,
@@ -180,9 +181,10 @@ export default function CompanyDetailPage() {
     setEditNotes(c.notes || "");
   };
 
+  const [ConfirmDialog, confirm] = useConfirm();
+
   useEffect(() => {
-    fetchCompany();
-    fetchPricing();
+    Promise.all([fetchCompany(), fetchPricing()]);
   }, [companyId]);
 
   const handleSave = async () => {
@@ -217,6 +219,13 @@ export default function CompanyDetailPage() {
   };
 
   const handleDelete = async () => {
+    const ok = await confirm({
+      title: "Delete company",
+      description: "Are you sure? This will remove the company and all associated data.",
+      confirmLabel: "Delete",
+      variant: "destructive",
+    });
+    if (!ok) return;
     setDeleting(true);
     try {
       await deleteCompany(companyId);
@@ -255,6 +264,13 @@ export default function CompanyDetailPage() {
   };
 
   const handleRemoveContact = async (contactId: string) => {
+    const ok = await confirm({
+      title: "Remove contact",
+      description: "Are you sure you want to remove this contact from the company?",
+      confirmLabel: "Remove",
+      variant: "destructive",
+    });
+    if (!ok) return;
     try {
       await removeCompanyContact(companyId, contactId);
       await fetchCompany();
@@ -300,6 +316,13 @@ export default function CompanyDetailPage() {
   };
 
   const handleRemovePricingRule = async (index: number) => {
+    const ok = await confirm({
+      title: "Remove pricing rule",
+      description: "Are you sure you want to remove this pricing rule?",
+      confirmLabel: "Remove",
+      variant: "destructive",
+    });
+    if (!ok) return;
     try {
       const updatedRules = pricingRules.filter((_, i) => i !== index);
       const result = await setContractPricing(companyId, { rules: updatedRules });
@@ -923,6 +946,8 @@ export default function CompanyDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog />
     </div>
   );
 }

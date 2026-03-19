@@ -54,15 +54,7 @@ import { CustomerAcquisitionChart } from "@/components/analytics/customer-acquis
 import { ConversionFunnel } from "@/components/analytics/conversion-funnel";
 import { TopProductsTable } from "@/components/analytics/top-products-table";
 import { usePageContext } from "@/hooks/use-page-context";
-
-function formatCurrency(amount: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount / 100);
-}
+import { formatCurrency } from "@/lib/format";
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat("en-US").format(value);

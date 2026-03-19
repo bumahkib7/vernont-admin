@@ -30,6 +30,7 @@ import {
   useNotificationStore,
 } from "@/hooks/use-notifications";
 import type { Notification } from "@/lib/api";
+import { formatRelativeTime } from "@/lib/format";
 
 // Get icon for notification type
 function getNotificationIcon(eventType: string) {
@@ -54,25 +55,6 @@ function getNotificationIcon(eventType: string) {
     default:
       return <Bell className="h-4 w-4 text-gray-500" />;
   }
-}
-
-// Format relative time
-function formatRelativeTime(dateString: string): string {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-
-  if (diffMs < 0) return "Just now";
-
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMins / 60);
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffMins < 1) return "Just now";
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return date.toLocaleDateString();
 }
 
 // Notification item component

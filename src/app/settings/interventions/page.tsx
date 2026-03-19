@@ -74,10 +74,7 @@ import {
   type InterventionStatus,
   type InterventionStats,
 } from "@/lib/api";
-
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleString();
-}
+import { formatDateTime } from "@/lib/format";
 
 function SeverityBadge({ severity }: { severity: InterventionSeverity }) {
   const { label, color } = getInterventionSeverityDisplay(severity);
@@ -347,7 +344,7 @@ export default function InterventionsPage() {
                         <StatusBadge status={intervention.status} />
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
-                        {formatDate(intervention.createdAt)}
+                        {formatDateTime(intervention.createdAt)}
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>
@@ -467,12 +464,12 @@ export default function InterventionsPage() {
               </div>
               <div>
                 <span className="text-muted-foreground">Created:</span>{" "}
-                {selectedIntervention && formatDate(selectedIntervention.createdAt)}
+                {selectedIntervention && formatDateTime(selectedIntervention.createdAt)}
               </div>
               {selectedIntervention?.resolvedAt && (
                 <div>
                   <span className="text-muted-foreground">Resolved:</span>{" "}
-                  {formatDate(selectedIntervention.resolvedAt)}
+                  {formatDateTime(selectedIntervention.resolvedAt)}
                 </div>
               )}
             </div>

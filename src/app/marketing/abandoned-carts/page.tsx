@@ -27,6 +27,7 @@ import {
   type AbandonedCartStats,
   type AbandonedCartNotification,
 } from "@/lib/api";
+import { formatDateTime } from "@/lib/format";
 
 function StatusBadge({ status }: { status: string }) {
   switch (status) {
@@ -45,16 +46,6 @@ function StatusBadge({ status }: { status: string }) {
     default:
       return <Badge variant="outline">{status}</Badge>;
   }
-}
-
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return "-";
-  return new Date(dateStr).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 export default function AbandonedCartsPage() {
@@ -183,13 +174,13 @@ export default function AbandonedCartsPage() {
                     <TableCell>{n.notificationNumber} of 3</TableCell>
                     <TableCell><StatusBadge status={n.status} /></TableCell>
                     <TableCell className="text-muted-foreground text-sm">
-                      {formatDate(n.sentAt)}
+                      {formatDateTime(n.sentAt)}
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
-                      {formatDate(n.openedAt)}
+                      {formatDateTime(n.openedAt)}
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
-                      {formatDate(n.recoveredAt)}
+                      {formatDateTime(n.recoveredAt)}
                     </TableCell>
                   </TableRow>
                 ))}

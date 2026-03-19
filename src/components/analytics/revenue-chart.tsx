@@ -10,19 +10,11 @@ import {
   ChartLegendContent,
 } from "@/components/ui/chart";
 import type { RevenueTimePoint } from "@/hooks/use-analytics";
+import { formatCurrency } from "@/lib/format";
 
 interface RevenueChartProps {
   data: RevenueTimePoint[];
   compare?: boolean;
-}
-
-function formatCurrency(cents: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(cents / 100);
 }
 
 const chartConfig = {
