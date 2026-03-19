@@ -353,15 +353,16 @@ export default function RegionsSettingsPage() {
           ) : (
             <>
               {/* Regions Table */}
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
-                    <TableHead>Countries</TableHead>
+                    <TableHead className="max-w-[200px]">Countries</TableHead>
                     <TableHead>Currency</TableHead>
-                    <TableHead>Tax Rate</TableHead>
-                    <TableHead>Payment Providers</TableHead>
-                    <TableHead>Fulfillment</TableHead>
+                    <TableHead className="hidden sm:table-cell">Tax Rate</TableHead>
+                    <TableHead className="hidden md:table-cell">Payment</TableHead>
+                    <TableHead className="hidden lg:table-cell">Fulfillment</TableHead>
                     <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -381,8 +382,8 @@ export default function RegionsSettingsPage() {
                             {region.name}
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <span className="text-sm text-muted-foreground">
+                        <TableCell className="max-w-[200px]">
+                          <span className="text-sm text-muted-foreground truncate block">
                             {region.countries.length === 0
                               ? "No countries"
                               : region.countries.slice(0, 2).map((c) => c.display_name).join(", ")}
@@ -392,7 +393,7 @@ export default function RegionsSettingsPage() {
                         <TableCell>
                           <Badge variant="secondary">{region.currency_code}</Badge>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden sm:table-cell">
                           <span className="text-sm">
                             {region.tax_rate ? `${(region.tax_rate * 100).toFixed(1)}%` : "0%"}
                             {region.tax_inclusive && (
@@ -400,7 +401,7 @@ export default function RegionsSettingsPage() {
                             )}
                           </span>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden md:table-cell">
                           <div className="flex gap-1 flex-wrap">
                             {region.payment_providers.length === 0 ? (
                               <span className="text-sm text-muted-foreground">None</span>
@@ -416,7 +417,7 @@ export default function RegionsSettingsPage() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden lg:table-cell">
                           <div className="flex gap-1 flex-wrap">
                             {region.fulfillment_providers.length === 0 ? (
                               <span className="text-sm text-muted-foreground">None</span>
@@ -461,6 +462,7 @@ export default function RegionsSettingsPage() {
                   )}
                 </TableBody>
               </Table>
+              </div>
 
               <div className="mt-4 text-sm text-muted-foreground">
                 {filteredRegions.length} region{filteredRegions.length === 1 ? "" : "s"}
