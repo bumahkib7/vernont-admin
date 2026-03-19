@@ -454,6 +454,14 @@ export default function StoreSettingsPage() {
 
   const handleSaveSeo = async () => {
     if (!selectedStore) return;
+    if (seoForm.googleAnalyticsId && !seoForm.googleAnalyticsId.match(/^G-[A-Z0-9]+$/i)) {
+      setError("Invalid GA ID format (expected G-XXXXXXXXXX)");
+      return;
+    }
+    if (seoForm.facebookPixelId && !seoForm.facebookPixelId.match(/^\d+$/)) {
+      setError("Invalid Pixel ID (expected numbers only)");
+      return;
+    }
     setSaving(true);
     try {
       const response = await updateStoreSeoSettings(selectedStore.id, { seoSettings: seoForm });

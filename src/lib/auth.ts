@@ -118,7 +118,10 @@ export async function updateProfile(data: UpdateProfileRequest): Promise<Interna
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
+    const errorData = await response.json().catch((err) => {
+      console.error("[Auth] Request failed:", err);
+      return {};
+    });
     throw new Error(errorData.message || "Failed to update profile");
   }
 
@@ -137,7 +140,10 @@ export async function changePassword(data: ChangePasswordRequest): Promise<void>
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
+    const errorData = await response.json().catch((err) => {
+      console.error("[Auth] Request failed:", err);
+      return {};
+    });
     throw new Error(errorData.message || "Failed to change password");
   }
 }

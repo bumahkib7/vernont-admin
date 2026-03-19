@@ -349,7 +349,7 @@ export default function ProductsPage() {
         </div>
         <div className="flex gap-2">
           <CsvExportButton type="products" />
-          <CsvImportDialog type="products" onImport={importProductsCsv} onComplete={() => window.location.reload()} />
+          <CsvImportDialog type="products" onImport={importProductsCsv} onComplete={() => fetchProducts()} />
           <Button className="gap-2" onClick={() => setAddProductOpen(true)}>
             <Plus className="h-4 w-4" />
             Add Product

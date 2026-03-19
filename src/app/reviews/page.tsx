@@ -208,7 +208,7 @@ function ReviewCard({
                 const src = resolveImageUrl(img.url);
                 return src ? (
                   <a
-                    key={idx}
+                    key={img.url || idx}
                     href={src}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -222,7 +222,7 @@ function ReviewCard({
                   </a>
                 ) : (
                   <div
-                    key={idx}
+                    key={img.url || idx}
                     className="flex items-center justify-center h-16 w-16 rounded border bg-muted"
                   >
                     <ImageIcon className="h-6 w-6 text-muted-foreground" />

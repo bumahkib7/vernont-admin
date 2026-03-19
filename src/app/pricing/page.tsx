@@ -89,6 +89,8 @@ interface PendingChange {
   compareAtPrice?: number;
 }
 
+const CURRENCY_SYMBOL = "£"; // Centralized — change here for multi-currency support
+
 export default function PricingPage() {
   const [items, setItems] = useState<WorkbenchItem[]>([]);
   const [stats, setStats] = useState<WorkbenchStats | null>(null);
@@ -607,7 +609,7 @@ export default function PricingPage() {
                               </TableCell>
                               <TableCell className="text-right">
                                 <div className="flex items-center justify-end gap-1">
-                                  <span className="text-muted-foreground">£</span>
+                                  <span className="text-muted-foreground">{CURRENCY_SYMBOL}</span>
                                   <Input
                                     type="text"
                                     inputMode="decimal"

@@ -111,6 +111,8 @@ const STEPS: { number: Step; title: string; description: string }[] = [
   { number: 5, title: "Review", description: "Confirm and save" },
 ];
 
+const CURRENCY_SYMBOL = "£"; // Centralized — change here for multi-currency support
+
 export function DiscountDialog({
   open,
   onOpenChange,
@@ -184,7 +186,7 @@ export function DiscountDialog({
         ...(prefill.activateImmediately != null && { activateImmediately: Boolean(prefill.activateImmediately) }),
       }));
     }
-  }, [open, discount]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open, discount, consumeFormData]);
 
   const handleGenerateCode = async () => {
     setGeneratingCode(true);
@@ -456,7 +458,7 @@ export function DiscountDialog({
                   <div className="space-y-2">
                     <Label htmlFor="value">Amount Off *</Label>
                     <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground">£</span>
+                      <span className="text-muted-foreground">{CURRENCY_SYMBOL}</span>
                       <Input
                         id="value"
                         type="text"
@@ -532,7 +534,7 @@ export function DiscountDialog({
                 <div className="space-y-2">
                   <Label htmlFor="minimumAmount">Minimum Order Amount</Label>
                   <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">£</span>
+                    <span className="text-muted-foreground">{CURRENCY_SYMBOL}</span>
                     <Input
                       id="minimumAmount"
                       type="text"
@@ -554,7 +556,7 @@ export function DiscountDialog({
                   <div className="space-y-2">
                     <Label htmlFor="maximumDiscount">Maximum Discount</Label>
                     <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground">£</span>
+                      <span className="text-muted-foreground">{CURRENCY_SYMBOL}</span>
                       <Input
                         id="maximumDiscount"
                         type="text"
@@ -695,7 +697,7 @@ export function DiscountDialog({
                         ...formData,
                         rules: [
                           ...formData.rules,
-                          { type: "MIN_SUBTOTAL", value: "50", description: "Minimum order £50" },
+                          { type: "MIN_SUBTOTAL", value: "50", description: `Minimum order ${CURRENCY_SYMBOL}50` },
                         ],
                       })
                     }
@@ -809,7 +811,7 @@ export function DiscountDialog({
                     <div>
                       <span className="text-muted-foreground">Value:</span>{" "}
                       {formData.type === "PERCENTAGE" && `${formData.value}%`}
-                      {formData.type === "FIXED" && `£${formData.value}`}
+                      {formData.type === "FIXED" && `${CURRENCY_SYMBOL}${formData.value}`}
                       {formData.type === "FREE_SHIPPING" && "Free"}
                       {formData.type === "BUY_X_GET_Y" &&
                         `Buy ${formData.buyQuantity} Get ${formData.getQuantity}`}
@@ -817,13 +819,13 @@ export function DiscountDialog({
                     {formData.minimumAmount && (
                       <div>
                         <span className="text-muted-foreground">Min Order:</span>{" "}
-                        £{formData.minimumAmount}
+                        {CURRENCY_SYMBOL}{formData.minimumAmount}
                       </div>
                     )}
                     {formData.maximumDiscount && (
                       <div>
                         <span className="text-muted-foreground">Max Discount:</span>{" "}
-                        £{formData.maximumDiscount}
+                        {CURRENCY_SYMBOL}{formData.maximumDiscount}
                       </div>
                     )}
                     {formData.usageLimit && (

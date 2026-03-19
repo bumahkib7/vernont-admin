@@ -228,7 +228,7 @@ export default function MessagesPage() {
   return (
     <div className="flex h-[calc(100vh-4rem)] gap-0">
       {/* Sidebar - Conversation List */}
-      <div className="w-[380px] flex-shrink-0 border-r flex flex-col">
+      <div className="w-full sm:w-[380px] flex-shrink-0 border-r flex flex-col">
         {/* Header */}
         <div className="p-4 border-b">
           <h1 className="text-xl font-bold mb-4">Messages</h1>

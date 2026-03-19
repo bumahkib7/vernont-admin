@@ -105,6 +105,8 @@ import { toast } from "sonner";
 import { usePageContext } from "@/hooks/use-page-context";
 import { useConfirm } from "@/hooks/use-confirm";
 
+const CURRENCY_SYMBOL = "£"; // Centralized — change here for multi-currency support
+
 function getStatusBadge(status: ProductStatus) {
   switch (status) {
     case "published":
@@ -1083,7 +1085,7 @@ export default function ProductDetailPage() {
                 <div className="space-y-2">
                   <Label>Price</Label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">£</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{CURRENCY_SYMBOL}</span>
                     <Input
                       type="number"
                       value={mainPrice?.amount || 0}
@@ -1095,7 +1097,7 @@ export default function ProductDetailPage() {
                 <div className="space-y-2">
                   <Label>Compare at Price</Label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">£</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{CURRENCY_SYMBOL}</span>
                     <Input
                       type="number"
                       value={mainPrice?.compareAtPrice || ""}
@@ -1114,7 +1116,7 @@ export default function ProductDetailPage() {
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Discount</span>
                     <span className="font-medium text-green-600">
-                      £{(mainPrice.compareAtPrice - mainPrice.amount).toFixed(2)} ({Math.round(((mainPrice.compareAtPrice - mainPrice.amount) / mainPrice.compareAtPrice) * 100)}% off)
+                      {CURRENCY_SYMBOL}{(mainPrice.compareAtPrice - mainPrice.amount).toFixed(2)} ({Math.round(((mainPrice.compareAtPrice - mainPrice.amount) / mainPrice.compareAtPrice) * 100)}% off)
                     </span>
                   </div>
                 </div>
@@ -1164,7 +1166,7 @@ export default function ProductDetailPage() {
                             {variant.sku || "-"}
                           </TableCell>
                           <TableCell className="text-right">
-                            {variant.prices[0] ? `£${variant.prices[0].amount.toFixed(2)}` : "-"}
+                            {variant.prices[0] ? `${CURRENCY_SYMBOL}${variant.prices[0].amount.toFixed(2)}` : "-"}
                           </TableCell>
                           <TableCell className="text-center">
                             <Badge variant={variant.manageInventory ? "secondary" : "outline"}>
@@ -1496,7 +1498,7 @@ export default function ProductDetailPage() {
               <div className="space-y-2">
                 <Label htmlFor="variant-price">Price</Label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">£</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{CURRENCY_SYMBOL}</span>
                   <Input
                     id="variant-price"
                     type="text"
@@ -1511,7 +1513,7 @@ export default function ProductDetailPage() {
               <div className="space-y-2">
                 <Label htmlFor="variant-compare">Compare at</Label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">£</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{CURRENCY_SYMBOL}</span>
                   <Input
                     id="variant-compare"
                     type="text"
@@ -1632,7 +1634,7 @@ export default function ProductDetailPage() {
               <div className="space-y-2">
                 <Label htmlFor="edit-variant-price">Price</Label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">£</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{CURRENCY_SYMBOL}</span>
                   <Input
                     id="edit-variant-price"
                     type="text"
@@ -1647,7 +1649,7 @@ export default function ProductDetailPage() {
               <div className="space-y-2">
                 <Label htmlFor="edit-variant-compare">Compare at</Label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">£</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">{CURRENCY_SYMBOL}</span>
                   <Input
                     id="edit-variant-compare"
                     type="text"

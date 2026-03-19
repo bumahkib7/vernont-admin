@@ -63,7 +63,10 @@ function SetPasswordForm() {
         setSuccess(true);
         setTimeout(() => router.push("/login"), 3000);
       } else {
-        const data = await response.json().catch(() => null);
+        const data = await response.json().catch((err) => {
+          console.error("[SetPassword] Request failed:", err);
+          return null;
+        });
         setError(
           data?.message || data?.error || "Failed to set password. The link may have expired."
         );

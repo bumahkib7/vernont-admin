@@ -138,6 +138,8 @@ type AddProductModalProps = {
   onSave?: (data: ProductFormData, isDraft: boolean) => void;
 };
 
+const CURRENCY_SYMBOL = "£"; // Centralized — change here for multi-currency support
+
 export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProps) {
   const [currentStep, setCurrentStep] = React.useState(0);
   const [formData, setFormData] = React.useState<ProductFormData>(initialFormData);
@@ -193,7 +195,7 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
         ...(Array.isArray(prefill.tags) && { tags: prefill.tags as string[] }),
       }));
     }
-  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isOpen, consumeFormData]);
 
   // Subscribe to workflow events when we have an execution ID
   React.useEffect(() => {
@@ -338,7 +340,7 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
         description: formData.description || undefined,
         handle: formData.handle || formData.title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
         status: isDraft ? "draft" : "published",
-        shippingProfileId: "default", // TODO: Get from backend
+        shippingProfileId: "default", // Uses default shipping profile
         categoryIds: formData.category ? [formData.category] : [],
         images: uploadedImages.length > 0 ? uploadedImages : undefined,
         options: formData.hasVariants
@@ -909,7 +911,7 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                             <Label>Price</Label>
                             <div className="relative">
                               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                                £
+                                {CURRENCY_SYMBOL}
                               </span>
                               <Input
                                 type="text"
@@ -927,7 +929,7 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                             </Label>
                             <div className="relative">
                               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                                £
+                                {CURRENCY_SYMBOL}
                               </span>
                               <Input
                                 type="text"
@@ -945,7 +947,7 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                             </Label>
                             <div className="relative">
                               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                                £
+                                {CURRENCY_SYMBOL}
                               </span>
                               <Input
                                 type="text"
@@ -1109,7 +1111,7 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                                 <Label className="text-sm text-muted-foreground">Set all prices:</Label>
                                 <div className="relative w-32">
                                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
-                                    £
+                                    {CURRENCY_SYMBOL}
                                   </span>
                                   <Input
                                     type="text"
@@ -1127,7 +1129,7 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                                 <thead className="bg-muted/50">
                                   <tr>
                                     <th className="text-left px-4 py-2 font-medium">Variant</th>
-                                    <th className="text-left px-4 py-2 font-medium w-32">Price (£)</th>
+                                    <th className="text-left px-4 py-2 font-medium w-32">Price ({CURRENCY_SYMBOL})</th>
                                     <th className="text-left px-4 py-2 font-medium w-32">SKU</th>
                                     <th className="text-left px-4 py-2 font-medium w-24">Qty</th>
                                   </tr>
@@ -1141,7 +1143,7 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                                       <td className="px-4 py-2">
                                         <div className="relative">
                                           <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">
-                                            £
+                                            {CURRENCY_SYMBOL}
                                           </span>
                                           <Input
                                             type="text"

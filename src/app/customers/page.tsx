@@ -350,7 +350,7 @@ export default function CustomersPage() {
         </div>
         <div className="flex gap-2">
           <CsvExportButton type="customers" />
-          <CsvImportDialog type="customers" onImport={importCustomersCsv} onComplete={() => window.location.reload()} />
+          <CsvImportDialog type="customers" onImport={importCustomersCsv} onComplete={() => fetchCustomers()} />
           <Button className="gap-2" onClick={() => toast.info("Add customer coming soon")}>
             <UserPlus className="h-4 w-4" />
             Add Customer

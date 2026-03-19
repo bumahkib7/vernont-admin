@@ -101,7 +101,7 @@ const RULE_TYPES: {
   {
     value: "FIXED_DISCOUNT",
     label: "Fixed Discount",
-    description: "Reduce prices by a fixed amount (e.g., £5 off)",
+    description: "Reduce prices by a fixed amount",
     icon: PoundSterling,
     color: "bg-blue-100 text-blue-700 border-blue-200",
   },
@@ -155,6 +155,8 @@ const initialFormData: RuleFormData = {
   priority: 0,
   activateImmediately: false,
 };
+
+const CURRENCY_SYMBOL = "£"; // Centralized — change here for multi-currency support
 
 export function PricingRuleDialog({
   open,
@@ -568,10 +570,10 @@ export function PricingRuleDialog({
                     <div className="p-4 rounded-lg border bg-muted/30 space-y-2">
                       <p className="text-sm font-medium">Preview</p>
                       <div className="flex items-center gap-4 text-sm">
-                        <span className="text-muted-foreground">Original: £100.00</span>
+                        <span className="text-muted-foreground">Original: {CURRENCY_SYMBOL}100.00</span>
                         <ChevronRight className="h-4 w-4 text-muted-foreground" />
                         <span className="font-medium">
-                          New: £
+                          New: {CURRENCY_SYMBOL}
                           {formData.type === "MARKUP"
                             ? (100 * (1 + (formData.config.percentage || 0) / 100)).toFixed(2)
                             : (100 * (1 - (formData.config.percentage || 0) / 100)).toFixed(2)}
@@ -588,7 +590,7 @@ export function PricingRuleDialog({
                       <Label htmlFor="amount">Discount Amount *</Label>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                          £
+                          {CURRENCY_SYMBOL}
                         </span>
                         <Input
                           id="amount"
@@ -601,7 +603,7 @@ export function PricingRuleDialog({
                         />
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Subtract £{(formData.config.amount || 0).toFixed(2)} from each item
+                        Subtract {CURRENCY_SYMBOL}{(formData.config.amount || 0).toFixed(2)} from each item
                       </p>
                     </div>
 
@@ -609,10 +611,10 @@ export function PricingRuleDialog({
                     <div className="p-4 rounded-lg border bg-muted/30 space-y-2">
                       <p className="text-sm font-medium">Preview</p>
                       <div className="flex items-center gap-4 text-sm">
-                        <span className="text-muted-foreground">Original: £25.00</span>
+                        <span className="text-muted-foreground">Original: {CURRENCY_SYMBOL}25.00</span>
                         <ChevronRight className="h-4 w-4 text-muted-foreground" />
                         <span className="font-medium">
-                          New: £{Math.max(0, 25 - (formData.config.amount || 0)).toFixed(2)}
+                          New: {CURRENCY_SYMBOL}{Math.max(0, 25 - (formData.config.amount || 0)).toFixed(2)}
                         </span>
                       </div>
                     </div>
@@ -698,7 +700,7 @@ export function PricingRuleDialog({
                               />
                             </div>
                             <div className="space-y-1">
-                              <Label className="text-xs">Price per Unit (£)</Label>
+                              <Label className="text-xs">Price per Unit ({CURRENCY_SYMBOL})</Label>
                               <Input
                                 type="text"
                                 inputMode="decimal"
