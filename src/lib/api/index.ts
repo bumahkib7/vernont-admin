@@ -18,3 +18,4 @@ export * from "./ai";
 export * from "./subscriptions";
 export * from "./reviews";
 export * from "./ai-sessions";
+export * from "./tags";
