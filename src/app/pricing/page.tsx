@@ -550,12 +550,12 @@ export default function PricingPage() {
                               onCheckedChange={toggleSelectAll}
                             />
                           </TableHead>
-                          <TableHead className="w-[60px]">Image</TableHead>
-                          <TableHead>Product</TableHead>
-                          <TableHead className="hidden sm:table-cell">SKU</TableHead>
-                          <TableHead className="text-right">Current Price</TableHead>
-                          <TableHead className="text-right hidden sm:table-cell">Compare At</TableHead>
-                          <TableHead className="text-right">New Price</TableHead>
+                          <TableHead className="w-[48px]">Image</TableHead>
+                          <TableHead className="max-w-[180px]">Product</TableHead>
+                          <TableHead className="hidden lg:table-cell">SKU</TableHead>
+                          <TableHead className="text-right whitespace-nowrap">Current Price</TableHead>
+                          <TableHead className="text-right hidden lg:table-cell whitespace-nowrap">Compare At</TableHead>
+                          <TableHead className="text-right whitespace-nowrap">New Price</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -577,32 +577,32 @@ export default function PricingPage() {
                                   onCheckedChange={() => toggleSelectItem(item.variantId)}
                                 />
                               </TableCell>
-                              <TableCell>
+                              <TableCell className="w-[48px]">
                                 {item.thumbnail ? (
                                   <img
                                     src={item.thumbnail}
                                     alt={item.productTitle}
-                                    className="h-10 w-10 rounded object-cover"
+                                    className="h-9 w-9 rounded object-cover"
                                   />
                                 ) : (
-                                  <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">
+                                  <div className="h-9 w-9 rounded bg-muted flex items-center justify-center">
                                     <span className="text-xs text-muted-foreground">-</span>
                                   </div>
                                 )}
                               </TableCell>
-                              <TableCell>
-                                <div className="flex flex-col">
-                                  <span className="font-medium">{item.productTitle}</span>
-                                  <span className="text-xs text-muted-foreground">{item.variantTitle}</span>
+                              <TableCell className="max-w-[180px]">
+                                <div className="flex flex-col min-w-0">
+                                  <span className="font-medium truncate">{item.productTitle}</span>
+                                  <span className="text-xs text-muted-foreground truncate">{item.variantTitle}</span>
                                 </div>
                               </TableCell>
-                              <TableCell className="hidden sm:table-cell text-muted-foreground font-mono text-sm">
+                              <TableCell className="hidden lg:table-cell text-muted-foreground font-mono text-sm">
                                 {item.sku || "-"}
                               </TableCell>
-                              <TableCell className="text-right font-medium">
+                              <TableCell className="text-right font-medium whitespace-nowrap">
                                 {formatPrice(item.currentPrice / 100, item.currencyCode)}
                               </TableCell>
-                              <TableCell className="text-right text-muted-foreground hidden sm:table-cell">
+                              <TableCell className="text-right text-muted-foreground hidden lg:table-cell whitespace-nowrap">
                                 {item.compareAtPrice
                                   ? formatPrice(item.compareAtPrice / 100, item.currencyCode)
                                   : "-"}

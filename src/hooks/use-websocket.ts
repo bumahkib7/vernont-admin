@@ -241,16 +241,22 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
     [log]
   );
 
-  // Auto-connect on mount
+  // Store connect/disconnect in refs to avoid effect re-triggering on callback identity changes
+  const connectRef = useRef(connect);
+  const disconnectRef = useRef(disconnect);
+  useEffect(() => { connectRef.current = connect; }, [connect]);
+  useEffect(() => { disconnectRef.current = disconnect; }, [disconnect]);
+
+  // Auto-connect on mount — stable effect that only runs once
   useEffect(() => {
     if (autoConnect) {
-      connect();
+      connectRef.current();
     }
 
     return () => {
-      disconnect();
+      disconnectRef.current();
     };
-  }, [autoConnect, connect, disconnect]);
+  }, [autoConnect]);
 
   return {
     isConnected,

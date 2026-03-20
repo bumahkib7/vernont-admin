@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useRef, useState } from "react";
 import { useWebSocket } from "./use-websocket";
 
 export interface PricingEvent {
@@ -38,39 +38,42 @@ export function usePricingEvents(options: UsePricingEventsOptions = {}): UsePric
   const { isConnected, subscribe } = useWebSocket({ autoConnect: true });
   const [events, setEvents] = useState<PricingEvent[]>([]);
 
-  const handleEvent = useCallback(
-    (event: PricingEvent) => {
-      // Add to events list
-      setEvents((prev) => {
-        const newEvents = [event, ...prev];
-        return newEvents.slice(0, MAX_EVENTS);
-      });
+  // Use refs for callbacks to keep the subscription effect stable
+  const onPriceChangeRef = useRef(onPriceChange);
+  const onBulkUpdateRef = useRef(onBulkUpdate);
+  const onRuleChangeRef = useRef(onRuleChange);
+  const onAnyEventRef = useRef(onAnyEvent);
 
-      // Call specific handlers
-      onAnyEvent?.(event);
+  useEffect(() => { onPriceChangeRef.current = onPriceChange; }, [onPriceChange]);
+  useEffect(() => { onBulkUpdateRef.current = onBulkUpdate; }, [onBulkUpdate]);
+  useEffect(() => { onRuleChangeRef.current = onRuleChange; }, [onRuleChange]);
+  useEffect(() => { onAnyEventRef.current = onAnyEvent; }, [onAnyEvent]);
 
-      switch (event.type) {
-        case "PRICE_CHANGED":
-          onPriceChange?.(event);
-          break;
-        case "BULK_UPDATE":
-          onBulkUpdate?.(event);
-          break;
-        case "RULE_CREATED":
-        case "RULE_UPDATED":
-        case "RULE_DELETED":
-          onRuleChange?.(event);
-          break;
-      }
-    },
-    [onPriceChange, onBulkUpdate, onRuleChange, onAnyEvent]
-  );
+  const handleEvent = useCallback((event: PricingEvent) => {
+    setEvents((prev) => [event, ...prev].slice(0, MAX_EVENTS));
+
+    onAnyEventRef.current?.(event);
+
+    switch (event.type) {
+      case "PRICE_CHANGED":
+        onPriceChangeRef.current?.(event);
+        break;
+      case "BULK_UPDATE":
+        onBulkUpdateRef.current?.(event);
+        break;
+      case "RULE_CREATED":
+      case "RULE_UPDATED":
+      case "RULE_DELETED":
+        onRuleChangeRef.current?.(event);
+        break;
+    }
+  }, []);
 
   const clearEvents = useCallback(() => {
     setEvents([]);
   }, []);
 
-  // Subscribe to pricing events when connected
+  // Subscribe to pricing events when connected — stable deps now
   useEffect(() => {
     if (!isConnected) return;
 
