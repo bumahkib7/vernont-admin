@@ -320,7 +320,6 @@ export default function WorkflowBuilderPage() {
       nodes: nodes.map((n) => ({ id: n.id, type: n.type, position: n.position, data: n.data })),
       edges: edges.map((e) => ({ id: e.id, source: e.source, target: e.target, label: e.label })),
     };
-    console.log("Saving workflow:", JSON.stringify(workflow, null, 2));
     // TODO: POST to /admin/workflows when backend endpoint exists
     alert("Workflow saved! (Backend integration pending)");
   }, [workflowName, nodes, edges]);

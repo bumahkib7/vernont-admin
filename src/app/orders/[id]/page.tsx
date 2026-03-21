@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
@@ -99,23 +100,11 @@ import {
 } from "@/lib/api";
 
 function PaymentStatusBadge({ status }: { status: PaymentStatus }) {
-  const { label, color } = getPaymentStatusDisplay(status);
-  return (
-    <Badge variant="outline" className="gap-1 border-0 bg-opacity-20" style={{ backgroundColor: `var(--${color.replace('bg-', '')}-100, #f3f4f6)` }}>
-      <div className={`h-2 w-2 rounded-full ${color}`} />
-      {label}
-    </Badge>
-  );
+  return <StatusBadge status={status} type="payment" dot />;
 }
 
 function FulfillmentStatusBadge({ status }: { status: FulfillmentStatus }) {
-  const { label, color } = getFulfillmentStatusDisplay(status);
-  return (
-    <Badge variant="outline" className="gap-1 border-0" style={{ backgroundColor: `var(--${color.replace('bg-', '')}-100, #f3f4f6)` }}>
-      <div className={`h-2 w-2 rounded-full ${color}`} />
-      {label}
-    </Badge>
-  );
+  return <StatusBadge status={status} type="fulfillment" dot />;
 }
 
 function TimelineIcon({ type }: { type: string }) {
@@ -548,10 +537,7 @@ export default function OrderDetailsPage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="gap-1">
-                    <div className={`h-2 w-2 rounded-full ${getOrderStatusDisplay(order.status).color}`} />
-                    {getOrderStatusDisplay(order.status).label}
-                  </Badge>
+                  <StatusBadge status={order.status} type="order" dot />
                   <PaymentStatusBadge status={order.paymentStatus} />
                   <FulfillmentStatusBadge status={order.fulfillmentStatus} />
                   {(canFulfill || canShip || canComplete || canCancel) && (
