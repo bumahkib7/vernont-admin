@@ -145,6 +145,7 @@ export default function EmailTemplateDetailPage() {
     try {
       const res = await fetch(`/admin/email-templates/${id}/preview`, {
         credentials: "include",
+        headers: { "X-Requested-With": "XMLHttpRequest" },
       });
       const text = await res.text();
       setPreviewHtml(text);

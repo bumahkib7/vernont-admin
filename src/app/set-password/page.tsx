@@ -54,7 +54,7 @@ function SetPasswordForm() {
     try {
       const response = await fetch(`${API_BASE_URL}/api/reset-password`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
         credentials: "include",
         body: JSON.stringify({ token, newPassword: password }),
       });

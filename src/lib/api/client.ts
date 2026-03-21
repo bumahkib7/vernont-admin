@@ -238,6 +238,7 @@ export async function apiFetch<T>(
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
+      "X-Requested-With": "XMLHttpRequest",
       ...options.headers,
     },
   });

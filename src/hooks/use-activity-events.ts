@@ -435,6 +435,7 @@ export function useActivityEvents(
 
         const response = await fetch(url, {
           credentials: "include",
+          headers: { "X-Requested-With": "XMLHttpRequest" },
         });
 
         if (!response.ok) {

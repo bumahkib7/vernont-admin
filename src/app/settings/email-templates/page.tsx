@@ -318,6 +318,7 @@ function PreviewDialog({
   useState(() => {
     fetch(`/admin/email-templates/${templateId}/preview`, {
       credentials: "include",
+      headers: { "X-Requested-With": "XMLHttpRequest" },
     })
       .then((r) => r.text())
       .then((text) => {

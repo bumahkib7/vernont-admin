@@ -202,7 +202,7 @@ export function useWorkflowEvents(options: UseWorkflowEventsOptions = {}) {
     try {
       const response = await fetch(`${API_BASE_URL}/admin/workflows/executions/active`, {
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
       });
       if (!response.ok) {
         throw new Error(`HTTP error ${response.status}`);
@@ -270,7 +270,7 @@ export function useWorkflowEvents(options: UseWorkflowEventsOptions = {}) {
       // Also fetch recent completed/failed executions
       const recentResponse = await fetch(`${API_BASE_URL}/admin/workflows/executions/recent?limit=50`, {
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
       });
       if (recentResponse.ok) {
         const recentExecutions = (await recentResponse.json()) as Array<{

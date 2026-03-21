@@ -87,6 +87,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
       const response = await fetch(`${API_URL}/api/v1/internal/auth/ws-token`, {
         method: "POST",
         credentials: "include", // Send HTTP-only cookies
+        headers: { "X-Requested-With": "XMLHttpRequest" },
       });
       if (response.ok) {
         const data = await response.json();

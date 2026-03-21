@@ -367,7 +367,7 @@ export default function WorkflowsSettingsPage() {
         {
           method: "POST",
           credentials: "include",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
         }
       );
       if (response.ok) {

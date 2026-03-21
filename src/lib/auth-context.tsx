@@ -59,6 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
         },
       });
 
@@ -169,6 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
         },
       });
     } catch (error) {
