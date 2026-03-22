@@ -18,6 +18,7 @@ export async function importProductsCsv(file: File): Promise<ImportResult> {
   const response = await fetch(`${API_BASE_URL}/admin/import/products`, {
     method: "POST",
     credentials: "include",
+    headers: { "X-Requested-With": "XMLHttpRequest" },
     body: formData,
   });
   if (!response.ok) throw await parseErrorResponse(response);
@@ -30,6 +31,7 @@ export async function importCustomersCsv(file: File): Promise<ImportResult> {
   const response = await fetch(`${API_BASE_URL}/admin/import/customers`, {
     method: "POST",
     credentials: "include",
+    headers: { "X-Requested-With": "XMLHttpRequest" },
     body: formData,
   });
   if (!response.ok) throw await parseErrorResponse(response);

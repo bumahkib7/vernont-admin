@@ -75,6 +75,7 @@ export async function refreshAuthToken(): Promise<boolean> {
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
+          "X-Requested-With": "XMLHttpRequest",
         },
       });
       return response.ok;

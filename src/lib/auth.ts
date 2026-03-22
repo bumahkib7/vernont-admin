@@ -113,6 +113,7 @@ export async function updateProfile(data: UpdateProfileRequest): Promise<Interna
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
+      "X-Requested-With": "XMLHttpRequest",
     },
     body: JSON.stringify(data),
   });
@@ -135,6 +136,7 @@ export async function changePassword(data: ChangePasswordRequest): Promise<void>
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
+      "X-Requested-With": "XMLHttpRequest",
     },
     body: JSON.stringify(data),
   });

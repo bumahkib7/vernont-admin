@@ -495,6 +495,7 @@ export async function uploadCollectionImage(
   const response = await fetch(`${API_BASE_URL}/admin/uploads/collection-image`, {
     method: "POST",
     credentials: "include",
+    headers: { "X-Requested-With": "XMLHttpRequest" },
     body: formData,
   });
 
@@ -679,6 +680,7 @@ export async function uploadProductImage(
     method: "POST",
     body: formData,
     credentials: "include",
+    headers: { "X-Requested-With": "XMLHttpRequest" },
   });
 
   if (!response.ok) {

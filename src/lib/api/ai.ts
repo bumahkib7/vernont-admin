@@ -13,7 +13,7 @@ export async function aiChat(
   const response = await fetch(`${API_BASE_URL}/admin/ai/chat`, {
     method: "POST",
     credentials: "include",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
     body: JSON.stringify({ sessionId, message, context }),
   });
   if (!response.ok) {
@@ -49,7 +49,7 @@ export async function aiAnalyzeSales(query: string): Promise<Response> {
   const response = await fetch(`${API_BASE_URL}/admin/ai/analyze-sales`, {
     method: "POST",
     credentials: "include",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
     body: JSON.stringify({ query }),
   });
   if (!response.ok) {
@@ -119,7 +119,7 @@ export async function startAiWorkflow(
   const response = await fetch(`${API_BASE_URL}/admin/ai/workflow/start`, {
     method: "POST",
     credentials: "include",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
     body: JSON.stringify({ sessionId, workflowType }),
   });
   if (!response.ok) {
@@ -138,7 +138,7 @@ export async function continueAiWorkflow(
   const response = await fetch(`${API_BASE_URL}/admin/ai/workflow/continue`, {
     method: "POST",
     credentials: "include",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
     body: JSON.stringify({ sessionId, message: input }),
   });
   if (!response.ok) {
