@@ -96,9 +96,12 @@ import {
   type UpdateVariantInput,
   type CreateOptionInput,
   type UpdateOptionInput,
+  type ProductCondition,
+  type ProductGender,
   resolveImageUrl,
   STOREFRONT_URL,
 } from "@/lib/api";
+import { SpecificationsEditor } from "@/components/products/specifications-editor";
 import { useRef } from "react";
 import { toast } from "sonner";
 
@@ -180,6 +183,8 @@ export default function ProductDetailPage() {
     subtitle: "",
     description: "",
     status: "draft" as ProductStatus,
+    condition: "new" as ProductCondition,
+    gender: "unisex" as ProductGender,
     material: "",
     weight: "",
     originCountry: "",
@@ -214,6 +219,8 @@ export default function ProductDetailPage() {
         subtitle: data.subtitle || "",
         description: data.description || "",
         status: data.status,
+        condition: data.condition || "new",
+        gender: data.gender || "unisex",
         material: data.material || "",
         weight: data.weight ? (typeof data.weight === "number" ? (data.weight / 1000).toString() : data.weight) : "",
         originCountry: data.originCountry || "",
@@ -269,6 +276,8 @@ export default function ProductDetailPage() {
         subtitle: formData.subtitle || undefined,
         description: formData.description || undefined,
         status: formData.status,
+        condition: formData.condition,
+        gender: formData.gender,
         material: formData.material || undefined,
         weight: parsedWeight && !isNaN(parsedWeight) ? Math.round(parsedWeight * 1000) : undefined,
         originCountry: formData.originCountry || undefined,
@@ -1251,6 +1260,9 @@ export default function ProductDetailPage() {
             </CardContent>
           </Card>
 
+          {/* Specifications */}
+          <SpecificationsEditor productId={product.id} />
+
         </div>
 
         {/* Sidebar */}
@@ -1275,6 +1287,56 @@ export default function ProductDetailPage() {
                     <SelectItem value="draft">Draft</SelectItem>
                     <SelectItem value="proposed">Proposed</SelectItem>
                     <SelectItem value="rejected">Rejected</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Separator />
+              <div className="space-y-2">
+                <Label>Condition</Label>
+                <Select
+                  value={formData.condition}
+                  onValueChange={(value) => updateField("condition", value as ProductCondition)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="new">
+                      <span className="flex items-center gap-2">New</span>
+                    </SelectItem>
+                    <SelectItem value="pre_owned_a">
+                      <span className="flex items-center gap-2">Pre-Owned — Grade A</span>
+                    </SelectItem>
+                    <SelectItem value="pre_owned_b">
+                      <span className="flex items-center gap-2">Pre-Owned — Grade B</span>
+                    </SelectItem>
+                    <SelectItem value="pre_owned_c">
+                      <span className="flex items-center gap-2">Pre-Owned — Grade C</span>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                {formData.condition !== "new" && (
+                  <p className="text-xs text-muted-foreground">
+                    {formData.condition === "pre_owned_a" && "Like new. Minimal signs of wear."}
+                    {formData.condition === "pre_owned_b" && "Good condition. Minor cosmetic marks."}
+                    {formData.condition === "pre_owned_c" && "Fair condition. Visible wear signs."}
+                  </p>
+                )}
+              </div>
+              <Separator />
+              <div className="space-y-2">
+                <Label>Gender</Label>
+                <Select
+                  value={formData.gender}
+                  onValueChange={(value) => updateField("gender", value as ProductGender)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unisex">Unisex</SelectItem>
+                    <SelectItem value="male">Men</SelectItem>
+                    <SelectItem value="female">Women</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

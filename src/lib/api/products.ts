@@ -105,6 +105,9 @@ export interface ProductOption {
   position: number;
 }
 
+export type ProductCondition = "new" | "pre_owned_a" | "pre_owned_b" | "pre_owned_c";
+export type ProductGender = "male" | "female" | "unisex";
+
 export interface Product {
   id: string;
   title: string;
@@ -112,6 +115,8 @@ export interface Product {
   subtitle?: string;
   description?: string;
   status: ProductStatus;
+  condition: ProductCondition;
+  gender: ProductGender;
   thumbnail?: string;
   isGiftcard: boolean;
   discountable: boolean;
@@ -231,6 +236,8 @@ export interface UpdateProductInput {
   description?: string;
   handle?: string;
   status?: string;  // Product status: draft, published, proposed, rejected
+  condition?: ProductCondition;
+  gender?: ProductGender;
   thumbnail?: string;
   images?: string[];
   weight?: number;
@@ -755,6 +762,109 @@ export async function setProductThumbnail(
   return apiFetch<Product>(`/admin/products/${productId}/thumbnail`, {
     method: "PUT",
     body: JSON.stringify({ imageId }),
+  });
+}
+
+// =============================================================================
+// Specifications API
+// =============================================================================
+
+export interface EyewearSpecification {
+  frame: {
+    material?: string | null;
+    color?: string | null;
+    shape?: string | null;
+    style?: string | null;
+    templeDesign?: string | null;
+    hingeType?: string | null;
+    frontMaterial?: string | null;
+  };
+  lens: {
+    color?: string | null;
+    material?: string | null;
+    technology?: string | null;
+    coating?: string | null;
+    category?: string | null;
+    transmissionRate?: string | null;
+    uvProtection?: string | null;
+    base?: string | null;
+    polarized?: boolean;
+  };
+  measurements: {
+    lensWidth?: number | null;
+    bridgeWidth?: number | null;
+    templeLength?: number | null;
+    totalWidth?: number | null;
+    lensHeight?: number | null;
+  };
+  fit: {
+    size?: string | null;
+    fitType?: string | null;
+    faceShapes?: string[];
+    nosepadType?: string | null;
+    productionNote?: string | null;
+  };
+  model: {
+    styleCode?: string | null;
+    modelCode?: string | null;
+    colorCode?: string | null;
+    upc?: string | null;
+  };
+  includedItems?: string[];
+  careInstructions?: string[];
+  features?: string[];
+}
+
+export interface ProductSpecificationResponse {
+  productId: string;
+  type: string;
+  data: EyewearSpecification;
+  isComplete: boolean;
+}
+
+export async function getProductSpecifications(
+  productId: string
+): Promise<ProductSpecificationResponse | null> {
+  try {
+    return await apiFetch<ProductSpecificationResponse>(
+      `/admin/products/${productId}/specifications`
+    );
+  } catch {
+    return null;
+  }
+}
+
+export async function setEyewearSpecifications(
+  productId: string,
+  spec: Partial<EyewearSpecification>
+): Promise<ProductSpecificationResponse> {
+  return apiFetch<ProductSpecificationResponse>(
+    `/admin/products/${productId}/specifications/eyewear`,
+    {
+      method: "PUT",
+      body: JSON.stringify(spec),
+    }
+  );
+}
+
+export async function patchEyewearSpecifications(
+  productId: string,
+  patch: Record<string, unknown>
+): Promise<ProductSpecificationResponse> {
+  return apiFetch<ProductSpecificationResponse>(
+    `/admin/products/${productId}/specifications/eyewear`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    }
+  );
+}
+
+export async function deleteProductSpecifications(
+  productId: string
+): Promise<void> {
+  await apiFetch<void>(`/admin/products/${productId}/specifications`, {
+    method: "DELETE",
   });
 }
 
