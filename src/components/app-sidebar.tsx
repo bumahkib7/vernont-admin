@@ -26,6 +26,7 @@ import {
   Building2,
   Sparkles,
   MessageSquare,
+  HeartPulse,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -479,7 +480,15 @@ export function AppSidebar() {
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={isActive("/settings") && !isActive("/settings/users") && !isActive("/settings/activity") && !isActive("/settings/webhooks")}>
+            <SidebarMenuButton asChild isActive={isActive("/settings/health")}>
+              <Link href="/settings/health">
+                <HeartPulse className="size-4" />
+                <span>System Health</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={isActive("/settings") && !isActive("/settings/users") && !isActive("/settings/activity") && !isActive("/settings/webhooks") && !isActive("/settings/health")}>
               <Link href="/settings">
                 <Settings className="size-4" />
                 <span>Settings</span>
