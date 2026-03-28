@@ -221,10 +221,8 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
               position: i,
             });
           } catch (uploadError) {
-            console.error(`Failed to upload image ${i + 1}:`, uploadError);
-            throw new Error(
-              `Failed to upload image ${i + 1}: ${uploadError instanceof Error ? uploadError.message : "Unknown error"}`
-            );
+            console.warn(`Image ${i + 1} upload failed, skipping:`, uploadError);
+            // Continue creating product without this image
           }
         }
       }
