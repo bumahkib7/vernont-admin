@@ -38,6 +38,10 @@ import {
   type CreateProductInput,
   type ImageInput,
 } from "@/lib/api";
+import {
+  useProductFormStore,
+  getVariantDisplayName,
+} from "@/stores/product-form-store";
 
 type Step = {
   id: string;
@@ -45,125 +49,38 @@ type Step = {
   status: "complete" | "current" | "upcoming";
 };
 
-type VariantPricing = {
-  optionValues: Record<string, string>; // e.g., { "Size": "M", "Color": "Red" }
-  price: string;
-  sku: string;
-  quantity: string;
-};
-
-type ProductFormData = {
-  // Details
-  title: string;
-  subtitle: string;
-  handle: string;
-  description: string;
-  hasVariants: boolean;
-  // Media
-  images: File[];
-  // Organize
-  category: string;
-  collection: string;
-  tags: string[];
-  // Variants
-  options: { name: string; values: string[] }[];
-  variantPrices: VariantPricing[]; // Pricing for each variant combination
-  // Pricing (for simple product)
-  price: string;
-  compareAtPrice: string;
-  costPerItem: string;
-  // Inventory
-  sku: string;
-  barcode: string;
-  quantity: string;
-  trackQuantity: boolean;
-};
-
-const initialFormData: ProductFormData = {
-  title: "",
-  subtitle: "",
-  handle: "",
-  description: "",
-  hasVariants: false,
-  images: [],
-  category: "",
-  collection: "",
-  tags: [],
-  options: [],
-  variantPrices: [],
-  price: "",
-  compareAtPrice: "",
-  costPerItem: "",
-  sku: "",
-  barcode: "",
-  quantity: "",
-  trackQuantity: true,
-};
-
-// Helper: Generate all variant combinations from options (cartesian product)
-function generateVariantCombinations(
-  options: { name: string; values: string[] }[]
-): Record<string, string>[] {
-  const validOptions = options.filter(o => o.name && o.values.some(v => v));
-  if (validOptions.length === 0) return [];
-
-  const cartesian = (arrays: string[][]): string[][] => {
-    if (arrays.length === 0) return [[]];
-    const [first, ...rest] = arrays;
-    const restCombinations = cartesian(rest);
-    return first.flatMap(val => restCombinations.map(combo => [val, ...combo]));
-  };
-
-  const optionNames = validOptions.map(o => o.name);
-  const optionValues = validOptions.map(o => o.values.filter(v => v));
-  const combinations = cartesian(optionValues);
-
-  return combinations.map(combo => {
-    const result: Record<string, string> = {};
-    optionNames.forEach((name, idx) => {
-      result[name] = combo[idx];
-    });
-    return result;
-  });
-}
-
-// Helper: Get display name for variant (e.g., "M / Red")
-function getVariantDisplayName(optionValues: Record<string, string>): string {
-  return Object.values(optionValues).join(" / ");
-}
+const CURRENCY_SYMBOL = "\u00a3"; // Centralized — change here for multi-currency support
 
 type AddProductModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onSave?: (data: ProductFormData, isDraft: boolean) => void;
+  onSave?: (isDraft: boolean) => void;
 };
 
-const CURRENCY_SYMBOL = "£"; // Centralized — change here for multi-currency support
-
 export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProps) {
-  const [currentStep, setCurrentStep] = React.useState(0);
-  const [formData, setFormData] = React.useState<ProductFormData>(initialFormData);
   const [dragActive, setDragActive] = React.useState(false);
   const [newTag, setNewTag] = React.useState("");
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  // Backend data
+  // Backend data (kept local — not form state)
   const [categories, setCategories] = React.useState<ProductCategory[]>([]);
   const [collections, setCollections] = React.useState<ProductCollection[]>([]);
   const [loadingData, setLoadingData] = React.useState(false);
-  const [saving, setSaving] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
 
-  // Progress tracking
-  const [progress, setProgress] = React.useState<{
-    stepName: string;
-    current: number;
-    total: number;
-    message: string;
-    percent: number;
-  } | null>(null);
-  const [executionId, setExecutionId] = React.useState<string | null>(null);
+  // WebSocket for progress tracking
   const { isConnected, subscribe, unsubscribe } = useWebSocket({ autoConnect: true });
+
+  // --- Zustand store ---
+  const store = useProductFormStore();
+
+  const steps: Step[] = [
+    { id: "details", label: "Details", status: store.currentStep === 0 ? "current" : store.currentStep > 0 ? "complete" : "upcoming" },
+    { id: "organize", label: "Organize", status: store.currentStep === 1 ? "current" : store.currentStep > 1 ? "complete" : "upcoming" },
+    { id: "variants", label: "Variants", status: store.currentStep === 2 ? "current" : "upcoming" },
+  ];
+
+  // Variant combinations — computed from store, no useEffect needed
+  const variantCombinations = store.getVariantCombinations();
 
   // Fetch categories and collections on mount
   React.useEffect(() => {
@@ -173,35 +90,20 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
   }, [isOpen]);
 
   // Agent actions: consume pre-fill data when modal opens
-  const consumeFormData = useAgentActionsStore(s => s.consumeFormData);
+  const consumeFormData = useAgentActionsStore((s) => s.consumeFormData);
   React.useEffect(() => {
     if (!isOpen) return;
     const prefill = consumeFormData("add-product");
     if (prefill) {
-      setFormData(prev => ({
-        ...prev,
-        ...(prefill.title != null && { title: String(prefill.title) }),
-        ...(prefill.subtitle != null && { subtitle: String(prefill.subtitle) }),
-        ...(prefill.handle != null && { handle: String(prefill.handle) }),
-        ...(prefill.description != null && { description: String(prefill.description) }),
-        ...(prefill.price != null && { price: String(prefill.price) }),
-        ...(prefill.compareAtPrice != null && { compareAtPrice: String(prefill.compareAtPrice) }),
-        ...(prefill.costPerItem != null && { costPerItem: String(prefill.costPerItem) }),
-        ...(prefill.sku != null && { sku: String(prefill.sku) }),
-        ...(prefill.barcode != null && { barcode: String(prefill.barcode) }),
-        ...(prefill.quantity != null && { quantity: String(prefill.quantity) }),
-        ...(prefill.category != null && { category: String(prefill.category) }),
-        ...(prefill.collection != null && { collection: String(prefill.collection) }),
-        ...(Array.isArray(prefill.tags) && { tags: prefill.tags as string[] }),
-      }));
+      store.applyPrefill(prefill);
     }
   }, [isOpen, consumeFormData]);
 
   // Subscribe to workflow events when we have an execution ID
   React.useEffect(() => {
-    if (!executionId || !isConnected) return;
+    if (!store.executionId || !isConnected) return;
 
-    const topic = `/topic/workflow/${executionId}`;
+    const topic = `/topic/workflow/${store.executionId}`;
     const subscription = subscribe(topic, (message: any) => {
       if (message.type === "STEP_PROGRESS") {
         const totalSteps = message.totalSteps || 3;
@@ -209,24 +111,27 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
         const progressCurrent = message.progressCurrent || 0;
         const progressTotal = message.progressTotal || 1;
 
-        // Calculate overall percentage
         const stepWeight = 100 / totalSteps;
         const stepProgress = (progressCurrent / progressTotal) * stepWeight;
         const overallPercent = Math.round(stepIndex * stepWeight + stepProgress);
 
-        setProgress({
+        store.setProgress({
           stepName: message.stepName || "Processing",
           current: progressCurrent,
           total: progressTotal,
           message: message.progressMessage || `Step ${stepIndex + 1} of ${totalSteps}`,
-          percent: Math.min(overallPercent, 99), // Cap at 99 until complete
+          percent: Math.min(overallPercent, 99),
         });
       } else if (message.type === "WORKFLOW_COMPLETED") {
-        setProgress(prev => prev ? { ...prev, percent: 100, message: "Complete!" } : null);
+        store.setProgress(
+          store.progress
+            ? { ...store.progress, percent: 100, message: "Complete!" }
+            : null
+        );
       } else if (message.type === "WORKFLOW_FAILED") {
-        setError(message.error || "Product creation failed");
-        setSaving(false);
-        setProgress(null);
+        store.setError(message.error || "Product creation failed");
+        store.setSaving(false);
+        store.setProgress(null);
       }
     });
 
@@ -235,11 +140,11 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
         unsubscribe(subscription);
       }
     };
-  }, [executionId, isConnected, subscribe, unsubscribe]);
+  }, [store.executionId, isConnected, subscribe, unsubscribe]);
 
   const fetchBackendData = async () => {
     setLoadingData(true);
-    setError(null);
+    store.setError(null);
     try {
       const [categoriesRes, collectionsRes] = await Promise.allSettled([
         getCategories({ limit: 100 }),
@@ -264,26 +169,16 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
     }
   };
 
-  const steps: Step[] = [
-    { id: "details", label: "Details", status: currentStep === 0 ? "current" : currentStep > 0 ? "complete" : "upcoming" },
-    { id: "organize", label: "Organize", status: currentStep === 1 ? "current" : currentStep > 1 ? "complete" : "upcoming" },
-    { id: "variants", label: "Variants", status: currentStep === 2 ? "current" : "upcoming" },
-  ];
-
   const handleClose = () => {
-    setCurrentStep(0);
-    setFormData(initialFormData);
-    setProgress(null);
-    setExecutionId(null);
-    setError(null);
+    store.reset();
+    setNewTag("");
     onClose();
   };
 
   const handleContinue = async () => {
-    if (currentStep < steps.length - 1) {
-      setCurrentStep(currentStep + 1);
+    if (store.currentStep < steps.length - 1) {
+      store.nextStep();
     } else {
-      // Final step - save product
       await saveProduct(false);
     }
   };
@@ -293,30 +188,30 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
   };
 
   const saveProduct = async (isDraft: boolean) => {
-    setSaving(true);
-    setError(null);
-    setProgress({ stepName: "Starting", current: 0, total: 1, message: "Initializing...", percent: 0 });
+    store.setSaving(true);
+    store.setError(null);
+    store.setProgress({ stepName: "Starting", current: 0, total: 1, message: "Initializing...", percent: 0 });
 
     try {
       // Step 1: Upload images first (if any)
       const uploadedImages: ImageInput[] = [];
-      if (formData.images.length > 0) {
-        setProgress({
+      if (store.images.length > 0) {
+        store.setProgress({
           stepName: "Uploading",
           current: 0,
-          total: formData.images.length,
-          message: `Uploading ${formData.images.length} image(s)...`,
-          percent: 5
+          total: store.images.length,
+          message: `Uploading ${store.images.length} image(s)...`,
+          percent: 5,
         });
 
-        for (let i = 0; i < formData.images.length; i++) {
-          const file = formData.images[i];
-          setProgress({
+        for (let i = 0; i < store.images.length; i++) {
+          const file = store.images[i];
+          store.setProgress({
             stepName: "Uploading",
             current: i + 1,
-            total: formData.images.length,
-            message: `Uploading image ${i + 1} of ${formData.images.length}...`,
-            percent: 5 + Math.floor((i / formData.images.length) * 20)
+            total: store.images.length,
+            message: `Uploading image ${i + 1} of ${store.images.length}...`,
+            percent: 5 + Math.floor((i / store.images.length) * 20),
           });
 
           try {
@@ -327,30 +222,34 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
             });
           } catch (uploadError) {
             console.error(`Failed to upload image ${i + 1}:`, uploadError);
-            throw new Error(`Failed to upload image ${i + 1}: ${uploadError instanceof Error ? uploadError.message : 'Unknown error'}`);
+            throw new Error(
+              `Failed to upload image ${i + 1}: ${uploadError instanceof Error ? uploadError.message : "Unknown error"}`
+            );
           }
         }
       }
 
-      setProgress({ stepName: "Creating", current: 0, total: 1, message: "Creating product...", percent: 30 });
+      store.setProgress({ stepName: "Creating", current: 0, total: 1, message: "Creating product...", percent: 30 });
 
       // Step 2: Build the product input with uploaded image URLs
       const productInput: CreateProductInput = {
-        title: formData.title,
-        description: formData.description || undefined,
-        handle: formData.handle || formData.title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+        title: store.title,
+        description: store.description || undefined,
+        handle: store.handle || store.title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
         status: isDraft ? "draft" : "published",
-        shippingProfileId: "default", // Uses default shipping profile
-        categoryIds: formData.category ? [formData.category] : [],
+        shippingProfileId: "default",
+        categoryIds: store.category ? [store.category] : [],
         images: uploadedImages.length > 0 ? uploadedImages : undefined,
-        options: formData.hasVariants
-          ? formData.options.filter(o => o.name && o.values.some(v => v)).map(o => ({
-              title: o.name,
-              values: o.values.filter(v => v),
-            }))
+        options: store.hasVariants
+          ? store.options
+              .filter((o) => o.name && o.values.some((v) => v))
+              .map((o) => ({
+                title: o.name,
+                values: o.values.filter((v) => v),
+              }))
           : [],
-        variants: formData.hasVariants
-          ? formData.variantPrices.map((vp) => ({
+        variants: store.hasVariants
+          ? store.variantPrices.map((vp) => ({
               title: getVariantDisplayName(vp.optionValues),
               sku: vp.sku || undefined,
               barcode: undefined,
@@ -368,18 +267,18 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
             }))
           : [
               {
-                title: formData.title,
-                sku: formData.sku || undefined,
-                barcode: formData.barcode || undefined,
-                ean: formData.barcode || undefined,
-                inventoryQuantity: parseInt(formData.quantity) || 0,
-                manageInventory: formData.trackQuantity,
+                title: store.title,
+                sku: store.sku || undefined,
+                barcode: store.barcode || undefined,
+                ean: store.barcode || undefined,
+                inventoryQuantity: parseInt(store.quantity) || 0,
+                manageInventory: store.trackQuantity,
                 allowBackorder: false,
                 options: {},
                 prices: [
                   {
                     currencyCode: "GBP",
-                    amount: parseFloat(formData.price) || 0,
+                    amount: parseFloat(store.price) || 0,
                   },
                 ],
               },
@@ -390,44 +289,23 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
 
       // Set execution ID to subscribe to progress events
       if (response.executionId) {
-        setExecutionId(response.executionId);
+        store.setExecutionId(response.executionId);
       }
 
       // Wait a brief moment for progress to complete, then close
       setTimeout(() => {
-        setProgress({ stepName: "Complete", current: 1, total: 1, message: "Product created!", percent: 100 });
+        store.setProgress({ stepName: "Complete", current: 1, total: 1, message: "Product created!", percent: 100 });
         setTimeout(() => {
-          onSave?.(formData, isDraft);
+          onSave?.(isDraft);
           handleClose();
         }, 500);
       }, 300);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create product");
-      setProgress(null);
+      store.setError(err instanceof Error ? err.message : "Failed to create product");
+      store.setProgress(null);
       console.error("Failed to create product:", err);
-      setSaving(false);
+      store.setSaving(false);
     }
-  };
-
-  const handleBack = () => {
-    if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
-
-  const updateFormData = <K extends keyof ProductFormData>(
-    field: K,
-    value: ProductFormData[K]
-  ) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  // Generate handle from title
-  const generateHandle = (title: string) => {
-    return title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
   };
 
   // Handle file drop
@@ -449,7 +327,7 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
       const newFiles = Array.from(e.dataTransfer.files).filter((f) =>
         f.type.startsWith("image/")
       );
-      updateFormData("images", [...formData.images, ...newFiles]);
+      store.addImages(newFiles);
     }
   };
 
@@ -458,139 +336,8 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
       const newFiles = Array.from(e.target.files).filter((f) =>
         f.type.startsWith("image/")
       );
-      updateFormData("images", [...formData.images, ...newFiles]);
+      store.addImages(newFiles);
     }
-  };
-
-  const removeImage = (index: number) => {
-    updateFormData(
-      "images",
-      formData.images.filter((_, i) => i !== index)
-    );
-  };
-
-  const addTag = () => {
-    if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
-      updateFormData("tags", [...formData.tags, newTag.trim()]);
-      setNewTag("");
-    }
-  };
-
-  const removeTag = (tag: string) => {
-    updateFormData(
-      "tags",
-      formData.tags.filter((t) => t !== tag)
-    );
-  };
-
-  const addOption = () => {
-    updateFormData("options", [
-      ...formData.options,
-      { name: "", values: [""] },
-    ]);
-  };
-
-  const updateOption = (index: number, field: "name" | "values", value: string | string[]) => {
-    const newOptions = [...formData.options];
-    if (field === "name") {
-      newOptions[index].name = value as string;
-    } else {
-      newOptions[index].values = value as string[];
-    }
-    updateFormData("options", newOptions);
-  };
-
-  const removeOption = (index: number) => {
-    updateFormData(
-      "options",
-      formData.options.filter((_, i) => i !== index)
-    );
-  };
-
-  const addOptionValue = (optionIndex: number) => {
-    const newOptions = [...formData.options];
-    newOptions[optionIndex].values.push("");
-    updateFormData("options", newOptions);
-  };
-
-  const updateOptionValue = (optionIndex: number, valueIndex: number, value: string) => {
-    const newOptions = [...formData.options];
-    newOptions[optionIndex].values[valueIndex] = value;
-    updateFormData("options", newOptions);
-  };
-
-  const removeOptionValue = (optionIndex: number, valueIndex: number) => {
-    const newOptions = [...formData.options];
-    newOptions[optionIndex].values = newOptions[optionIndex].values.filter(
-      (_, i) => i !== valueIndex
-    );
-    updateFormData("options", newOptions);
-  };
-
-  // Generate variant combinations from current options
-  const variantCombinations = React.useMemo(
-    () => generateVariantCombinations(formData.options),
-    [formData.options]
-  );
-
-  // Sync variantPrices when options change.
-  // Uses a stable key (sorted option values joined) to match existing entries
-  // even when the option name changes (e.g., user editing "Siz" → "Size").
-  React.useEffect(() => {
-    if (!formData.hasVariants) return;
-
-    const comboKey = (combo: Record<string, string>) =>
-      Object.values(combo).sort().join("|").toLowerCase();
-
-    const newVariantPrices: VariantPricing[] = variantCombinations.map((combo, idx) => {
-      // Match by exact option values first
-      const exactMatch = formData.variantPrices.find(vp =>
-        JSON.stringify(vp.optionValues) === JSON.stringify(combo)
-      );
-      if (exactMatch) return exactMatch;
-
-      // Fall back to matching by sorted values (handles option name renames)
-      const key = comboKey(combo);
-      const fuzzyMatch = formData.variantPrices.find(vp => comboKey(vp.optionValues) === key);
-      if (fuzzyMatch) return { ...fuzzyMatch, optionValues: combo };
-
-      // Fall back to positional match (preserves pricing when editing option names)
-      const positional = formData.variantPrices[idx];
-      if (positional && positional.price) return { ...positional, optionValues: combo };
-
-      return {
-        optionValues: combo,
-        price: "",
-        sku: "",
-        quantity: "0",
-      };
-    });
-
-    if (JSON.stringify(newVariantPrices) !== JSON.stringify(formData.variantPrices)) {
-      updateFormData("variantPrices", newVariantPrices);
-    }
-  }, [variantCombinations, formData.hasVariants]);
-
-  // Update a specific variant's pricing
-  const updateVariantPrice = (
-    index: number,
-    field: keyof VariantPricing,
-    value: string
-  ) => {
-    const newPrices = [...formData.variantPrices];
-    if (newPrices[index]) {
-      newPrices[index] = { ...newPrices[index], [field]: value };
-      updateFormData("variantPrices", newPrices);
-    }
-  };
-
-  // Set same price for all variants
-  const setAllVariantPrices = (price: string) => {
-    const newPrices = formData.variantPrices.map(vp => ({
-      ...vp,
-      price,
-    }));
-    updateFormData("variantPrices", newPrices);
   };
 
   return (
@@ -639,7 +386,7 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                   key={step.id}
                   onClick={() => {
                     if (step.status === "complete" || step.status === "current") {
-                      setCurrentStep(index);
+                      store.goToStep(index);
                     }
                   }}
                   disabled={step.status === "upcoming"}
@@ -678,7 +425,7 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
           <div className="flex-1 overflow-y-auto px-8 py-8">
             <div className="max-w-4xl mx-auto">
               {/* Step 1: Details */}
-              {currentStep === 0 && (
+              {store.currentStep === 0 && (
                 <div className="space-y-8">
                   {/* General */}
                   <div className="space-y-6">
@@ -690,13 +437,8 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                         <Input
                           id="title"
                           placeholder="Winter jacket"
-                          value={formData.title}
-                          onChange={(e) => {
-                            updateFormData("title", e.target.value);
-                            if (!formData.handle) {
-                              updateFormData("handle", generateHandle(e.target.value));
-                            }
-                          }}
+                          value={store.title}
+                          onChange={(e) => store.setTitle(e.target.value)}
                         />
                       </div>
                       <div className="space-y-2">
@@ -706,8 +448,8 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                         <Input
                           id="subtitle"
                           placeholder="Warm and cosy"
-                          value={formData.subtitle}
-                          onChange={(e) => updateFormData("subtitle", e.target.value)}
+                          value={store.subtitle}
+                          onChange={(e) => store.setField("subtitle", e.target.value)}
                         />
                       </div>
                       <div className="space-y-2">
@@ -724,8 +466,8 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                             id="handle"
                             placeholder="winter-jacket"
                             className="rounded-l-none"
-                            value={formData.handle}
-                            onChange={(e) => updateFormData("handle", e.target.value)}
+                            value={store.handle}
+                            onChange={(e) => store.setField("handle", e.target.value)}
                           />
                         </div>
                       </div>
@@ -739,8 +481,8 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                         id="description"
                         placeholder="A warm and cozy jacket"
                         rows={4}
-                        value={formData.description}
-                        onChange={(e) => updateFormData("description", e.target.value)}
+                        value={store.description}
+                        onChange={(e) => store.setField("description", e.target.value)}
                       />
                     </div>
                   </div>
@@ -785,9 +527,9 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                       </button>
                     </div>
 
-                    {formData.images.length > 0 && (
+                    {store.images.length > 0 && (
                       <div className="grid grid-cols-4 gap-4 mt-4">
-                        {formData.images.map((file, index) => (
+                        {store.images.map((file, index) => (
                           <div
                             key={index}
                             className="relative group aspect-square rounded-lg overflow-hidden bg-muted"
@@ -798,7 +540,7 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                               className="w-full h-full object-cover"
                             />
                             <button
-                              onClick={() => removeImage(index)}
+                              onClick={() => store.removeImage(index)}
                               className="absolute top-2 right-2 p-1 rounded-full bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity"
                             >
                               <X className="h-3 w-3" />
@@ -822,8 +564,8 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
 
                     <div className="flex items-start gap-4 p-4 border rounded-lg">
                       <Switch
-                        checked={formData.hasVariants}
-                        onCheckedChange={(checked) => updateFormData("hasVariants", checked)}
+                        checked={store.hasVariants}
+                        onCheckedChange={(checked) => store.setField("hasVariants", checked)}
                       />
                       <div className="space-y-1">
                         <p className="font-medium">Yes, this is a product with variants</p>
@@ -837,7 +579,7 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
               )}
 
               {/* Step 2: Organize */}
-              {currentStep === 1 && (
+              {store.currentStep === 1 && (
                 <div className="space-y-8">
                   <div className="space-y-6">
                     <h2 className="text-lg font-semibold">Organize Product</h2>
@@ -850,8 +592,8 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                             value: cat.id,
                             label: cat.name,
                           }))}
-                          value={formData.category}
-                          onValueChange={(value) => updateFormData("category", value)}
+                          value={store.category}
+                          onValueChange={(value) => store.setField("category", value)}
                           placeholder="Select a category"
                           searchPlaceholder="Search categories..."
                           emptyMessage="No categories found."
@@ -866,8 +608,8 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                             value: col.id,
                             label: col.title,
                           }))}
-                          value={formData.collection}
-                          onValueChange={(value) => updateFormData("collection", value)}
+                          value={store.collection}
+                          onValueChange={(value) => store.setField("collection", value)}
                           placeholder="Select a collection"
                           searchPlaceholder="Search collections..."
                           emptyMessage="No collections found."
@@ -889,21 +631,29 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
                             e.preventDefault();
-                            addTag();
+                            store.addTag(newTag);
+                            setNewTag("");
                           }
                         }}
                       />
-                      <Button type="button" variant="outline" onClick={addTag}>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          store.addTag(newTag);
+                          setNewTag("");
+                        }}
+                      >
                         Add
                       </Button>
                     </div>
-                    {formData.tags.length > 0 && (
+                    {store.tags.length > 0 && (
                       <div className="flex flex-wrap gap-2 mt-2">
-                        {formData.tags.map((tag) => (
+                        {store.tags.map((tag) => (
                           <Badge key={tag} variant="secondary" className="gap-1">
                             {tag}
                             <button
-                              onClick={() => removeTag(tag)}
+                              onClick={() => store.removeTag(tag)}
                               className="ml-1 hover:text-destructive"
                             >
                               <X className="h-3 w-3" />
@@ -914,7 +664,7 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                     )}
                   </div>
 
-                  {!formData.hasVariants && (
+                  {!store.hasVariants && (
                     <>
                       <Separator />
 
@@ -933,8 +683,8 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                                 inputMode="decimal"
                                 placeholder="0.00"
                                 className="pl-7"
-                                value={formData.price}
-                                onChange={(e) => updateFormData("price", e.target.value)}
+                                value={store.price}
+                                onChange={(e) => store.setField("price", e.target.value)}
                               />
                             </div>
                           </div>
@@ -951,8 +701,8 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                                 inputMode="decimal"
                                 placeholder="0.00"
                                 className="pl-7"
-                                value={formData.compareAtPrice}
-                                onChange={(e) => updateFormData("compareAtPrice", e.target.value)}
+                                value={store.compareAtPrice}
+                                onChange={(e) => store.setField("compareAtPrice", e.target.value)}
                               />
                             </div>
                           </div>
@@ -969,8 +719,8 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                                 inputMode="decimal"
                                 placeholder="0.00"
                                 className="pl-7"
-                                value={formData.costPerItem}
-                                onChange={(e) => updateFormData("costPerItem", e.target.value)}
+                                value={store.costPerItem}
+                                onChange={(e) => store.setField("costPerItem", e.target.value)}
                               />
                             </div>
                           </div>
@@ -989,8 +739,8 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                             </Label>
                             <Input
                               placeholder="Auto-generated"
-                              value={formData.sku}
-                              onChange={(e) => updateFormData("sku", e.target.value)}
+                              value={store.sku}
+                              onChange={(e) => store.setField("sku", e.target.value)}
                             />
                           </div>
                           <div className="space-y-2">
@@ -999,8 +749,8 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                             </Label>
                             <Input
                               placeholder="Auto-generated"
-                              value={formData.barcode}
-                              onChange={(e) => updateFormData("barcode", e.target.value)}
+                              value={store.barcode}
+                              onChange={(e) => store.setField("barcode", e.target.value)}
                               maxLength={13}
                             />
                           </div>
@@ -1010,8 +760,8 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                               type="text"
                               inputMode="numeric"
                               placeholder="0"
-                              value={formData.quantity}
-                              onChange={(e) => updateFormData("quantity", e.target.value)}
+                              value={store.quantity}
+                              onChange={(e) => store.setField("quantity", e.target.value)}
                             />
                           </div>
                         </div>
@@ -1022,33 +772,33 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
               )}
 
               {/* Step 3: Variants */}
-              {currentStep === 2 && (
+              {store.currentStep === 2 && (
                 <div className="space-y-8">
-                  {formData.hasVariants ? (
+                  {store.hasVariants ? (
                     <>
                       <div className="space-y-6">
                         <div className="flex items-center justify-between">
                           <h2 className="text-lg font-semibold">Product Options</h2>
-                          <Button type="button" variant="outline" size="sm" onClick={addOption}>
+                          <Button type="button" variant="outline" size="sm" onClick={store.addOption}>
                             <Plus className="h-4 w-4 mr-2" />
                             Add option
                           </Button>
                         </div>
 
-                        {formData.options.length === 0 ? (
+                        {store.options.length === 0 ? (
                           <div className="text-center py-12 border rounded-lg">
                             <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                             <p className="text-muted-foreground mb-4">
                               No options defined yet
                             </p>
-                            <Button type="button" variant="outline" onClick={addOption}>
+                            <Button type="button" variant="outline" onClick={store.addOption}>
                               <Plus className="h-4 w-4 mr-2" />
                               Add your first option
                             </Button>
                           </div>
                         ) : (
                           <div className="space-y-4">
-                            {formData.options.map((option, optionIndex) => (
+                            {store.options.map((option, optionIndex) => (
                               <div key={optionIndex} className="border rounded-lg p-4 space-y-4">
                                 <div className="flex items-center gap-4">
                                   <GripVertical className="h-4 w-4 text-muted-foreground cursor-move" />
@@ -1058,7 +808,7 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                                       placeholder="Size, Color, Material..."
                                       value={option.name}
                                       onChange={(e) =>
-                                        updateOption(optionIndex, "name", e.target.value)
+                                        store.updateOptionName(optionIndex, e.target.value)
                                       }
                                     />
                                   </div>
@@ -1066,7 +816,7 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                                     type="button"
                                     variant="ghost"
                                     size="icon"
-                                    onClick={() => removeOption(optionIndex)}
+                                    onClick={() => store.removeOption(optionIndex)}
                                   >
                                     <Trash2 className="h-4 w-4 text-muted-foreground" />
                                   </Button>
@@ -1080,7 +830,7 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                                         placeholder="Value"
                                         value={value}
                                         onChange={(e) =>
-                                          updateOptionValue(optionIndex, valueIndex, e.target.value)
+                                          store.updateOptionValue(optionIndex, valueIndex, e.target.value)
                                         }
                                       />
                                       {option.values.length > 1 && (
@@ -1088,7 +838,7 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                                           type="button"
                                           variant="ghost"
                                           size="icon"
-                                          onClick={() => removeOptionValue(optionIndex, valueIndex)}
+                                          onClick={() => store.removeOptionValue(optionIndex, valueIndex)}
                                         >
                                           <X className="h-4 w-4" />
                                         </Button>
@@ -1100,7 +850,7 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                                     variant="ghost"
                                     size="sm"
                                     className="text-primary"
-                                    onClick={() => addOptionValue(optionIndex)}
+                                    onClick={() => store.addOptionValue(optionIndex)}
                                   >
                                     <Plus className="h-4 w-4 mr-1" />
                                     Add value
@@ -1133,7 +883,7 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                                     inputMode="decimal"
                                     placeholder="0.00"
                                     className="pl-7 h-8 text-sm"
-                                    onChange={(e) => setAllVariantPrices(e.target.value)}
+                                    onChange={(e) => store.setAllVariantPrices(e.target.value)}
                                   />
                                 </div>
                               </div>
@@ -1150,7 +900,7 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y">
-                                  {formData.variantPrices.map((variant, idx) => (
+                                  {store.variantPrices.map((variant, idx) => (
                                     <tr key={idx} className="hover:bg-muted/30">
                                       <td className="px-4 py-2 font-medium">
                                         {getVariantDisplayName(variant.optionValues)}
@@ -1166,7 +916,7 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                                             placeholder="0.00"
                                             className="h-8 pl-5 text-sm"
                                             value={variant.price}
-                                            onChange={(e) => updateVariantPrice(idx, "price", e.target.value)}
+                                            onChange={(e) => store.updateVariantPrice(idx, "price", e.target.value)}
                                           />
                                         </div>
                                       </td>
@@ -1175,7 +925,7 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                                           placeholder="Auto"
                                           className="h-8 text-sm"
                                           value={variant.sku}
-                                          onChange={(e) => updateVariantPrice(idx, "sku", e.target.value)}
+                                          onChange={(e) => store.updateVariantPrice(idx, "sku", e.target.value)}
                                         />
                                       </td>
                                       <td className="px-4 py-2">
@@ -1185,7 +935,7 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                                           placeholder="0"
                                           className="h-8 text-sm"
                                           value={variant.quantity}
-                                          onChange={(e) => updateVariantPrice(idx, "quantity", e.target.value)}
+                                          onChange={(e) => store.updateVariantPrice(idx, "quantity", e.target.value)}
                                         />
                                       </td>
                                     </tr>
@@ -1201,7 +951,7 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                         </>
                       )}
 
-                      {variantCombinations.length === 0 && formData.options.length > 0 && (
+                      {variantCombinations.length === 0 && store.options.length > 0 && (
                         <div className="bg-muted/50 rounded-lg p-6 text-center">
                           <p className="text-sm text-muted-foreground">
                             Add option values above to generate variant combinations.
@@ -1227,21 +977,21 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
           {/* Footer */}
           <div className="flex flex-col border-t">
             {/* Progress bar */}
-            {saving && progress && (
+            {store.saving && store.progress && (
               <div className="px-6 py-3 bg-muted/30 space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">{progress.message}</span>
-                  <span className="font-medium">{progress.percent}%</span>
+                  <span className="text-muted-foreground">{store.progress.message}</span>
+                  <span className="font-medium">{store.progress.percent}%</span>
                 </div>
-                <Progress value={progress.percent} className="h-2" />
+                <Progress value={store.progress.percent} className="h-2" />
               </div>
             )}
-            {error && (
+            {store.error && (
               <div className="flex items-center gap-2 px-6 py-2 bg-red-50 text-red-700 text-sm">
                 <AlertCircle className="h-4 w-4" />
-                <span>{error}</span>
+                <span>{store.error}</span>
                 <button
-                  onClick={() => setError(null)}
+                  onClick={() => store.setError(null)}
                   className="ml-auto text-red-500 hover:text-red-700"
                 >
                   <X className="h-4 w-4" />
@@ -1250,18 +1000,18 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
             )}
             <div className="flex items-center justify-between px-6 py-4">
               <div>
-                {currentStep > 0 && (
-                  <Button type="button" variant="ghost" onClick={handleBack} disabled={saving}>
+                {store.currentStep > 0 && (
+                  <Button type="button" variant="ghost" onClick={store.prevStep} disabled={store.saving}>
                     Back
                   </Button>
                 )}
               </div>
               <div className="flex items-center gap-3">
-                <Button type="button" variant="ghost" onClick={handleClose} disabled={saving}>
+                <Button type="button" variant="ghost" onClick={handleClose} disabled={store.saving}>
                   Cancel
                 </Button>
-                <Button type="button" variant="outline" onClick={handleSaveAsDraft} disabled={saving}>
-                  {saving ? (
+                <Button type="button" variant="outline" onClick={handleSaveAsDraft} disabled={store.saving}>
+                  {store.saving ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Saving...
@@ -1270,13 +1020,13 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                     "Save as draft"
                   )}
                 </Button>
-                <Button type="button" onClick={handleContinue} disabled={saving}>
-                  {saving ? (
+                <Button type="button" onClick={handleContinue} disabled={store.saving}>
+                  {store.saving ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Creating...
                     </>
-                  ) : currentStep === steps.length - 1 ? (
+                  ) : store.currentStep === steps.length - 1 ? (
                     "Create product"
                   ) : (
                     "Continue"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -36,17 +36,18 @@ import {
   Loader2,
 } from "lucide-react";
 import {
-  getReturn,
-  receiveReturn,
-  processReturnRefund,
-  rejectReturn,
-  Return,
   formatPrice,
   formatDate,
   formatDateTime,
   getReturnStatusDisplay,
 } from "@/lib/api";
 import { usePageContext } from "@/hooks/use-page-context";
+import {
+  useReturn,
+  useReceiveReturn,
+  useProcessReturnRefund,
+  useRejectReturn,
+} from "@/hooks/use-returns";
 
 function ReturnStatusBadge({ status }: { status: string }) {
   const { label, color } = getReturnStatusDisplay(status);
@@ -61,83 +62,58 @@ function ReturnStatusBadge({ status }: { status: string }) {
 export default function ReturnDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const [returnData, setReturnData] = useState<Return | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
-  const [actionError, setActionError] = useState<string | null>(null);
 
   const returnId = params.id as string;
   usePageContext("returns", returnId, "return");
 
-  const fetchReturn = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await getReturn(returnId);
-      setReturnData(response.return_request);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load return");
-    } finally {
-      setLoading(false);
-    }
+  const {
+    data: returnData,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useReturn(returnId);
+
+  const receiveMutation = useReceiveReturn();
+  const refundMutation = useProcessReturnRefund();
+  const rejectMutation = useRejectReturn();
+
+  const actionError =
+    receiveMutation.error || refundMutation.error || rejectMutation.error;
+  const clearActionError = () => {
+    receiveMutation.reset();
+    refundMutation.reset();
+    rejectMutation.reset();
   };
 
-  useEffect(() => {
-    fetchReturn();
-  }, [returnId]);
-
-  const handleReceive = async () => {
-    setActionLoading("receive");
-    setActionError(null);
-    try {
-      await receiveReturn(returnId);
-      await fetchReturn();
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Failed to mark as received");
-    } finally {
-      setActionLoading(null);
-    }
+  const handleReceive = () => {
+    receiveMutation.mutate({ id: returnId });
   };
 
-  const handleRefund = async () => {
-    setActionLoading("refund");
-    setActionError(null);
-    try {
-      await processReturnRefund(returnId);
-      setRefundDialogOpen(false);
-      await fetchReturn();
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Failed to process refund");
-    } finally {
-      setActionLoading(null);
-    }
+  const handleRefund = () => {
+    refundMutation.mutate(
+      { id: returnId },
+      { onSuccess: () => setRefundDialogOpen(false) }
+    );
   };
 
-  const handleReject = async () => {
-    if (!rejectReason.trim()) {
-      setActionError("Please provide a reason for rejection");
-      return;
-    }
-
-    setActionLoading("reject");
-    setActionError(null);
-    try {
-      await rejectReturn(returnId, { reason: rejectReason });
-      setRejectDialogOpen(false);
-      setRejectReason("");
-      await fetchReturn();
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Failed to reject return");
-    } finally {
-      setActionLoading(null);
-    }
+  const handleReject = () => {
+    if (!rejectReason.trim()) return;
+    rejectMutation.mutate(
+      { id: returnId, data: { reason: rejectReason } },
+      {
+        onSuccess: () => {
+          setRejectDialogOpen(false);
+          setRejectReason("");
+        },
+      }
+    );
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="p-6 space-y-6">
         <div className="flex items-center gap-4">
@@ -158,13 +134,13 @@ export default function ReturnDetailPage() {
     );
   }
 
-  if (error || !returnData) {
+  if (isError || !returnData) {
     return (
       <div className="p-6">
         <div className="flex items-center gap-2 p-4 bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 rounded-lg">
           <AlertCircle className="h-5 w-5" />
-          <span>{error || "Return not found"}</span>
-          <Button variant="ghost" size="sm" onClick={fetchReturn} className="ml-auto">
+          <span>{error instanceof Error ? error.message : "Return not found"}</span>
+          <Button variant="ghost" size="sm" onClick={() => refetch()} className="ml-auto">
             Retry
           </Button>
         </div>
@@ -194,8 +170,8 @@ export default function ReturnDetailPage() {
         {/* Action Buttons */}
         <div className="flex items-center gap-2">
           {returnData.canReceive && (
-            <Button onClick={handleReceive} disabled={actionLoading === "receive"}>
-              {actionLoading === "receive" ? (
+            <Button onClick={handleReceive} disabled={receiveMutation.isPending}>
+              {receiveMutation.isPending ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : (
                 <Package className="h-4 w-4 mr-2" />
@@ -224,8 +200,8 @@ export default function ReturnDetailPage() {
                   <Button variant="ghost" onClick={() => setRefundDialogOpen(false)}>
                     Cancel
                   </Button>
-                  <Button onClick={handleRefund} disabled={actionLoading === "refund"}>
-                    {actionLoading === "refund" && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  <Button onClick={handleRefund} disabled={refundMutation.isPending}>
+                    {refundMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                     Confirm Refund
                   </Button>
                 </DialogFooter>
@@ -261,9 +237,9 @@ export default function ReturnDetailPage() {
                   <Button
                     variant="destructive"
                     onClick={handleReject}
-                    disabled={actionLoading === "reject" || !rejectReason.trim()}
+                    disabled={rejectMutation.isPending || !rejectReason.trim()}
                   >
-                    {actionLoading === "reject" && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    {rejectMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                     Reject Return
                   </Button>
                 </DialogFooter>
@@ -277,8 +253,8 @@ export default function ReturnDetailPage() {
       {actionError && (
         <div className="flex items-center gap-2 p-4 bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 rounded-lg">
           <AlertCircle className="h-5 w-5" />
-          <span>{actionError}</span>
-          <Button variant="ghost" size="sm" onClick={() => setActionError(null)} className="ml-auto">
+          <span>{actionError instanceof Error ? actionError.message : "Action failed"}</span>
+          <Button variant="ghost" size="sm" onClick={clearActionError} className="ml-auto">
             Dismiss
           </Button>
         </div>

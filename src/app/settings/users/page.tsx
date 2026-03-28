@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -77,28 +77,39 @@ import {
   AlertCircle,
   RefreshCw,
 } from "lucide-react";
-import {
-  getInternalUsers,
-  inviteInternalUser,
-  updateInternalUser,
-  archiveInternalUser,
-  hardDeleteInternalUser,
-  resendInvite,
-  ApiError,
-  type InternalUser,
-  type InternalUserRole,
-} from "@/lib/api";
+import { ApiError, type InternalUser, type InternalUserRole } from "@/lib/api";
 import { getRoleBadgeColor, getRoleDisplayName } from "@/lib/auth";
+import {
+  useInternalUsers,
+  useInviteInternalUser,
+  useUpdateInternalUser,
+  useArchiveInternalUser,
+  useHardDeleteInternalUser,
+  useResendInvite,
+} from "@/hooks/use-users";
 
 const AVAILABLE_ROLES: { value: InternalUserRole; label: string; description: string }[] = [
   { value: "ADMIN", label: "Admin", description: "Full access to all features" },
 ];
 
 export default function UsersSettingsPage() {
-  const [users, setUsers] = useState<InternalUser[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // React Query — server state
+  const usersQuery = useInternalUsers({ limit: 100 });
+  const inviteMutation = useInviteInternalUser();
+  const updateMutation = useUpdateInternalUser();
+  const archiveMutation = useArchiveInternalUser();
+  const hardDeleteMutation = useHardDeleteInternalUser();
+  const resendInviteMutation = useResendInvite();
+
+  const users = usersQuery.data?.users ?? [];
+  const isLoading = usersQuery.isLoading;
+  const error = usersQuery.error
+    ? usersQuery.error instanceof ApiError
+      ? usersQuery.error.message
+      : usersQuery.error.message
+    : null;
 
   // Invite modal state
   const [isInviteOpen, setIsInviteOpen] = useState(false);
@@ -106,7 +117,6 @@ export default function UsersSettingsPage() {
   const [inviteFirstName, setInviteFirstName] = useState("");
   const [inviteLastName, setInviteLastName] = useState("");
   const [inviteRoles, setInviteRoles] = useState<string[]>(["ADMIN"]);
-  const [isInviting, setIsInviting] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
 
   // Edit modal state
@@ -116,24 +126,26 @@ export default function UsersSettingsPage() {
   const [editLastName, setEditLastName] = useState("");
   const [editRoles, setEditRoles] = useState<string[]>([]);
   const [editIsActive, setEditIsActive] = useState(true);
-  const [isUpdating, setIsUpdating] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
   // Archive confirmation state
   const [isArchiveOpen, setIsArchiveOpen] = useState(false);
   const [archivingUser, setArchivingUser] = useState<InternalUser | null>(null);
-  const [isArchiving, setIsArchiving] = useState(false);
 
   // Hard delete confirmation state (permanent)
   const [isHardDeleteOpen, setIsHardDeleteOpen] = useState(false);
   const [hardDeletingUser, setHardDeletingUser] = useState<InternalUser | null>(null);
-  const [isHardDeleting, setIsHardDeleting] = useState(false);
   const [hardDeleteConfirmText, setHardDeleteConfirmText] = useState("");
+
+  // Derived pending states from mutations
+  const isInviting = inviteMutation.isPending;
+  const isUpdating = updateMutation.isPending;
+  const isArchiving = archiveMutation.isPending;
+  const isHardDeleting = hardDeleteMutation.isPending;
 
   // Extract error message from API error
   const getErrorMessage = (err: unknown): string => {
     if (err instanceof ApiError) {
-      // Use the human-readable message from the backend
       return err.message;
     }
     if (err instanceof Error) {
@@ -141,24 +153,6 @@ export default function UsersSettingsPage() {
     }
     return "An unexpected error occurred";
   };
-
-  // Fetch users
-  const fetchUsers = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const response = await getInternalUsers({ limit: 100 });
-      setUsers(response.users || []);
-    } catch (err) {
-      setError(getErrorMessage(err));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchUsers();
-  }, []);
 
   // Filter users by search
   const filteredUsers = users.filter((user) => {
@@ -173,29 +167,30 @@ export default function UsersSettingsPage() {
   });
 
   // Handle invite
-  const handleInvite = async () => {
+  const handleInvite = () => {
     if (!inviteEmail || inviteRoles.length === 0) {
       setInviteError("Email and at least one role are required");
       return;
     }
 
-    try {
-      setIsInviting(true);
-      setInviteError(null);
-      await inviteInternalUser({
+    setInviteError(null);
+    inviteMutation.mutate(
+      {
         email: inviteEmail,
         firstName: inviteFirstName || undefined,
         lastName: inviteLastName || undefined,
         roles: inviteRoles,
-      });
-      setIsInviteOpen(false);
-      resetInviteForm();
-      fetchUsers();
-    } catch (err) {
-      setInviteError(getErrorMessage(err));
-    } finally {
-      setIsInviting(false);
-    }
+      },
+      {
+        onSuccess: () => {
+          setIsInviteOpen(false);
+          resetInviteForm();
+        },
+        onError: (err) => {
+          setInviteError(getErrorMessage(err));
+        },
+      },
+    );
   };
 
   const resetInviteForm = () => {
@@ -217,29 +212,33 @@ export default function UsersSettingsPage() {
     setIsEditOpen(true);
   };
 
-  const handleUpdate = async () => {
+  const handleUpdate = () => {
     if (!editingUser || editRoles.length === 0) {
       setEditError("At least one role is required");
       return;
     }
 
-    try {
-      setIsUpdating(true);
-      setEditError(null);
-      await updateInternalUser(editingUser.id, {
-        firstName: editFirstName || undefined,
-        lastName: editLastName || undefined,
-        roles: editRoles,
-        isActive: editIsActive,
-      });
-      setIsEditOpen(false);
-      setEditingUser(null);
-      fetchUsers();
-    } catch (err) {
-      setEditError(getErrorMessage(err));
-    } finally {
-      setIsUpdating(false);
-    }
+    setEditError(null);
+    updateMutation.mutate(
+      {
+        userId: editingUser.id,
+        data: {
+          firstName: editFirstName || undefined,
+          lastName: editLastName || undefined,
+          roles: editRoles,
+          isActive: editIsActive,
+        },
+      },
+      {
+        onSuccess: () => {
+          setIsEditOpen(false);
+          setEditingUser(null);
+        },
+        onError: (err) => {
+          setEditError(getErrorMessage(err));
+        },
+      },
+    );
   };
 
   // Handle archive (soft delete)
@@ -248,20 +247,18 @@ export default function UsersSettingsPage() {
     setIsArchiveOpen(true);
   };
 
-  const handleArchive = async () => {
+  const handleArchive = () => {
     if (!archivingUser) return;
 
-    try {
-      setIsArchiving(true);
-      await archiveInternalUser(archivingUser.id);
-      setIsArchiveOpen(false);
-      setArchivingUser(null);
-      fetchUsers();
-    } catch (err) {
-      console.error("Failed to archive user:", err);
-    } finally {
-      setIsArchiving(false);
-    }
+    archiveMutation.mutate(archivingUser.id, {
+      onSuccess: () => {
+        setIsArchiveOpen(false);
+        setArchivingUser(null);
+      },
+      onError: (err) => {
+        console.error("Failed to archive user:", err);
+      },
+    });
   };
 
   // Handle hard delete (permanent)
@@ -271,31 +268,24 @@ export default function UsersSettingsPage() {
     setIsHardDeleteOpen(true);
   };
 
-  const handleHardDelete = async () => {
+  const handleHardDelete = () => {
     if (!hardDeletingUser) return;
 
-    try {
-      setIsHardDeleting(true);
-      await hardDeleteInternalUser(hardDeletingUser.id);
-      setIsHardDeleteOpen(false);
-      setHardDeletingUser(null);
-      setHardDeleteConfirmText("");
-      fetchUsers();
-    } catch (err) {
-      console.error("Failed to permanently delete user:", err);
-    } finally {
-      setIsHardDeleting(false);
-    }
+    hardDeleteMutation.mutate(hardDeletingUser.id, {
+      onSuccess: () => {
+        setIsHardDeleteOpen(false);
+        setHardDeletingUser(null);
+        setHardDeleteConfirmText("");
+      },
+      onError: (err) => {
+        console.error("Failed to permanently delete user:", err);
+      },
+    });
   };
 
   // Handle resend invite
-  const handleResendInvite = async (user: InternalUser) => {
-    try {
-      await resendInvite(user.id);
-      fetchUsers();
-    } catch (err) {
-      setError(getErrorMessage(err));
-    }
+  const handleResendInvite = (user: InternalUser) => {
+    resendInviteMutation.mutate(user.id);
   };
 
   // Get user initials
@@ -373,7 +363,7 @@ export default function UsersSettingsPage() {
             <div className="flex items-center gap-2 p-4 mb-4 text-red-600 bg-red-50 rounded-lg">
               <AlertCircle className="h-5 w-5" />
               <span>{error}</span>
-              <Button variant="outline" size="sm" onClick={fetchUsers} className="ml-auto">
+              <Button variant="outline" size="sm" onClick={() => usersQuery.refetch()} className="ml-auto">
                 Retry
               </Button>
             </div>

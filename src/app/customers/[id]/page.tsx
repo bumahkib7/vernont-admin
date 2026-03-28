@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -61,11 +60,6 @@ import {
   Lock,
 } from "lucide-react";
 import {
-  getCustomer,
-  getCustomerOrders,
-  getCustomerActivity,
-  updateCustomer,
-  activateCustomer,
   getTierDisplay,
   getCustomerStatusDisplay,
   getCustomerName,
@@ -73,9 +67,6 @@ import {
   getActivityTypeDisplay,
   formatPrice,
   formatDate,
-  type Customer,
-  type CustomerActivity,
-  type OrderSummary,
   type CustomerActivityType,
   type FulfillmentStatus,
   type PaymentStatus,
@@ -86,6 +77,14 @@ import { SuspendCustomerDialog } from "@/components/customers/SuspendCustomerDia
 import { ChangeTierDialog } from "@/components/customers/ChangeTierDialog";
 import { toast } from "sonner";
 import { usePageContext } from "@/hooks/use-page-context";
+import {
+  useCustomerDetail,
+  useCustomerOrders,
+  useCustomerActivity,
+  useUpdateCustomer,
+  useActivateCustomer,
+} from "@/hooks/use-customers";
+import { useCustomerUIStore } from "@/stores/customer-store";
 
 function getTierBadge(tier: string) {
   const display = getTierDisplay(tier as "BRONZE" | "SILVER" | "GOLD" | "PLATINUM");
@@ -202,95 +201,72 @@ export default function CustomerDetailPage() {
   const customerId = params.id as string;
   usePageContext("customers", customerId, "customer");
 
-  const [customer, setCustomer] = useState<Customer | null>(null);
-  const [orders, setOrders] = useState<OrderSummary[]>([]);
-  const [activities, setActivities] = useState<CustomerActivity[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [newNote, setNewNote] = useState("");
-  const [savingNote, setSavingNote] = useState(false);
+  // --- Zustand: client UI state ---
+  const newNote = useCustomerUIStore((s) => s.newNote);
+  const emailDialogOpen = useCustomerUIStore((s) => s.emailDialogOpen);
+  const giftCardDialogOpen = useCustomerUIStore((s) => s.giftCardDialogOpen);
+  const suspendDialogOpen = useCustomerUIStore((s) => s.suspendDialogOpen);
+  const changeTierDialogOpen = useCustomerUIStore((s) => s.changeTierDialogOpen);
 
-  // Dialog state
-  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
-  const [giftCardDialogOpen, setGiftCardDialogOpen] = useState(false);
-  const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
-  const [changeTierDialogOpen, setChangeTierDialogOpen] = useState(false);
+  const setNewNote = useCustomerUIStore((s) => s.setNewNote);
+  const clearNewNote = useCustomerUIStore((s) => s.clearNewNote);
+  const openDialog = useCustomerUIStore((s) => s.openDialog);
+  const closeDialog = useCustomerUIStore((s) => s.closeDialog);
 
-  const fetchCustomer = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response = await getCustomer(customerId);
-      setCustomer(response.customer);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load customer");
-    } finally {
-      setLoading(false);
-    }
-  }, [customerId]);
+  // --- React Query: server state ---
+  const {
+    data: customer,
+    isLoading,
+    isError,
+    error,
+  } = useCustomerDetail(customerId);
 
-  const fetchOrders = useCallback(async () => {
-    try {
-      const response = await getCustomerOrders(customerId, { limit: 20 });
-      setOrders(response.orders);
-    } catch (err) {
-      console.error("Failed to load orders:", err);
-    }
-  }, [customerId]);
+  const { data: ordersData } = useCustomerOrders(customerId);
+  const { data: activityData } = useCustomerActivity(customerId);
 
-  const fetchActivity = useCallback(async () => {
-    try {
-      const response = await getCustomerActivity(customerId, { limit: 20 });
-      setActivities(response.activities);
-    } catch (err) {
-      console.error("Failed to load activity:", err);
-    }
-  }, [customerId]);
+  const orders = ordersData?.orders ?? [];
+  const activities = activityData?.activities ?? [];
 
-  useEffect(() => {
-    Promise.all([fetchCustomer(), fetchOrders(), fetchActivity()]);
-  }, [fetchCustomer, fetchOrders, fetchActivity]);
+  // --- Mutations ---
+  const updateCustomerMutation = useUpdateCustomer(customerId);
+  const activateMutation = useActivateCustomer(customerId);
 
-  const handleActionSuccess = () => {
-    fetchCustomer();
-    fetchActivity();
+  const handleActivate = () => {
+    activateMutation.mutate();
   };
 
-  const handleActivate = async () => {
-    if (!customer) return;
-    try {
-      await activateCustomer(customer.id);
-      fetchCustomer();
-      fetchActivity();
-    } catch (err) {
-      console.error("Failed to activate customer:", err);
-      toast.error(err instanceof Error ? err.message : "Failed to activate customer");
-    }
-  };
-
-  const handleSaveNote = async () => {
+  const handleSaveNote = () => {
     if (!customer || !newNote.trim()) return;
-    try {
-      setSavingNote(true);
-      const existingNotes = customer.internalNotes || "";
-      const timestamp = new Date().toLocaleString("en-GB");
-      const updatedNotes = existingNotes
-        ? `${existingNotes}\n\n[${timestamp}]\n${newNote.trim()}`
-        : `[${timestamp}]\n${newNote.trim()}`;
+    const existingNotes = customer.internalNotes || "";
+    const timestamp = new Date().toLocaleString("en-GB");
+    const updatedNotes = existingNotes
+      ? `${existingNotes}\n\n[${timestamp}]\n${newNote.trim()}`
+      : `[${timestamp}]\n${newNote.trim()}`;
 
-      await updateCustomer(customer.id, { internalNotes: updatedNotes });
-      setNewNote("");
-      fetchCustomer();
-      fetchActivity();
-    } catch (err) {
-      console.error("Failed to save note:", err);
-      toast.error(err instanceof Error ? err.message : "Failed to save note");
-    } finally {
-      setSavingNote(false);
-    }
+    updateCustomerMutation.mutate(
+      { internalNotes: updatedNotes },
+      { onSuccess: () => clearNewNote() }
+    );
   };
 
-  if (loading) {
+  // Build a CustomerSummary shape for dialog props
+  const customerSummary = customer
+    ? {
+        id: customer.id,
+        email: customer.email,
+        firstName: customer.firstName,
+        lastName: customer.lastName,
+        tier: customer.tier,
+        totalSpent: customer.totalSpent,
+        orderCount: customer.orderCount,
+        status: customer.status,
+        hasAccount: customer.hasAccount,
+        createdAt: customer.createdAt,
+      }
+    : null;
+
+  // --- Loading / Error states ---
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -298,10 +274,10 @@ export default function CustomerDetailPage() {
     );
   }
 
-  if (error || !customer) {
+  if (isError || !customer) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
-        <p className="text-red-600">{error || "Customer not found"}</p>
+        <p className="text-red-600">{error instanceof Error ? error.message : "Customer not found"}</p>
         <Button variant="outline" asChild>
           <Link href="/customers">
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -311,19 +287,6 @@ export default function CustomerDetailPage() {
       </div>
     );
   }
-
-  const customerSummary = {
-    id: customer.id,
-    email: customer.email,
-    firstName: customer.firstName,
-    lastName: customer.lastName,
-    tier: customer.tier,
-    totalSpent: customer.totalSpent,
-    orderCount: customer.orderCount,
-    status: customer.status,
-    hasAccount: customer.hasAccount,
-    createdAt: customer.createdAt,
-  };
 
   // Safe defaults for potentially missing data
   const totalSpent = customer.totalSpent ?? 0;
@@ -363,11 +326,11 @@ export default function CustomerDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setEmailDialogOpen(true)}>
+          <Button variant="outline" size="sm" onClick={() => openDialog("emailDialogOpen", customerSummary!)}>
             <Mail className="mr-2 h-4 w-4" />
             Send Email
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setGiftCardDialogOpen(true)}>
+          <Button variant="outline" size="sm" onClick={() => openDialog("giftCardDialogOpen", customerSummary!)}>
             <Gift className="mr-2 h-4 w-4" />
             Send Gift Card
           </Button>
@@ -379,7 +342,7 @@ export default function CustomerDetailPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setChangeTierDialogOpen(true)}>
+              <DropdownMenuItem onClick={() => openDialog("changeTierDialogOpen", customerSummary!)}>
                 <Star className="mr-2 h-4 w-4" />
                 Change Tier
               </DropdownMenuItem>
@@ -387,7 +350,7 @@ export default function CustomerDetailPage() {
               {customer.status === "ACTIVE" ? (
                 <DropdownMenuItem
                   className="text-red-600"
-                  onClick={() => setSuspendDialogOpen(true)}
+                  onClick={() => openDialog("suspendDialogOpen", customerSummary!)}
                 >
                   <Ban className="mr-2 h-4 w-4" />
                   Suspend Account
@@ -767,8 +730,13 @@ export default function CustomerDetailPage() {
                   variant="outline"
                   className="mt-2"
                   onClick={handleActivate}
+                  disabled={activateMutation.isPending}
                 >
-                  <CheckCircle className="mr-2 h-4 w-4" />
+                  {activateMutation.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                  )}
                   Activate Account
                 </Button>
               </CardContent>
@@ -796,10 +764,10 @@ export default function CustomerDetailPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={!newNote.trim() || savingNote}
+                  disabled={!newNote.trim() || updateCustomerMutation.isPending}
                   onClick={handleSaveNote}
                 >
-                  {savingNote ? (
+                  {updateCustomerMutation.isPending ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Saving...
@@ -845,30 +813,34 @@ export default function CustomerDetailPage() {
       </div>
 
       {/* Dialogs */}
-      <SendEmailDialog
-        open={emailDialogOpen}
-        onOpenChange={setEmailDialogOpen}
-        customer={customerSummary}
-        onSuccess={handleActionSuccess}
-      />
-      <SendGiftCardDialog
-        open={giftCardDialogOpen}
-        onOpenChange={setGiftCardDialogOpen}
-        customer={customerSummary}
-        onSuccess={handleActionSuccess}
-      />
-      <SuspendCustomerDialog
-        open={suspendDialogOpen}
-        onOpenChange={setSuspendDialogOpen}
-        customer={customerSummary}
-        onSuccess={handleActionSuccess}
-      />
-      <ChangeTierDialog
-        open={changeTierDialogOpen}
-        onOpenChange={setChangeTierDialogOpen}
-        customer={customerSummary}
-        onSuccess={handleActionSuccess}
-      />
+      {customerSummary && (
+        <>
+          <SendEmailDialog
+            open={emailDialogOpen}
+            onOpenChange={(open) => { if (!open) closeDialog("emailDialogOpen"); }}
+            customer={customerSummary}
+            onSuccess={() => closeDialog("emailDialogOpen")}
+          />
+          <SendGiftCardDialog
+            open={giftCardDialogOpen}
+            onOpenChange={(open) => { if (!open) closeDialog("giftCardDialogOpen"); }}
+            customer={customerSummary}
+            onSuccess={() => closeDialog("giftCardDialogOpen")}
+          />
+          <SuspendCustomerDialog
+            open={suspendDialogOpen}
+            onOpenChange={(open) => { if (!open) closeDialog("suspendDialogOpen"); }}
+            customer={customerSummary}
+            onSuccess={() => closeDialog("suspendDialogOpen")}
+          />
+          <ChangeTierDialog
+            open={changeTierDialogOpen}
+            onOpenChange={(open) => { if (!open) closeDialog("changeTierDialogOpen"); }}
+            customer={customerSummary}
+            onSuccess={() => closeDialog("changeTierDialogOpen")}
+          />
+        </>
+      )}
     </div>
   );
 }

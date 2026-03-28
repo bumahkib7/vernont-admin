@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useMemo, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -49,19 +49,16 @@ import { BulkActionBar } from "@/components/ui/bulk-action-bar";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { toast } from "sonner";
 import {
-  getCustomers,
-  getCustomerStats,
   getTierDisplay,
   getCustomerStatusDisplay,
   getCustomerName,
   getCustomerInitials,
   formatPrice,
   formatDate,
+  importCustomersCsv,
   type CustomerSummary,
   type CustomerTier,
   type CustomerStatus,
-  type CustomerStats,
-  importCustomersCsv,
 } from "@/lib/api";
 import { CsvImportDialog } from "@/components/csv-import-dialog";
 import { CsvExportButton } from "@/components/csv-export-button";
@@ -70,6 +67,8 @@ import { SendGiftCardDialog } from "@/components/customers/SendGiftCardDialog";
 import { SuspendCustomerDialog } from "@/components/customers/SuspendCustomerDialog";
 import { ChangeTierDialog } from "@/components/customers/ChangeTierDialog";
 import { usePageContext } from "@/hooks/use-page-context";
+import { useCustomersList, useCustomerStats } from "@/hooks/use-customers";
+import { useCustomerUIStore } from "@/stores/customer-store";
 
 function getTierBadge(tier: CustomerTier) {
   const display = getTierDisplay(tier);
@@ -91,91 +90,75 @@ function getStatusBadge(status: CustomerStatus) {
 export default function CustomersPage() {
   usePageContext("customers");
   const router = useRouter();
-  const [customers, setCustomers] = useState<CustomerSummary[]>([]);
-  const [stats, setStats] = useState<CustomerStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [tierFilter, setTierFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [total, setTotal] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
 
-  const [selectedCustomers, setSelectedCustomers] = useState<Set<string>>(new Set());
+  // --- Zustand: client UI state ---
+  const search = useCustomerUIStore((s) => s.search);
+  const tierFilter = useCustomerUIStore((s) => s.tierFilter);
+  const statusFilter = useCustomerUIStore((s) => s.statusFilter);
+  const currentPage = useCustomerUIStore((s) => s.currentPage);
+  const selectedIds = useCustomerUIStore((s) => s.selectedIds);
+  const selectedCustomer = useCustomerUIStore((s) => s.selectedCustomer);
+  const emailDialogOpen = useCustomerUIStore((s) => s.emailDialogOpen);
+  const giftCardDialogOpen = useCustomerUIStore((s) => s.giftCardDialogOpen);
+  const suspendDialogOpen = useCustomerUIStore((s) => s.suspendDialogOpen);
+  const changeTierDialogOpen = useCustomerUIStore((s) => s.changeTierDialogOpen);
 
-  // Dialog state
-  const [selectedCustomer, setSelectedCustomer] = useState<CustomerSummary | null>(null);
-  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
-  const [giftCardDialogOpen, setGiftCardDialogOpen] = useState(false);
-  const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
-  const [changeTierDialogOpen, setChangeTierDialogOpen] = useState(false);
+  const setSearch = useCustomerUIStore((s) => s.setSearch);
+  const setTierFilter = useCustomerUIStore((s) => s.setTierFilter);
+  const setStatusFilter = useCustomerUIStore((s) => s.setStatusFilter);
+  const setCurrentPage = useCustomerUIStore((s) => s.setCurrentPage);
+  const setSelectedIds = useCustomerUIStore((s) => s.setSelectedIds);
+  const clearSelection = useCustomerUIStore((s) => s.clearSelection);
+  const openDialog = useCustomerUIStore((s) => s.openDialog);
+  const closeDialog = useCustomerUIStore((s) => s.closeDialog);
 
-  const fetchCustomers = useCallback(async () => {
-    try {
-      setLoading(true);
-      const params: {
-        limit?: number;
-        q?: string;
-        tier?: CustomerTier;
-        status?: CustomerStatus;
-      } = { limit: 50 };
-
-      if (search) params.q = search;
-      if (tierFilter !== "all") params.tier = tierFilter as CustomerTier;
-      if (statusFilter !== "all") params.status = statusFilter as CustomerStatus;
-
-      const response = await getCustomers(params);
-      setCustomers(response.customers);
-      setTotal(response.count);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load customers");
-    } finally {
-      setLoading(false);
-    }
-  }, [search, tierFilter, statusFilter]);
-
-  const fetchStats = useCallback(async () => {
-    try {
-      const statsData = await getCustomerStats();
-      setStats(statsData);
-    } catch (err) {
-      console.error("Failed to load stats:", err);
-    }
-  }, []);
-
+  // --- Debounced search for API calls ---
+  const [debouncedSearch, setDebouncedSearch] = useState(search);
   useEffect(() => {
-    fetchCustomers();
-    fetchStats();
-  }, [fetchCustomers, fetchStats]);
-
-  // Debounced search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchCustomers();
-    }, 300);
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(timer);
-  }, [search, fetchCustomers]);
+  }, [search]);
 
-  const handleBulkSendEmail = async () => {
-    toast.success(`Sent email to ${selectedCustomers.size} customers`);
-    setSelectedCustomers(new Set());
+  // --- React Query: server state ---
+  const {
+    data: customersData,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useCustomersList({
+    search: debouncedSearch,
+    tier: tierFilter,
+    status: statusFilter,
+  });
+
+  const { data: stats } = useCustomerStats();
+
+  const customers = customersData?.customers ?? [];
+  const total = customersData?.count ?? 0;
+
+  // --- Handlers ---
+  const handleBulkSendEmail = () => {
+    toast.success(`Sent email to ${selectedIds.size} customers`);
+    clearSelection();
   };
 
-  const handleBulkAddToSegment = async () => {
-    toast.success(`Added ${selectedCustomers.size} customers to segment`);
-    setSelectedCustomers(new Set());
+  const handleBulkAddToSegment = () => {
+    toast.success(`Added ${selectedIds.size} customers to segment`);
+    clearSelection();
   };
 
-  const handleBulkExport = async () => {
-    toast.success(`Exported ${selectedCustomers.size} customers`);
-    setSelectedCustomers(new Set());
+  const handleBulkExport = () => {
+    toast.success(`Exported ${selectedIds.size} customers`);
+    clearSelection();
   };
 
   const handleActionSuccess = () => {
-    fetchCustomers();
-    fetchStats();
-    setSelectedCustomer(null);
+    refetch();
+    closeDialog("emailDialogOpen");
+    closeDialog("giftCardDialogOpen");
+    closeDialog("suspendDialogOpen");
+    closeDialog("changeTierDialogOpen");
   };
 
   const columns: Column<CustomerSummary>[] = useMemo(
@@ -256,31 +239,16 @@ export default function CustomersPage() {
                   View Profile
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => {
-                  setSelectedCustomer(customer);
-                  setEmailDialogOpen(true);
-                }}
-              >
+              <DropdownMenuItem onClick={() => openDialog("emailDialogOpen", customer)}>
                 <Mail className="mr-2 h-4 w-4" />
                 Send Email
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => {
-                  setSelectedCustomer(customer);
-                  setGiftCardDialogOpen(true);
-                }}
-              >
+              <DropdownMenuItem onClick={() => openDialog("giftCardDialogOpen", customer)}>
                 <Gift className="mr-2 h-4 w-4" />
                 Send Gift Card
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => {
-                  setSelectedCustomer(customer);
-                  setChangeTierDialogOpen(true);
-                }}
-              >
+              <DropdownMenuItem onClick={() => openDialog("changeTierDialogOpen", customer)}>
                 <Star className="mr-2 h-4 w-4" />
                 Change Tier
               </DropdownMenuItem>
@@ -288,10 +256,7 @@ export default function CustomersPage() {
               {customer.status === "ACTIVE" ? (
                 <DropdownMenuItem
                   className="text-red-600"
-                  onClick={() => {
-                    setSelectedCustomer(customer);
-                    setSuspendDialogOpen(true);
-                  }}
+                  onClick={() => openDialog("suspendDialogOpen", customer)}
                 >
                   <Ban className="mr-2 h-4 w-4" />
                   Suspend Account
@@ -299,9 +264,7 @@ export default function CustomersPage() {
               ) : (
                 <DropdownMenuItem
                   className="text-green-600"
-                  onClick={() => {
-                    toast.info("Customer activation coming soon");
-                  }}
+                  onClick={() => toast.info("Customer activation coming soon")}
                 >
                   <CheckCircle className="mr-2 h-4 w-4" />
                   Activate Account
@@ -312,7 +275,7 @@ export default function CustomersPage() {
         ),
       },
     ],
-    []
+    [openDialog]
   );
 
   const customerStats = [
@@ -350,7 +313,7 @@ export default function CustomersPage() {
         </div>
         <div className="flex gap-2">
           <CsvExportButton type="customers" />
-          <CsvImportDialog type="customers" onImport={importCustomersCsv} onComplete={() => fetchCustomers()} />
+          <CsvImportDialog type="customers" onImport={importCustomersCsv} onComplete={() => refetch()} />
           <Button className="gap-2" onClick={() => toast.info("Add customer coming soon")}>
             <UserPlus className="h-4 w-4" />
             Add Customer
@@ -418,11 +381,11 @@ export default function CustomersPage() {
       </Card>
 
       {/* Error State */}
-      {error && (
+      {isError && (
         <Card className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/20">
           <CardContent className="py-4 text-center text-red-600 dark:text-red-400">
-            {error}
-            <Button variant="link" onClick={fetchCustomers} className="ml-2">
+            {error instanceof Error ? error.message : "Failed to load customers"}
+            <Button variant="link" onClick={() => refetch()} className="ml-2">
               Retry
             </Button>
           </CardContent>
@@ -441,10 +404,10 @@ export default function CustomersPage() {
           <DataTable
             columns={columns}
             data={customers}
-            loading={loading}
+            loading={isLoading}
             selectable
-            selectedIds={selectedCustomers}
-            onSelectionChange={setSelectedCustomers}
+            selectedIds={selectedIds}
+            onSelectionChange={setSelectedIds}
             getRowId={(c) => c.id}
             onRowClick={(c) => router.push(`/customers/${c.id}`)}
             pagination={{
@@ -462,8 +425,8 @@ export default function CustomersPage() {
 
       {/* Bulk Action Bar */}
       <BulkActionBar
-        selectedCount={selectedCustomers.size}
-        onClearSelection={() => setSelectedCustomers(new Set())}
+        selectedCount={selectedIds.size}
+        onClearSelection={clearSelection}
         actions={[
           { label: "Send Email", icon: <Mail className="h-4 w-4" />, onClick: handleBulkSendEmail },
           { label: "Add to Segment", icon: <UsersRound className="h-4 w-4" />, onClick: handleBulkAddToSegment, variant: "outline" },
@@ -476,25 +439,25 @@ export default function CustomersPage() {
         <>
           <SendEmailDialog
             open={emailDialogOpen}
-            onOpenChange={setEmailDialogOpen}
+            onOpenChange={(open) => { if (!open) closeDialog("emailDialogOpen"); }}
             customer={selectedCustomer}
             onSuccess={handleActionSuccess}
           />
           <SendGiftCardDialog
             open={giftCardDialogOpen}
-            onOpenChange={setGiftCardDialogOpen}
+            onOpenChange={(open) => { if (!open) closeDialog("giftCardDialogOpen"); }}
             customer={selectedCustomer}
             onSuccess={handleActionSuccess}
           />
           <SuspendCustomerDialog
             open={suspendDialogOpen}
-            onOpenChange={setSuspendDialogOpen}
+            onOpenChange={(open) => { if (!open) closeDialog("suspendDialogOpen"); }}
             customer={selectedCustomer}
             onSuccess={handleActionSuccess}
           />
           <ChangeTierDialog
             open={changeTierDialogOpen}
-            onOpenChange={setChangeTierDialogOpen}
+            onOpenChange={(open) => { if (!open) closeDialog("changeTierDialogOpen"); }}
             customer={selectedCustomer}
             onSuccess={handleActionSuccess}
           />

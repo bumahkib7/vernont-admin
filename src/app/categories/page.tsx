@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -78,19 +78,22 @@ import {
   GripVertical,
   Move,
 } from "lucide-react";
+import { toast } from "sonner";
 import {
-  getCategories,
-  createCategory,
-  updateCategory,
-  deleteCategory,
-  activateCategory,
-  deactivateCategory,
   getCategoryProducts,
-  moveProductToCategory,
   type ProductCategory,
   type CreateCategoryInput,
   type CategoryProductItem,
 } from "@/lib/api";
+import {
+  useCategories,
+  useCreateCategory,
+  useUpdateCategory,
+  useDeleteCategory,
+  useActivateCategory,
+  useDeactivateCategory,
+  useMoveProductToCategory,
+} from "@/hooks/use-categories";
 
 type CategoryWithChildren = ProductCategory & {
   children: CategoryWithChildren[];
@@ -462,13 +465,23 @@ function RootDropZone({ isOver }: { isOver: boolean }) {
 }
 
 export default function CategoriesPage() {
-  const [categories, setCategories] = useState<ProductCategory[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  // React Query hooks for server state
+  const { data: categoriesData, isLoading: loading, error: queryError } = useCategories({ limit: 500 });
+  const createMutation = useCreateCategory();
+  const updateMutation = useUpdateCategory();
+  const deleteMutation = useDeleteCategory();
+  const activateMutation = useActivateCategory();
+  const deactivateMutation = useDeactivateCategory();
+  const moveProductMutation = useMoveProductToCategory();
+
+  const categories = categoriesData?.categories ?? [];
+  const error = queryError
+    ? (queryError instanceof Error ? queryError.message : "Failed to load categories")
+    : null;
 
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
+  const [success, setSuccess] = useState<string | null>(null);
 
   // Modal states
   const [addModalOpen, setAddModalOpen] = useState(false);
@@ -477,8 +490,6 @@ export default function CategoriesPage() {
   const [categoryToEdit, setCategoryToEdit] = useState<ProductCategory | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<ProductCategory | null>(null);
   const [formData, setFormData] = useState<CategoryFormData>(initialFormData);
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
 
   // Drag state
   const [activeCategory, setActiveCategory] = useState<CategoryWithChildren | null>(null);
@@ -486,7 +497,7 @@ export default function CategoriesPage() {
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [isOverRoot, setIsOverRoot] = useState(false);
 
-  // Products state per category
+  // Products state per category (local UI cache for expanded rows)
   const [categoryProducts, setCategoryProducts] = useState<Record<string, CategoryProductItem[]>>({});
 
   const sensors = useSensors(
@@ -497,23 +508,6 @@ export default function CategoriesPage() {
     }),
     useSensor(KeyboardSensor)
   );
-
-  const fetchCategories = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await getCategories({ limit: 500 });
-      setCategories(response.categories);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load categories");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchCategories();
-  }, []);
 
   const toggleExpanded = async (id: string) => {
     const isCurrentlyExpanded = expanded.has(id);
@@ -575,91 +569,78 @@ export default function CategoriesPage() {
     setFormData(initialFormData);
   };
 
-  const handleCreate = async () => {
+  const handleCreate = () => {
     if (!formData.name.trim()) return;
 
-    setSaving(true);
-    setError(null);
-
-    try {
-      const data: CreateCategoryInput = {
-        name: formData.name,
-        handle: formData.handle || generateHandle(formData.name),
-        description: formData.description || undefined,
-        parent_category_id: formData.parent_category_id || undefined,
-      };
-      await createCategory(data);
-      setSuccess("Category created successfully");
-      handleCloseModal();
-      await fetchCategories();
-      setTimeout(() => setSuccess(null), 3000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create category");
-    } finally {
-      setSaving(false);
-    }
+    const data: CreateCategoryInput = {
+      name: formData.name,
+      handle: formData.handle || generateHandle(formData.name),
+      description: formData.description || undefined,
+      parent_category_id: formData.parent_category_id || undefined,
+    };
+    createMutation.mutate(data, {
+      onSuccess: () => {
+        toast.success("Category created");
+        handleCloseModal();
+      },
+      onError: (err) => {
+        toast.error(err instanceof Error ? err.message : "Failed to create category");
+      },
+    });
   };
 
-  const handleUpdate = async () => {
+  const handleUpdate = () => {
     if (!categoryToEdit || !formData.name.trim()) return;
 
-    setSaving(true);
-    setError(null);
-
-    try {
-      await updateCategory(categoryToEdit.id, {
-        name: formData.name,
-        handle: formData.handle || undefined,
-        description: formData.description || undefined,
-        parent_category_id: formData.parent_category_id || undefined,
-      });
-      setSuccess("Category updated successfully");
-      handleCloseModal();
-      await fetchCategories();
-      setTimeout(() => setSuccess(null), 3000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update category");
-    } finally {
-      setSaving(false);
-    }
+    updateMutation.mutate(
+      {
+        id: categoryToEdit.id,
+        data: {
+          name: formData.name,
+          handle: formData.handle || undefined,
+          description: formData.description || undefined,
+          parent_category_id: formData.parent_category_id || undefined,
+        },
+      },
+      {
+        onSuccess: () => {
+          toast.success("Category updated");
+          handleCloseModal();
+        },
+        onError: (err) => {
+          toast.error(err instanceof Error ? err.message : "Failed to update category");
+        },
+      }
+    );
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!categoryToDelete) return;
 
-    setDeleting(true);
-    setError(null);
-
-    try {
-      await deleteCategory(categoryToDelete.id);
-      setSuccess("Category deleted successfully");
-      setDeleteDialogOpen(false);
-      setCategoryToDelete(null);
-      await fetchCategories();
-      setTimeout(() => setSuccess(null), 3000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete category");
-    } finally {
-      setDeleting(false);
-    }
+    deleteMutation.mutate(categoryToDelete.id, {
+      onSuccess: () => {
+        toast.success("Category deleted");
+        setDeleteDialogOpen(false);
+        setCategoryToDelete(null);
+      },
+      onError: (err) => {
+        toast.error(err instanceof Error ? err.message : "Failed to delete category");
+      },
+    });
   };
 
-  const handleToggleActive = async (category: ProductCategory) => {
-    setError(null);
+  const handleToggleActive = (category: ProductCategory) => {
+    const mutation = category.is_active ? deactivateMutation : activateMutation;
+    const action = category.is_active ? "deactivated" : "activated";
 
-    try {
-      if (category.is_active) {
-        await deactivateCategory(category.id);
-        setSuccess(`"${category.name}" deactivated`);
-      } else {
-        await activateCategory(category.id);
-        setSuccess(`"${category.name}" activated`);
-      }
-      await fetchCategories();
-      setTimeout(() => setSuccess(null), 3000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update category");
-    }
+    mutation.mutate(category.id, {
+      onSuccess: () => {
+        toast.success(`"${category.name}" ${action}`);
+      },
+      onError: (err) => {
+        toast.error(err instanceof Error ? err.message : "Failed to update category");
+      },
+    });
   };
 
   const openDeleteDialog = (category: ProductCategory) => {
@@ -719,35 +700,38 @@ export default function CategoriesPage() {
         // Don't move if already in target category
         if (fromCategoryId === targetCategory.id) return;
 
-        try {
-          await moveProductToCategory(targetCategory.id, product.id, fromCategoryId);
-          setSuccess(`"${product.title}" moved to "${targetCategory.name}"`);
+        moveProductMutation.mutate(
+          {
+            targetCategoryId: targetCategory.id,
+            productId: product.id,
+            fromCategoryId,
+          },
+          {
+            onSuccess: () => {
+              toast.success(`"${product.title}" moved to "${targetCategory.name}"`);
 
-          // Update local state: remove from source, add to target
-          setCategoryProducts((prev) => {
-            const updated = { ...prev };
-            // Remove from source
-            if (updated[fromCategoryId]) {
-              updated[fromCategoryId] = updated[fromCategoryId].filter(
-                (p) => p.id !== product.id
-              );
-            }
-            // Add to target if loaded
-            if (updated[targetCategory.id]) {
-              updated[targetCategory.id] = [...updated[targetCategory.id], product];
-            }
-            return updated;
-          });
+              // Update local state: remove from source, add to target
+              setCategoryProducts((prev) => {
+                const updated = { ...prev };
+                if (updated[fromCategoryId]) {
+                  updated[fromCategoryId] = updated[fromCategoryId].filter(
+                    (p) => p.id !== product.id
+                  );
+                }
+                if (updated[targetCategory.id]) {
+                  updated[targetCategory.id] = [...updated[targetCategory.id], product];
+                }
+                return updated;
+              });
 
-          // Expand target category to show the product
-          setExpanded((prev) => new Set([...prev, targetCategory.id]));
-
-          // Reload to get updated counts
-          await fetchCategories();
-          setTimeout(() => setSuccess(null), 3000);
-        } catch (err) {
-          setError(err instanceof Error ? err.message : "Failed to move product");
-        }
+              // Expand target category to show the product
+              setExpanded((prev) => new Set([...prev, targetCategory.id]));
+            },
+            onError: (err) => {
+              toast.error(err instanceof Error ? err.message : "Failed to move product");
+            },
+          }
+        );
       }
       return;
     }
@@ -758,16 +742,17 @@ export default function CategoriesPage() {
     // Dropping on root zone
     if (over.id === "drop-root") {
       if (draggedCategory.parent_category_id) {
-        try {
-          await updateCategory(draggedCategory.id, {
-            parent_category_id: undefined,
-          });
-          setSuccess(`"${draggedCategory.name}" moved to root level`);
-          await fetchCategories();
-          setTimeout(() => setSuccess(null), 3000);
-        } catch (err) {
-          setError(err instanceof Error ? err.message : "Failed to move category");
-        }
+        updateMutation.mutate(
+          { id: draggedCategory.id, data: { parent_category_id: undefined } },
+          {
+            onSuccess: () => {
+              toast.success(`"${draggedCategory.name}" moved to root level`);
+            },
+            onError: (err) => {
+              toast.error(err instanceof Error ? err.message : "Failed to move category");
+            },
+          }
+        );
       }
       return;
     }
@@ -792,18 +777,18 @@ export default function CategoriesPage() {
       // Don't move if already a child of target
       if (draggedCategory.parent_category_id === targetCategory.id) return;
 
-      try {
-        await updateCategory(draggedCategory.id, {
-          parent_category_id: targetCategory.id,
-        });
-        setSuccess(`"${draggedCategory.name}" moved under "${targetCategory.name}"`);
-        // Expand the target to show the moved category
-        setExpanded((prev) => new Set([...prev, targetCategory.id]));
-        await fetchCategories();
-        setTimeout(() => setSuccess(null), 3000);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to move category");
-      }
+      updateMutation.mutate(
+        { id: draggedCategory.id, data: { parent_category_id: targetCategory.id } },
+        {
+          onSuccess: () => {
+            toast.success(`"${draggedCategory.name}" moved under "${targetCategory.name}"`);
+            setExpanded((prev) => new Set([...prev, targetCategory.id]));
+          },
+          onError: (err) => {
+            toast.error(err instanceof Error ? err.message : "Failed to move category");
+          },
+        }
+      );
     }
   };
 
@@ -918,12 +903,12 @@ export default function CategoriesPage() {
             <Button
               variant="outline"
               onClick={() => setDeleteDialogOpen(false)}
-              disabled={deleting}
+              disabled={deleteMutation.isPending}
             >
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
-              {deleting ? (
+            <Button variant="destructive" onClick={handleDelete} disabled={deleteMutation.isPending}>
+              {deleteMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Deleting...

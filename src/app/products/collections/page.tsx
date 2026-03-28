@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -53,13 +53,12 @@ import {
   Info,
 } from "lucide-react";
 import { toast } from "sonner";
+import { type Collection } from "@/lib/api";
 import {
-  getCollections,
-  createCollection,
-  deleteCollection,
-  publishCollection,
-  type Collection,
-} from "@/lib/api";
+  useCollections,
+  useCreateCollection,
+  useDeleteCollection,
+} from "@/hooks/use-collections";
 
 type CollectionFormData = {
   title: string;
@@ -73,40 +72,22 @@ const initialFormData: CollectionFormData = {
 
 export default function CollectionsPage() {
   const router = useRouter();
-  const [collections, setCollections] = useState<Collection[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
-  // Modal states
+  // React Query hooks for server state
+  const { data, isLoading, error: queryError } = useCollections({ offset: 0, limit: 100 });
+  const createMutation = useCreateCollection();
+  const deleteMutation = useDeleteCollection();
+
+  const collections = data?.collections ?? [];
+  const totalCount = data?.count ?? 0;
+
+  // UI-only state
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [collectionToDelete, setCollectionToDelete] = useState<Collection | null>(null);
   const [formData, setFormData] = useState<CollectionFormData>(initialFormData);
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-
-  // Search & pagination
   const [searchQuery, setSearchQuery] = useState("");
-  const [totalCount, setTotalCount] = useState(0);
-
-  const fetchCollections = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await getCollections({ offset: 0, limit: 100 });
-      setCollections(response.collections);
-      setTotalCount(response.count);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load collections");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchCollections();
-  }, []);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const generateHandle = (title: string) => {
     return title
@@ -120,62 +101,40 @@ export default function CollectionsPage() {
     setFormData(initialFormData);
   };
 
-  const handleCreate = async () => {
+  const handleCreate = () => {
     if (!formData.title.trim()) return;
 
-    setSaving(true);
-    setError(null);
-
-    try {
-      const response = await createCollection({
+    createMutation.mutate(
+      {
         title: formData.title,
         handle: formData.handle || generateHandle(formData.title),
-      });
-      setSuccess("Collection created successfully");
-      toast.success("Collection created");
-      handleClose();
-      await fetchCollections();
-      setTimeout(() => setSuccess(null), 3000);
-      // Navigate to the new collection
-      router.push(`/products/collections/${response.collection.id}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create collection");
-    } finally {
-      setSaving(false);
-    }
+      },
+      {
+        onSuccess: (response) => {
+          toast.success("Collection created");
+          handleClose();
+          router.push(`/products/collections/${response.collection.id}`);
+        },
+        onError: (err) => {
+          toast.error(err instanceof Error ? err.message : "Failed to create collection");
+        },
+      }
+    );
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!collectionToDelete) return;
 
-    setDeleting(true);
-    setError(null);
-
-    try {
-      await deleteCollection(collectionToDelete.id);
-      setSuccess("Collection deleted successfully");
-      toast.success("Collection deleted");
-      setDeleteDialogOpen(false);
-      setCollectionToDelete(null);
-      await fetchCollections();
-      setTimeout(() => setSuccess(null), 3000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete collection");
-      toast.error("Failed to delete collection");
-    } finally {
-      setDeleting(false);
-    }
-  };
-
-  const handlePublish = async (collection: Collection) => {
-    try {
-      await publishCollection(collection.id);
-      setSuccess(`Collection "${collection.title}" published successfully`);
-      await fetchCollections();
-      setTimeout(() => setSuccess(null), 3000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to publish collection");
-    }
+    deleteMutation.mutate(collectionToDelete.id, {
+      onSuccess: () => {
+        toast.success("Collection deleted");
+        setDeleteDialogOpen(false);
+        setCollectionToDelete(null);
+      },
+      onError: (err) => {
+        toast.error(err instanceof Error ? err.message : "Failed to delete collection");
+      },
+    });
   };
 
   const openDeleteDialog = (collection: Collection) => {
@@ -196,7 +155,11 @@ export default function CollectionsPage() {
     });
   };
 
-  if (loading) {
+  const error = queryError
+    ? (queryError instanceof Error ? queryError.message : "Failed to load collections")
+    : null;
+
+  if (isLoading) {
     return (
       <div className="flex flex-col gap-6 p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -252,15 +215,15 @@ export default function CollectionsPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={deleting}>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={deleteMutation.isPending}>
               Cancel
             </Button>
             <Button
               variant="destructive"
               onClick={handleDelete}
-              disabled={deleting}
+              disabled={deleteMutation.isPending}
             >
-              {deleting ? (
+              {deleteMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Deleting...
@@ -320,11 +283,11 @@ export default function CollectionsPage() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={handleClose} disabled={saving}>
+            <Button variant="outline" onClick={handleClose} disabled={createMutation.isPending}>
               Cancel
             </Button>
-            <Button onClick={handleCreate} disabled={!formData.title.trim() || saving}>
-              {saving ? (
+            <Button onClick={handleCreate} disabled={!formData.title.trim() || createMutation.isPending}>
+              {createMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Creating...
@@ -348,9 +311,6 @@ export default function CollectionsPage() {
         <div className="flex items-center gap-2 p-4 bg-red-50 text-red-700 rounded-lg">
           <AlertCircle className="h-5 w-5" />
           <span>{error}</span>
-          <button onClick={() => setError(null)} className="ml-auto">
-            <Trash2 className="h-4 w-4" />
-          </button>
         </div>
       )}
 

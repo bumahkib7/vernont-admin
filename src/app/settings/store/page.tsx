@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -62,18 +62,6 @@ import {
   Palette,
 } from "lucide-react";
 import {
-  getStores,
-  createStore,
-  getStoreSettings,
-  updateStoreBusinessInfo,
-  updateStoreLocalization,
-  updateStoreFeatures,
-  updateStorePolicies,
-  updateStoreCheckoutSettings,
-  updateStoreShippingSettings,
-  updateStoreSeoSettings,
-  updateStoreThemeSettings,
-  initializeStoreSettings,
   type Store,
   type StoreSettings,
   type SocialLinks,
@@ -83,18 +71,52 @@ import {
   type SeoSettings,
   type ThemeSettings,
 } from "@/lib/api";
+import {
+  useStores,
+  useStoreSettings,
+  useCreateStore,
+  useUpdateBusinessInfo,
+  useUpdateLocalization,
+  useUpdateFeatures,
+  useUpdatePolicies,
+  useUpdateCheckoutSettings,
+  useUpdateShippingSettings,
+  useUpdateSeoSettings,
+  useUpdateThemeSettings,
+} from "@/hooks/use-settings";
 
 export default function StoreSettingsPage() {
   // State for store selection
-  const [stores, setStores] = useState<Store[]>([]);
   const [selectedStore, setSelectedStore] = useState<Store | null>(null);
-  const [loadingStores, setLoadingStores] = useState(true);
 
-  // State for settings
-  const [settings, setSettings] = useState<StoreSettings | null>(null);
-  const [loadingSettings, setLoadingSettings] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  // React Query — server state
+  const storesQuery = useStores({ limit: 100 });
+  const settingsQuery = useStoreSettings(selectedStore?.id ?? "", !!selectedStore);
+  const createStoreMutation = useCreateStore();
+  const updateBusinessInfoMutation = useUpdateBusinessInfo();
+  const updateLocalizationMutation = useUpdateLocalization();
+  const updateFeaturesMutation = useUpdateFeatures();
+  const updatePoliciesMutation = useUpdatePolicies();
+  const updateCheckoutMutation = useUpdateCheckoutSettings();
+  const updateShippingMutation = useUpdateShippingSettings();
+  const updateSeoMutation = useUpdateSeoSettings();
+  const updateThemeMutation = useUpdateThemeSettings();
+
+  const stores = storesQuery.data?.stores ?? [];
+  const loadingStores = storesQuery.isLoading;
+  const settings = settingsQuery.data?.storeSettings ?? null;
+  const loadingSettings = settingsQuery.isLoading;
+  const error =
+    storesQuery.error?.message ?? settingsQuery.error?.message ?? null;
+  const saving =
+    updateBusinessInfoMutation.isPending ||
+    updateLocalizationMutation.isPending ||
+    updateFeaturesMutation.isPending ||
+    updatePoliciesMutation.isPending ||
+    updateCheckoutMutation.isPending ||
+    updateShippingMutation.isPending ||
+    updateSeoMutation.isPending ||
+    updateThemeMutation.isPending;
 
   // Create store dialog
   const [createStoreOpen, setCreateStoreOpen] = useState(false);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense, useMemo } from "react";
+import { useEffect, Suspense, useMemo, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -57,17 +57,11 @@ import { AddProductModal } from "@/components/products/add-product-modal";
 import { CsvImportDialog } from "@/components/csv-import-dialog";
 import { CsvExportButton } from "@/components/csv-export-button";
 import { importProductsCsv } from "@/lib/api";
-import {
-  getProducts,
-  deleteProduct,
-  getCategories,
-  formatPrice,
-  resolveImageUrl,
-  type ProductSummary,
-  type ProductStatus,
-  type ProductCategory,
-} from "@/lib/api";
+import { resolveImageUrl, formatPrice } from "@/lib/api/client";
+import type { ProductSummary, ProductStatus } from "@/lib/api/products";
 import { usePageContext } from "@/hooks/use-page-context";
+import { useProductStore } from "@/stores/product-store";
+import { useProducts, useCategories, useDeleteProduct } from "@/hooks/use-products";
 
 function getStatusBadge(status: ProductStatus) {
   switch (status) {
@@ -109,121 +103,103 @@ function ProductsPageContent({ onOpenModal }: { onOpenModal: () => void }) {
 
 export default function ProductsPage() {
   usePageContext("products");
-  const [addProductOpen, setAddProductOpen] = useState(false);
-  const [products, setProducts] = useState<ProductSummary[]>([]);
-  const [categories, setCategories] = useState<ProductCategory[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [pagination, setPagination] = useState({
-    start: 0,
-    end: 20,
-    totalElements: 0,
-    totalPages: 0,
-  });
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [productToDelete, setProductToDelete] = useState<ProductSummary | null>(null);
-  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
 
-  // Agent actions: auto-open add-product modal
-  const pendingModal = useAgentActionsStore(s => s.pendingModal);
-  const consumeModal = useAgentActionsStore(s => s.consumeModal);
+  // --------------- Zustand: client UI state ---------------
+  const filters = useProductStore((s) => s.filters);
+  const setSearch = useProductStore((s) => s.setSearch);
+  const setStatusFilter = useProductStore((s) => s.setStatusFilter);
+  const setCategoryFilter = useProductStore((s) => s.setCategoryFilter);
+  const pagination = useProductStore((s) => s.pagination);
+  const setPage = useProductStore((s) => s.setPage);
+  const selectedIds = useProductStore((s) => s.selectedIds);
+  const selectAll = useProductStore((s) => s.selectAll);
+  const clearSelection = useProductStore((s) => s.clearSelection);
+  const addProductOpen = useProductStore((s) => s.addProductOpen);
+  const setAddProductOpen = useProductStore((s) => s.setAddProductOpen);
+  const deleteDialogOpen = useProductStore((s) => s.deleteDialogOpen);
+  const productToDeleteId = useProductStore((s) => s.productToDeleteId);
+  const productToDeleteTitle = useProductStore((s) => s.productToDeleteTitle);
+  const openDeleteDialog = useProductStore((s) => s.openDeleteDialog);
+  const closeDeleteDialog = useProductStore((s) => s.closeDeleteDialog);
+
+  // --------------- React Query: server state ---------------
+  const {
+    data: productsData,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    isFetching,
+  } = useProducts({
+    page: pagination.page,
+    pageSize: pagination.pageSize,
+    search: filters.search,
+    status: filters.status,
+  });
+
+  const { data: categoriesData } = useCategories();
+
+  const deleteMutation = useDeleteProduct();
+
+  const products = productsData?.content ?? [];
+  const totalElements = productsData?.totalElements ?? 0;
+  const totalPages = productsData?.totalPages ?? 0;
+  const categories = categoriesData?.categories ?? [];
+
+  // --------------- Agent actions: auto-open modal ---------------
+  const pendingModal = useAgentActionsStore((s) => s.pendingModal);
+  const consumeModal = useAgentActionsStore((s) => s.consumeModal);
 
   useEffect(() => {
     if (pendingModal?.modalId === "add-product") {
       setAddProductOpen(true);
       consumeModal("add-product");
     }
-  }, [pendingModal, consumeModal]);
+  }, [pendingModal, consumeModal, setAddProductOpen]);
 
-  const fetchProducts = async () => {
-    setLoading(true);
-    setError(null);
+  // --------------- Handlers ---------------
+  const handleProductSave = useCallback(
+    (_isDraft: boolean) => {
+      refetch();
+    },
+    [refetch]
+  );
+
+  const handleDeleteProduct = useCallback(
+    (product: ProductSummary) => {
+      openDeleteDialog(product.id, product.title);
+    },
+    [openDeleteDialog]
+  );
+
+  const confirmDeleteProduct = useCallback(async () => {
+    if (!productToDeleteId) return;
     try {
-      const response = await getProducts({
-        start: pagination.start,
-        end: pagination.end,
-        q: searchQuery || undefined,
-        status: statusFilter !== "all" ? (statusFilter as ProductStatus) : undefined,
-      });
-      setProducts(response.content || []);
-      setPagination((prev) => ({
-        ...prev,
-        totalElements: response.totalElements || 0,
-        totalPages: response.totalPages || 0,
-      }));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load products");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchCategories = async () => {
-    try {
-      const response = await getCategories({ limit: 100 });
-      setCategories(response.categories || []);
-    } catch (err) {
-      console.error("Failed to load categories:", err);
-    }
-  };
-
-  useEffect(() => {
-    fetchProducts();
-    fetchCategories();
-  }, []);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchProducts();
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchQuery, statusFilter, pagination.start]);
-
-  const handleProductSave = (data: any, isDraft: boolean) => {
-    console.log("Product saved:", data, "Draft:", isDraft);
-    fetchProducts();
-  };
-
-  const handleDeleteProduct = (product: ProductSummary) => {
-    setProductToDelete(product);
-    setDeleteDialogOpen(true);
-  };
-
-  const confirmDeleteProduct = async () => {
-    if (!productToDelete) return;
-    try {
-      await deleteProduct(productToDelete.id);
-      setDeleteDialogOpen(false);
-      setProductToDelete(null);
+      await deleteMutation.mutateAsync(productToDeleteId);
+      closeDeleteDialog();
       toast.success("Product deleted");
-      fetchProducts();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete product");
+    } catch {
       toast.error("Failed to delete product");
-      setDeleteDialogOpen(false);
+      closeDeleteDialog();
     }
-  };
+  }, [productToDeleteId, deleteMutation, closeDeleteDialog]);
 
-  const handleBulkPublish = async () => {
-    toast.success(`Published ${selectedProducts.size} products`);
-    setSelectedProducts(new Set());
-  };
+  const handleBulkPublish = useCallback(async () => {
+    toast.success(`Published ${selectedIds.size} products`);
+    clearSelection();
+  }, [selectedIds.size, clearSelection]);
 
-  const handleBulkUnpublish = async () => {
-    toast.success(`Unpublished ${selectedProducts.size} products`);
-    setSelectedProducts(new Set());
-  };
+  const handleBulkUnpublish = useCallback(async () => {
+    toast.success(`Unpublished ${selectedIds.size} products`);
+    clearSelection();
+  }, [selectedIds.size, clearSelection]);
 
-  const handleBulkDelete = async () => {
-    toast.success(`Deleted ${selectedProducts.size} products`);
-    setSelectedProducts(new Set());
-  };
+  const handleBulkDelete = useCallback(async () => {
+    toast.success(`Deleted ${selectedIds.size} products`);
+    clearSelection();
+  }, [selectedIds.size, clearSelection]);
 
-  const currentPage = Math.floor(pagination.start / 20) + 1;
-
+  // --------------- Table columns ---------------
   const productColumns: Column<ProductSummary>[] = useMemo(
     () => [
       {
@@ -322,7 +298,7 @@ export default function ProductsPage() {
         ),
       },
     ],
-    []
+    [handleDeleteProduct]
   );
 
   return (
@@ -349,7 +325,7 @@ export default function ProductsPage() {
         </div>
         <div className="flex gap-2">
           <CsvExportButton type="products" />
-          <CsvImportDialog type="products" onImport={importProductsCsv} onComplete={() => fetchProducts()} />
+          <CsvImportDialog type="products" onImport={importProductsCsv} onComplete={() => refetch()} />
           <Button className="gap-2" onClick={() => setAddProductOpen(true)}>
             <Plus className="h-4 w-4" />
             Add Product
@@ -367,11 +343,11 @@ export default function ProductsPage() {
                 <Input
                   placeholder="Search products..."
                   className="pl-9"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  value={filters.search}
+                  onChange={(e) => setSearch(e.target.value)}
                 />
               </div>
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <Select value={filters.category} onValueChange={setCategoryFilter}>
                 <SelectTrigger className="w-full sm:w-[160px]">
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
@@ -384,7 +360,7 @@ export default function ProductsPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Select value={filters.status} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-full sm:w-[160px]">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
@@ -402,8 +378,8 @@ export default function ProductsPage() {
               </Select>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="icon" onClick={fetchProducts} disabled={loading}>
-                <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+              <Button variant="outline" size="icon" onClick={() => refetch()} disabled={isFetching}>
+                <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
               </Button>
               <Button variant="outline" size="icon">
                 <Download className="h-4 w-4" />
@@ -418,16 +394,16 @@ export default function ProductsPage() {
         <CardHeader>
           <CardTitle>All Products</CardTitle>
           <CardDescription>
-            {pagination.totalElements} products in your inventory
+            {totalElements} products in your inventory
           </CardDescription>
         </CardHeader>
         <CardContent>
           {/* Error State */}
-          {error && (
+          {isError && (
             <div className="flex items-center gap-2 p-4 mb-4 bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 rounded-lg">
               <AlertCircle className="h-5 w-5" />
-              <span>{error}</span>
-              <Button variant="ghost" size="sm" onClick={fetchProducts} className="ml-auto">
+              <span>{error instanceof Error ? error.message : "Failed to load products"}</span>
+              <Button variant="ghost" size="sm" onClick={() => refetch()} className="ml-auto">
                 Retry
               </Button>
             </div>
@@ -436,21 +412,21 @@ export default function ProductsPage() {
           <DataTable
             columns={productColumns}
             data={products}
-            loading={loading}
+            loading={isLoading}
             selectable
-            selectedIds={selectedProducts}
-            onSelectionChange={setSelectedProducts}
+            selectedIds={selectedIds}
+            onSelectionChange={(ids) => {
+              // DataTable passes a Set<string> directly
+              if (ids.size === 0) clearSelection();
+              else selectAll(Array.from(ids));
+            }}
             getRowId={(p) => p.id}
             onRowClick={(p) => (window.location.href = `/products/${p.id}`)}
-            pagination={pagination.totalPages > 1 ? {
-              page: currentPage,
-              pageSize: 20,
-              total: pagination.totalElements,
-              onPageChange: (page) => setPagination((prev) => ({
-                ...prev,
-                start: (page - 1) * 20,
-                end: page * 20,
-              })),
+            pagination={totalPages > 1 ? {
+              page: pagination.page,
+              pageSize: pagination.pageSize,
+              total: totalElements,
+              onPageChange: setPage,
             } : undefined}
             emptyTitle="No products found"
             emptyIcon={<ImageIcon className="h-10 w-10 opacity-40" />}
@@ -460,8 +436,8 @@ export default function ProductsPage() {
 
       {/* Bulk Action Bar */}
       <BulkActionBar
-        selectedCount={selectedProducts.size}
-        onClearSelection={() => setSelectedProducts(new Set())}
+        selectedCount={selectedIds.size}
+        onClearSelection={clearSelection}
         actions={[
           { label: "Publish", icon: <Eye className="h-4 w-4" />, onClick: handleBulkPublish },
           { label: "Unpublish", icon: <EyeOff className="h-4 w-4" />, onClick: handleBulkUnpublish, variant: "outline" },
@@ -470,20 +446,20 @@ export default function ProductsPage() {
       />
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      <Dialog open={deleteDialogOpen} onOpenChange={(open) => { if (!open) closeDeleteDialog(); }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete Product</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete &quot;{productToDelete?.title}&quot;? This action cannot be undone.
+              Are you sure you want to delete &quot;{productToDeleteTitle}&quot;? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setDeleteDialogOpen(false)}>
+            <Button variant="ghost" onClick={closeDeleteDialog}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={confirmDeleteProduct}>
-              Delete
+            <Button variant="destructive" onClick={confirmDeleteProduct} disabled={deleteMutation.isPending}>
+              {deleteMutation.isPending ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>

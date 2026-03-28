@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -65,139 +65,111 @@ import {
   Package,
   X,
 } from "lucide-react";
+import { toast } from "sonner";
+import { getProducts, type ProductSummary } from "@/lib/api";
 import {
-  getCollection,
-  updateCollection,
-  deleteCollection,
-  uploadCollectionImage,
-  addProductsToCollection,
-  removeProductsFromCollection,
-  getProducts,
-  type Collection,
-  type CollectionProduct,
-  type ProductSummary,
-} from "@/lib/api";
+  useCollection,
+  useUpdateCollection,
+  useDeleteCollection,
+  useUploadCollectionImage,
+  useAddProductsToCollection,
+  useRemoveProductsFromCollection,
+} from "@/hooks/use-collections";
 
 export default function CollectionDetailPage() {
   const params = useParams();
   const router = useRouter();
   const collectionId = params.id as string;
 
-  const [collection, setCollection] = useState<Collection | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  // React Query hooks for server state
+  const {
+    data: collection,
+    isLoading,
+    error: queryError,
+  } = useCollection(collectionId);
+  const updateMutation = useUpdateCollection();
+  const deleteMutation = useDeleteCollection();
+  const uploadImageMutation = useUploadCollectionImage();
+  const addProductsMutation = useAddProductsToCollection();
+  const removeProductsMutation = useRemoveProductsFromCollection();
 
-  // Modal states
+  // UI-only state
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [editForm, setEditForm] = useState({ title: "", handle: "" });
 
-  // Edit form
-  const [editForm, setEditForm] = useState({
-    title: "",
-    handle: "",
-  });
-
-  // Image upload
-  const [uploadingImage, setUploadingImage] = useState(false);
-
-  // Add products modal
+  // Add products modal state
   const [addProductsModalOpen, setAddProductsModalOpen] = useState(false);
   const [productSearch, setProductSearch] = useState("");
   const [searchResults, setSearchResults] = useState<ProductSummary[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [searchingProducts, setSearchingProducts] = useState(false);
-  const [addingProducts, setAddingProducts] = useState(false);
-  const [removingProduct, setRemovingProduct] = useState<string | null>(null);
+  const [removingProductId, setRemovingProductId] = useState<string | null>(null);
 
-  const fetchCollection = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await getCollection(collectionId);
-      setCollection(response.collection);
-      setEditForm({
-        title: response.collection.title,
-        handle: response.collection.handle,
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load collection");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchCollection();
-  }, [collectionId]);
+  const error = queryError
+    ? (queryError instanceof Error ? queryError.message : "Failed to load collection")
+    : null;
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
-    setSuccess("Copied to clipboard");
-    setTimeout(() => setSuccess(null), 2000);
+    toast.success("Copied to clipboard");
   };
 
-  const handleSaveEdit = async () => {
+  const openEditModal = () => {
+    if (!collection) return;
+    setEditForm({ title: collection.title, handle: collection.handle });
+    setEditModalOpen(true);
+  };
+
+  const handleSaveEdit = () => {
     if (!collection) return;
 
-    setSaving(true);
-    setError(null);
-
-    try {
-      const response = await updateCollection(collection.id, {
-        title: editForm.title,
-        handle: editForm.handle,
-      });
-      setCollection(response.collection);
-      setSuccess("Collection updated successfully");
-      setEditModalOpen(false);
-      setTimeout(() => setSuccess(null), 3000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update collection");
-    } finally {
-      setSaving(false);
-    }
+    updateMutation.mutate(
+      { id: collection.id, data: { title: editForm.title, handle: editForm.handle } },
+      {
+        onSuccess: () => {
+          toast.success("Collection updated");
+          setEditModalOpen(false);
+        },
+        onError: (err) => {
+          toast.error(err instanceof Error ? err.message : "Failed to update collection");
+        },
+      }
+    );
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!collection) return;
 
-    setDeleting(true);
-    setError(null);
-
-    try {
-      await deleteCollection(collection.id);
-      setSuccess("Collection deleted successfully");
-      setDeleteDialogOpen(false);
-      // Redirect to collections list
-      router.push("/products/collections");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete collection");
-      setDeleting(false);
-    }
+    deleteMutation.mutate(collection.id, {
+      onSuccess: () => {
+        toast.success("Collection deleted");
+        setDeleteDialogOpen(false);
+        router.push("/products/collections");
+      },
+      onError: (err) => {
+        toast.error(err instanceof Error ? err.message : "Failed to delete collection");
+      },
+    });
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !collection) return;
 
-    setUploadingImage(true);
-    setError(null);
-
-    try {
-      await uploadCollectionImage(file, collection.id);
-      setSuccess("Image uploaded successfully");
-      await fetchCollection();
-      setTimeout(() => setSuccess(null), 3000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to upload image");
-    } finally {
-      setUploadingImage(false);
-      // Reset input
-      e.target.value = "";
-    }
+    uploadImageMutation.mutate(
+      { file, collectionId: collection.id },
+      {
+        onSuccess: () => {
+          toast.success("Image uploaded");
+        },
+        onError: (err) => {
+          toast.error(err instanceof Error ? err.message : "Failed to upload image");
+        },
+      }
+    );
+    // Reset input
+    e.target.value = "";
   };
 
   // Search for products to add
@@ -211,7 +183,6 @@ export default function CollectionDetailPage() {
     setSearchingProducts(true);
     try {
       const response = await getProducts({ q: query, end: 10 });
-      // Filter out products already in collection
       const existingIds = new Set(collection?.products.map((p) => p.id) || []);
       setSearchResults(response.content.filter((p) => !existingIds.has(p.id)));
     } catch (err) {
@@ -221,44 +192,43 @@ export default function CollectionDetailPage() {
     }
   };
 
-  const handleAddProducts = async () => {
+  const handleAddProducts = () => {
     if (!collection || selectedProducts.length === 0) return;
 
-    setAddingProducts(true);
-    setError(null);
-
-    try {
-      await addProductsToCollection(collection.id, selectedProducts);
-      setSuccess(`Added ${selectedProducts.length} product(s) to collection`);
-      setAddProductsModalOpen(false);
-      setSelectedProducts([]);
-      setProductSearch("");
-      setSearchResults([]);
-      await fetchCollection();
-      setTimeout(() => setSuccess(null), 3000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add products");
-    } finally {
-      setAddingProducts(false);
-    }
+    addProductsMutation.mutate(
+      { collectionId: collection.id, productIds: selectedProducts },
+      {
+        onSuccess: () => {
+          toast.success(`Added ${selectedProducts.length} product(s) to collection`);
+          setAddProductsModalOpen(false);
+          setSelectedProducts([]);
+          setProductSearch("");
+          setSearchResults([]);
+        },
+        onError: (err) => {
+          toast.error(err instanceof Error ? err.message : "Failed to add products");
+        },
+      }
+    );
   };
 
-  const handleRemoveProduct = async (productId: string) => {
+  const handleRemoveProduct = (productId: string) => {
     if (!collection) return;
 
-    setRemovingProduct(productId);
-    setError(null);
-
-    try {
-      await removeProductsFromCollection(collection.id, [productId]);
-      setSuccess("Product removed from collection");
-      await fetchCollection();
-      setTimeout(() => setSuccess(null), 3000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to remove product");
-    } finally {
-      setRemovingProduct(null);
-    }
+    setRemovingProductId(productId);
+    removeProductsMutation.mutate(
+      { collectionId: collection.id, productIds: [productId] },
+      {
+        onSuccess: () => {
+          toast.success("Product removed from collection");
+          setRemovingProductId(null);
+        },
+        onError: (err) => {
+          toast.error(err instanceof Error ? err.message : "Failed to remove product");
+          setRemovingProductId(null);
+        },
+      }
+    );
   };
 
   const toggleProductSelection = (productId: string) => {
@@ -279,7 +249,7 @@ export default function CollectionDetailPage() {
     });
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex flex-col gap-6 p-6">
         <Skeleton className="h-6 w-64" />
@@ -358,15 +328,15 @@ export default function CollectionDetailPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={deleting}>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={deleteMutation.isPending}>
               Cancel
             </Button>
             <Button
               variant="destructive"
               onClick={handleDelete}
-              disabled={deleting}
+              disabled={deleteMutation.isPending}
             >
-              {deleting ? (
+              {deleteMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Deleting...
@@ -415,11 +385,11 @@ export default function CollectionDetailPage() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditModalOpen(false)} disabled={saving}>
+            <Button variant="outline" onClick={() => setEditModalOpen(false)} disabled={updateMutation.isPending}>
               Cancel
             </Button>
-            <Button onClick={handleSaveEdit} disabled={saving || !editForm.title.trim()}>
-              {saving ? (
+            <Button onClick={handleSaveEdit} disabled={updateMutation.isPending || !editForm.title.trim()}>
+              {updateMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Saving...
@@ -543,15 +513,15 @@ export default function CollectionDetailPage() {
             <Button
               variant="outline"
               onClick={() => setAddProductsModalOpen(false)}
-              disabled={addingProducts}
+              disabled={addProductsMutation.isPending}
             >
               Cancel
             </Button>
             <Button
               onClick={handleAddProducts}
-              disabled={addingProducts || selectedProducts.length === 0}
+              disabled={addProductsMutation.isPending || selectedProducts.length === 0}
             >
-              {addingProducts ? (
+              {addProductsMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Adding...
@@ -566,23 +536,6 @@ export default function CollectionDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Success/Error Messages */}
-      {success && (
-        <div className="flex items-center gap-2 p-4 bg-green-50 text-green-700 rounded-lg">
-          <Check className="h-5 w-5" />
-          <span>{success}</span>
-        </div>
-      )}
-      {error && (
-        <div className="flex items-center gap-2 p-4 bg-red-50 text-red-700 rounded-lg">
-          <AlertCircle className="h-5 w-5" />
-          <span>{error}</span>
-          <button onClick={() => setError(null)} className="ml-auto">
-            <Trash2 className="h-4 w-4" />
-          </button>
-        </div>
-      )}
 
       {/* Breadcrumb */}
       <Breadcrumb>
@@ -638,7 +591,7 @@ export default function CollectionDetailPage() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => setEditModalOpen(true)}>
+                    <DropdownMenuItem onClick={openEditModal}>
                       <Pencil className="mr-2 h-4 w-4" />
                       Edit
                     </DropdownMenuItem>
@@ -673,7 +626,7 @@ export default function CollectionDetailPage() {
                 <div className="space-y-2">
                   <Label>Title</Label>
                   <Input
-                    value={editForm.title}
+                    value={editForm.title || collection.title}
                     onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
                   />
                 </div>
@@ -685,7 +638,7 @@ export default function CollectionDetailPage() {
                     </span>
                     <Input
                       className="rounded-l-none"
-                      value={editForm.handle}
+                      value={editForm.handle || collection.handle}
                       onChange={(e) => setEditForm({ ...editForm, handle: e.target.value })}
                     />
                   </div>
@@ -694,9 +647,13 @@ export default function CollectionDetailPage() {
               <div className="flex justify-end">
                 <Button
                   onClick={handleSaveEdit}
-                  disabled={saving || (editForm.title === collection.title && editForm.handle === collection.handle)}
+                  disabled={
+                    updateMutation.isPending ||
+                    ((editForm.title || collection.title) === collection.title &&
+                      (editForm.handle || collection.handle) === collection.handle)
+                  }
                 >
-                  {saving ? (
+                  {updateMutation.isPending ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Saving...
@@ -782,9 +739,9 @@ export default function CollectionDetailPage() {
                             size="icon"
                             className="h-8 w-8 text-muted-foreground hover:text-red-600"
                             onClick={() => handleRemoveProduct(product.id)}
-                            disabled={removingProduct === product.id}
+                            disabled={removingProductId === product.id}
                           >
-                            {removingProduct === product.id ? (
+                            {removingProductId === product.id ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
                               <X className="h-4 w-4" />
@@ -817,7 +774,7 @@ export default function CollectionDetailPage() {
                     className="w-full aspect-square rounded-lg object-cover"
                   />
                   <label className="flex items-center justify-center gap-2 w-full py-2 border rounded-lg cursor-pointer hover:bg-muted transition-colors">
-                    {uploadingImage ? (
+                    {uploadImageMutation.isPending ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <Upload className="h-4 w-4" />
@@ -828,13 +785,13 @@ export default function CollectionDetailPage() {
                       accept="image/*"
                       className="hidden"
                       onChange={handleImageUpload}
-                      disabled={uploadingImage}
+                      disabled={uploadImageMutation.isPending}
                     />
                   </label>
                 </div>
               ) : (
-                <label className={`flex flex-col items-center justify-center w-full aspect-square border-2 border-dashed rounded-lg cursor-pointer hover:border-muted-foreground/50 transition-colors ${uploadingImage ? "opacity-50 pointer-events-none" : ""}`}>
-                  {uploadingImage ? (
+                <label className={`flex flex-col items-center justify-center w-full aspect-square border-2 border-dashed rounded-lg cursor-pointer hover:border-muted-foreground/50 transition-colors ${uploadImageMutation.isPending ? "opacity-50 pointer-events-none" : ""}`}>
+                  {uploadImageMutation.isPending ? (
                     <Loader2 className="h-8 w-8 text-muted-foreground animate-spin" />
                   ) : (
                     <>
@@ -847,7 +804,7 @@ export default function CollectionDetailPage() {
                     accept="image/*"
                     className="hidden"
                     onChange={handleImageUpload}
-                    disabled={uploadingImage}
+                    disabled={uploadImageMutation.isPending}
                   />
                 </label>
               )}

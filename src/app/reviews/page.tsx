@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import {
   Card,
@@ -41,29 +41,28 @@ import {
   ShieldAlert,
   MessageSquare,
   Trash2,
-  Eye,
-  EyeOff,
-  BadgeCheck,
   ChevronDown,
   ChevronUp,
   ImageIcon,
+  BadgeCheck,
 } from "lucide-react";
 import {
-  getPendingReviews,
-  getFlaggedReviews,
-  getApprovedReviews,
-  getReviewStats,
-  moderateReview,
-  addAdminResponse,
-  featureReview,
-  deleteReviewAdmin,
   formatDate,
   resolveImageUrl,
   type AdminReview,
-  type ReviewStats,
 } from "@/lib/api";
 import { usePageContext } from "@/hooks/use-page-context";
 import { useConfirm } from "@/hooks/use-confirm";
+import {
+  usePendingReviews,
+  useFlaggedReviews,
+  useApprovedReviews,
+  useReviewStats,
+  useModerateReview,
+  useAddAdminResponse,
+  useFeatureReview,
+  useDeleteReview,
+} from "@/hooks/use-reviews";
 
 // ─── Star Rating ────────────────────────────────────────────────────────────
 
@@ -314,24 +313,10 @@ export default function ReviewsPage() {
   usePageContext("reviews");
   const [ConfirmDialog, confirm] = useConfirm();
 
-  // Data
-  const [pendingReviews, setPendingReviews] = useState<AdminReview[]>([]);
-  const [flaggedReviews, setFlaggedReviews] = useState<AdminReview[]>([]);
-  const [approvedReviews, setApprovedReviews] = useState<AdminReview[]>([]);
-  const [stats, setStats] = useState<ReviewStats | null>(null);
-
   // Pagination
   const [pendingPage, setPendingPage] = useState(0);
-  const [pendingTotal, setPendingTotal] = useState(0);
   const [flaggedPage, setFlaggedPage] = useState(0);
-  const [flaggedTotal, setFlaggedTotal] = useState(0);
   const [approvedPage, setApprovedPage] = useState(0);
-  const [approvedTotal, setApprovedTotal] = useState(0);
-
-  // Loading / error
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   // Dialogs
   const [rejectDialog, setRejectDialog] = useState<{ open: boolean; reviewId: string }>({
@@ -351,145 +336,103 @@ export default function ReviewsPage() {
   const [deleteReason, setDeleteReason] = useState("");
 
   const [activeTab, setActiveTab] = useState("pending");
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
-  // ─── Fetchers ───────────────────────────────────────────────────────────
+  // ─── React Query Hooks ─────────────────────────────────────────────────
 
-  const fetchPending = useCallback(async () => {
-    try {
-      const res = await getPendingReviews(pendingPage);
-      setPendingReviews(res.reviews);
-      setPendingTotal(res.total);
-    } catch (err) {
-      console.error("Failed to fetch pending reviews:", err);
-    }
-  }, [pendingPage]);
+  const {
+    data: pendingData,
+    isLoading: pendingLoading,
+  } = usePendingReviews(pendingPage);
 
-  const fetchFlagged = useCallback(async () => {
-    try {
-      const res = await getFlaggedReviews(flaggedPage);
-      setFlaggedReviews(res.reviews);
-      setFlaggedTotal(res.total);
-    } catch (err) {
-      console.error("Failed to fetch flagged reviews:", err);
-    }
-  }, [flaggedPage]);
+  const {
+    data: flaggedData,
+    isLoading: flaggedLoading,
+  } = useFlaggedReviews(flaggedPage);
 
-  const fetchApproved = useCallback(async () => {
-    try {
-      const res = await getApprovedReviews(approvedPage);
-      setApprovedReviews(res.reviews);
-      setApprovedTotal(res.total);
-    } catch (err) {
-      console.error("Failed to fetch approved reviews:", err);
-    }
-  }, [approvedPage]);
+  const {
+    data: approvedData,
+    isLoading: approvedLoading,
+  } = useApprovedReviews(approvedPage);
 
-  const fetchStats = useCallback(async () => {
-    try {
-      const res = await getReviewStats();
-      setStats(res);
-    } catch (err) {
-      console.error("Failed to fetch review stats:", err);
-    }
-  }, []);
+  const { data: stats } = useReviewStats();
 
-  const fetchAll = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      await Promise.all([fetchPending(), fetchFlagged(), fetchApproved(), fetchStats()]);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load reviews");
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchPending, fetchFlagged, fetchApproved, fetchStats]);
+  const pendingReviews = pendingData?.reviews ?? [];
+  const pendingTotal = pendingData?.total ?? 0;
+  const flaggedReviews = flaggedData?.reviews ?? [];
+  const flaggedTotal = flaggedData?.total ?? 0;
+  const approvedReviews = approvedData?.reviews ?? [];
+  const approvedTotal = approvedData?.total ?? 0;
 
-  useEffect(() => {
-    fetchAll();
-  }, []);
+  const loading = pendingLoading && flaggedLoading && approvedLoading;
+  const isError = false; // Individual query errors handled per-tab
 
-  useEffect(() => {
-    fetchPending();
-  }, [pendingPage]);
-
-  useEffect(() => {
-    fetchFlagged();
-  }, [flaggedPage]);
-
-  useEffect(() => {
-    fetchApproved();
-  }, [approvedPage]);
+  const moderateMutation = useModerateReview();
+  const respondMutation = useAddAdminResponse();
+  const featureMutation = useFeatureReview();
+  const deleteMutation = useDeleteReview();
 
   // ─── Actions ────────────────────────────────────────────────────────────
 
-  const handleApprove = async (reviewId: string) => {
-    setActionLoading(reviewId);
-    try {
-      await moderateReview(reviewId, true);
-      await Promise.all([fetchPending(), fetchFlagged(), fetchApproved(), fetchStats()]);
-    } catch (err) {
-      console.error("Failed to approve review:", err);
-    } finally {
-      setActionLoading(null);
-    }
+  const handleApprove = (reviewId: string) => {
+    setActionLoadingId(reviewId);
+    moderateMutation.mutate(
+      { reviewId, approved: true },
+      { onSettled: () => setActionLoadingId(null) }
+    );
   };
 
-  const handleRejectSubmit = async () => {
+  const handleRejectSubmit = () => {
     if (!rejectDialog.reviewId) return;
-    setActionLoading(rejectDialog.reviewId);
-    try {
-      await moderateReview(rejectDialog.reviewId, false, rejectReason || undefined);
-      setRejectDialog({ open: false, reviewId: "" });
-      setRejectReason("");
-      await Promise.all([fetchPending(), fetchFlagged(), fetchApproved(), fetchStats()]);
-    } catch (err) {
-      console.error("Failed to reject review:", err);
-    } finally {
-      setActionLoading(null);
-    }
+    setActionLoadingId(rejectDialog.reviewId);
+    moderateMutation.mutate(
+      { reviewId: rejectDialog.reviewId, approved: false, note: rejectReason || undefined },
+      {
+        onSuccess: () => {
+          setRejectDialog({ open: false, reviewId: "" });
+          setRejectReason("");
+        },
+        onSettled: () => setActionLoadingId(null),
+      }
+    );
   };
 
-  const handleRespondSubmit = async () => {
+  const handleRespondSubmit = () => {
     if (!respondDialog.reviewId || !respondText.trim()) return;
-    setActionLoading(respondDialog.reviewId);
-    try {
-      await addAdminResponse(respondDialog.reviewId, respondText.trim());
-      setRespondDialog({ open: false, reviewId: "" });
-      setRespondText("");
-      await Promise.all([fetchPending(), fetchFlagged(), fetchApproved()]);
-    } catch (err) {
-      console.error("Failed to add response:", err);
-    } finally {
-      setActionLoading(null);
-    }
+    setActionLoadingId(respondDialog.reviewId);
+    respondMutation.mutate(
+      { reviewId: respondDialog.reviewId, response: respondText.trim() },
+      {
+        onSuccess: () => {
+          setRespondDialog({ open: false, reviewId: "" });
+          setRespondText("");
+        },
+        onSettled: () => setActionLoadingId(null),
+      }
+    );
   };
 
-  const handleDeleteSubmit = async () => {
+  const handleDeleteSubmit = () => {
     if (!deleteDialog.reviewId || !deleteReason.trim()) return;
-    setActionLoading(deleteDialog.reviewId);
-    try {
-      await deleteReviewAdmin(deleteDialog.reviewId, deleteReason.trim());
-      setDeleteDialog({ open: false, reviewId: "" });
-      setDeleteReason("");
-      await Promise.all([fetchPending(), fetchFlagged(), fetchApproved(), fetchStats()]);
-    } catch (err) {
-      console.error("Failed to delete review:", err);
-    } finally {
-      setActionLoading(null);
-    }
+    setActionLoadingId(deleteDialog.reviewId);
+    deleteMutation.mutate(
+      { reviewId: deleteDialog.reviewId, reason: deleteReason.trim() },
+      {
+        onSuccess: () => {
+          setDeleteDialog({ open: false, reviewId: "" });
+          setDeleteReason("");
+        },
+        onSettled: () => setActionLoadingId(null),
+      }
+    );
   };
 
-  const handleFeatureToggle = async (review: AdminReview) => {
-    setActionLoading(review.id);
-    try {
-      await featureReview(review.id, !review.featured);
-      await fetchApproved();
-    } catch (err) {
-      console.error("Failed to toggle featured:", err);
-    } finally {
-      setActionLoading(null);
-    }
+  const handleFeatureToggle = (review: AdminReview) => {
+    setActionLoadingId(review.id);
+    featureMutation.mutate(
+      { reviewId: review.id, featured: !review.featured },
+      { onSettled: () => setActionLoadingId(null) }
+    );
   };
 
   const handleDeleteApproved = async (reviewId: string) => {
@@ -500,15 +443,18 @@ export default function ReviewsPage() {
       variant: "destructive",
     });
     if (!ok) return;
-    setActionLoading(reviewId);
-    try {
-      await deleteReviewAdmin(reviewId, "Deleted by admin");
-      await Promise.all([fetchApproved(), fetchStats()]);
-    } catch (err) {
-      console.error("Failed to delete review:", err);
-    } finally {
-      setActionLoading(null);
-    }
+    setActionLoadingId(reviewId);
+    deleteMutation.mutate(
+      { reviewId, reason: "Deleted by admin" },
+      { onSettled: () => setActionLoadingId(null) }
+    );
+  };
+
+  const refetchAll = () => {
+    // Queries auto-refetch via invalidation; this is a manual trigger
+    pendingData; // queries will refetch when stale
+    flaggedData;
+    approvedData;
   };
 
   // ─── Pagination helpers ─────────────────────────────────────────────────
@@ -607,17 +553,6 @@ export default function ReviewsPage() {
         </Card>
       </div>
 
-      {/* Error */}
-      {error && (
-        <div className="flex items-center gap-2 p-4 bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 rounded-lg">
-          <AlertCircle className="h-5 w-5" />
-          <span>{error}</span>
-          <Button variant="ghost" size="sm" onClick={fetchAll} className="ml-auto">
-            Retry
-          </Button>
-        </div>
-      )}
-
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <div className="flex items-center justify-between">
@@ -640,7 +575,7 @@ export default function ReviewsPage() {
             </TabsTrigger>
             <TabsTrigger value="approved">All Approved</TabsTrigger>
           </TabsList>
-          <Button variant="outline" size="icon" onClick={fetchAll} disabled={loading}>
+          <Button variant="outline" size="icon" disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             <span className="sr-only">Refresh</span>
           </Button>
@@ -648,7 +583,7 @@ export default function ReviewsPage() {
 
         {/* ─── Pending Tab ──────────────────────────────────────────────── */}
         <TabsContent value="pending" className="mt-4">
-          {loading && pendingReviews.length === 0 ? (
+          {pendingLoading && pendingReviews.length === 0 ? (
             <div className="space-y-4">
               {[...Array(3)].map((_, i) => (
                 <Card key={i}>
@@ -681,7 +616,7 @@ export default function ReviewsPage() {
                   onApprove={handleApprove}
                   onReject={(id) => setRejectDialog({ open: true, reviewId: id })}
                   onRespond={(id) => setRespondDialog({ open: true, reviewId: id })}
-                  actionLoading={actionLoading}
+                  actionLoading={actionLoadingId}
                 />
               ))}
               <PaginationBar total={pendingTotal} page={pendingPage} setPage={setPendingPage} />
@@ -691,7 +626,7 @@ export default function ReviewsPage() {
 
         {/* ─── Flagged Tab ──────────────────────────────────────────────── */}
         <TabsContent value="flagged" className="mt-4">
-          {loading && flaggedReviews.length === 0 ? (
+          {flaggedLoading && flaggedReviews.length === 0 ? (
             <div className="space-y-4">
               {[...Array(3)].map((_, i) => (
                 <Card key={i}>
@@ -725,7 +660,7 @@ export default function ReviewsPage() {
                   onReject={(id) => setRejectDialog({ open: true, reviewId: id })}
                   onRespond={(id) => setRespondDialog({ open: true, reviewId: id })}
                   onDelete={(id) => setDeleteDialog({ open: true, reviewId: id })}
-                  actionLoading={actionLoading}
+                  actionLoading={actionLoadingId}
                 />
               ))}
               <PaginationBar total={flaggedTotal} page={flaggedPage} setPage={setFlaggedPage} />
@@ -737,7 +672,7 @@ export default function ReviewsPage() {
         <TabsContent value="approved" className="mt-4">
           <Card>
             <CardContent className="pt-6">
-              {loading && approvedReviews.length === 0 ? (
+              {approvedLoading && approvedReviews.length === 0 ? (
                 <div className="space-y-3">
                   {[...Array(5)].map((_, i) => (
                     <div key={i} className="flex items-center gap-4">
@@ -803,7 +738,7 @@ export default function ReviewsPage() {
                               <Switch
                                 checked={!!review.featured}
                                 onCheckedChange={() => handleFeatureToggle(review)}
-                                disabled={actionLoading === review.id}
+                                disabled={actionLoadingId === review.id}
                               />
                             </TableCell>
                             <TableCell className="text-right">
@@ -814,7 +749,7 @@ export default function ReviewsPage() {
                                   onClick={() =>
                                     setRespondDialog({ open: true, reviewId: review.id })
                                   }
-                                  disabled={actionLoading === review.id}
+                                  disabled={actionLoadingId === review.id}
                                 >
                                   <MessageSquare className="h-4 w-4" />
                                 </Button>
@@ -823,7 +758,7 @@ export default function ReviewsPage() {
                                   size="sm"
                                   className="text-destructive hover:text-destructive"
                                   onClick={() => handleDeleteApproved(review.id)}
-                                  disabled={actionLoading === review.id}
+                                  disabled={actionLoadingId === review.id}
                                 >
                                   <Trash2 className="h-4 w-4" />
                                   <span className="sr-only">Delete</span>

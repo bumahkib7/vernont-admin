@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -20,7 +20,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
@@ -68,19 +67,8 @@ import {
   Sparkles,
 } from "lucide-react";
 import {
-  getDiscounts,
-  getDiscountStats,
-  getDiscountActivity,
-  activateDiscount,
-  deactivateDiscount,
-  deleteDiscount,
-  duplicateDiscount,
-  bulkDiscountAction,
   formatPrice,
-  formatDateTime,
   type Promotion,
-  type DiscountStatsResponse,
-  type DiscountActivityItem,
   getPromotionTypeDisplay,
   getPromotionStatusDisplay,
   formatDiscountValue,
@@ -89,15 +77,20 @@ import { toast } from "sonner";
 import { useAgentActionsStore } from "@/stores/agent-actions";
 import { DiscountDialog } from "@/components/discounts/DiscountDialog";
 import { usePageContext } from "@/hooks/use-page-context";
+import {
+  useDiscounts,
+  useDiscountStats,
+  useDiscountActivity,
+  useActivateDiscount,
+  useDeactivateDiscount,
+  useDeleteDiscount,
+  useDuplicateDiscount,
+  useBulkDiscountAction,
+} from "@/hooks/use-discounts";
 
 export default function DiscountsPage() {
   usePageContext("discounts");
   // State
-  const [discounts, setDiscounts] = useState<Promotion[]>([]);
-  const [stats, setStats] = useState<DiscountStatsResponse | null>(null);
-  const [activity, setActivity] = useState<DiscountActivityItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -105,7 +98,6 @@ export default function DiscountsPage() {
   const [pagination, setPagination] = useState({
     offset: 0,
     limit: 50,
-    count: 0,
   });
 
   // Dialog state
@@ -113,6 +105,16 @@ export default function DiscountsPage() {
   const [editingDiscount, setEditingDiscount] = useState<Promotion | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingDiscount, setDeletingDiscount] = useState<Promotion | null>(null);
+
+  // Debounced search
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+      setPagination((prev) => ({ ...prev, offset: 0 }));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   // Agent actions: auto-open discount dialog
   const pendingModal = useAgentActionsStore(s => s.pendingModal);
@@ -126,62 +128,28 @@ export default function DiscountsPage() {
     }
   }, [pendingModal, consumeModal]);
 
-  // Fetch data
-  const fetchDiscounts = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await getDiscounts({
-        limit: pagination.limit,
-        offset: pagination.offset,
-        q: searchQuery || undefined,
-        status: statusFilter !== "all" ? statusFilter : undefined,
-        type: typeFilter !== "all" ? typeFilter : undefined,
-      });
-      setDiscounts(response.items);
-      setPagination((prev) => ({
-        ...prev,
-        count: response.count,
-      }));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load discounts");
-    } finally {
-      setLoading(false);
-    }
-  }, [pagination.limit, pagination.offset, searchQuery, statusFilter, typeFilter]);
+  // React Query hooks
+  const discountsQuery = useDiscounts({
+    limit: pagination.limit,
+    offset: pagination.offset,
+    q: debouncedSearch || undefined,
+    status: statusFilter !== "all" ? statusFilter : undefined,
+    type: typeFilter !== "all" ? typeFilter : undefined,
+  });
+  const statsQuery = useDiscountStats();
+  const activityQuery = useDiscountActivity({ limit: 20 });
 
-  const fetchStats = async () => {
-    try {
-      const response = await getDiscountStats();
-      setStats(response);
-    } catch (err) {
-      console.error("Failed to load stats:", err);
-    }
-  };
+  // Mutations
+  const activateMutation = useActivateDiscount();
+  const deactivateMutation = useDeactivateDiscount();
+  const deleteMutation = useDeleteDiscount();
+  const duplicateMutation = useDuplicateDiscount();
+  const bulkMutation = useBulkDiscountAction();
 
-  const fetchActivity = async () => {
-    try {
-      const response = await getDiscountActivity({ limit: 20 });
-      setActivity(response.items);
-    } catch (err) {
-      console.error("Failed to load activity:", err);
-    }
-  };
-
-  useEffect(() => {
-    fetchDiscounts();
-    fetchStats();
-    fetchActivity();
-  }, [fetchDiscounts]);
-
-  // Debounced search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setPagination((prev) => ({ ...prev, offset: 0 }));
-      fetchDiscounts();
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
+  const discounts = discountsQuery.data?.items ?? [];
+  const stats = statsQuery.data ?? null;
+  const activity = activityQuery.data?.items ?? [];
+  const totalCount = discountsQuery.data?.count ?? 0;
 
   // Handlers
   const handleCreateDiscount = () => {
@@ -194,70 +162,44 @@ export default function DiscountsPage() {
     setDialogOpen(true);
   };
 
-  const handleToggleStatus = async (discount: Promotion) => {
-    try {
-      if (discount.isActive) {
-        await deactivateDiscount(discount.id);
-      } else {
-        await activateDiscount(discount.id);
-      }
-      toast.success(discount.isActive ? "Discount deactivated" : "Discount activated");
-      await fetchDiscounts();
-      await fetchStats();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update status");
-      toast.error("Failed to update status");
+  const handleToggleStatus = (discount: Promotion) => {
+    if (discount.isActive) {
+      deactivateMutation.mutate(discount.id);
+    } else {
+      activateMutation.mutate(discount.id);
     }
   };
 
-  const handleDuplicate = async (discount: Promotion) => {
-    try {
-      await duplicateDiscount(discount.id);
-      toast.success("Discount duplicated");
-      await fetchDiscounts();
-      await fetchStats();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to duplicate");
-      toast.error("Failed to duplicate discount");
-    }
+  const handleDuplicate = (discount: Promotion) => {
+    duplicateMutation.mutate(discount.id);
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!deletingDiscount) return;
-    try {
-      await deleteDiscount(deletingDiscount.id);
-      setDeleteDialogOpen(false);
-      setDeletingDiscount(null);
-      toast.success("Discount deleted");
-      await fetchDiscounts();
-      await fetchStats();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete");
-      toast.error("Failed to delete discount");
-    }
+    deleteMutation.mutate(deletingDiscount.id, {
+      onSuccess: () => {
+        setDeleteDialogOpen(false);
+        setDeletingDiscount(null);
+      },
+    });
   };
 
-  const handleBulkAction = async (action: "ACTIVATE" | "DEACTIVATE" | "DELETE") => {
+  const handleBulkAction = (action: "ACTIVATE" | "DEACTIVATE" | "DELETE") => {
     if (selectedIds.size === 0) return;
-    try {
-      await bulkDiscountAction({
-        ids: Array.from(selectedIds),
-        action,
-      });
-      setSelectedIds(new Set());
-      toast.success(`Bulk ${action.toLowerCase()} completed for ${selectedIds.size} discount(s)`);
-      await fetchDiscounts();
-      await fetchStats();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Bulk action failed");
-      toast.error("Bulk action failed");
-    }
+    bulkMutation.mutate(
+      { ids: Array.from(selectedIds), action },
+      {
+        onSuccess: () => {
+          setSelectedIds(new Set());
+        },
+      }
+    );
   };
 
   const handleDialogSuccess = () => {
-    fetchDiscounts();
-    fetchStats();
-    fetchActivity();
+    discountsQuery.refetch();
+    statsQuery.refetch();
+    activityQuery.refetch();
   };
 
   const toggleSelection = (id: string) => {
@@ -293,6 +235,12 @@ export default function DiscountsPage() {
       default:
         return <Tag className="h-4 w-4" />;
     }
+  };
+
+  const handleRefresh = () => {
+    discountsQuery.refetch();
+    statsQuery.refetch();
+    activityQuery.refetch();
   };
 
   return (
@@ -366,17 +314,17 @@ export default function DiscountsPage() {
       )}
 
       {/* Error Alert */}
-      {error && (
+      {discountsQuery.error && (
         <div className="flex items-center gap-2 p-4 bg-destructive/10 text-destructive rounded-lg">
           <AlertCircle className="h-5 w-5" />
-          <span>{error}</span>
+          <span>{discountsQuery.error.message}</span>
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setError(null)}
+            onClick={() => discountsQuery.refetch()}
             className="ml-auto"
           >
-            Dismiss
+            Retry
           </Button>
         </div>
       )}
@@ -427,11 +375,7 @@ export default function DiscountsPage() {
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => {
-                    fetchDiscounts();
-                    fetchStats();
-                    fetchActivity();
-                  }}
+                  onClick={handleRefresh}
                 >
                   <RefreshCw className="h-4 w-4" />
                 </Button>
@@ -506,7 +450,7 @@ export default function DiscountsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {loading && discounts.length === 0 ? (
+                  {discountsQuery.isLoading && discounts.length === 0 ? (
                     [...Array(5)].map((_, i) => (
                       <TableRow key={i}>
                         <TableCell>
@@ -668,13 +612,13 @@ export default function DiscountsPage() {
             </CardContent>
 
             {/* Pagination */}
-            {pagination.count > pagination.limit && (
+            {totalCount > pagination.limit && (
               <CardContent className="border-t">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <span className="text-sm text-muted-foreground">
                     Showing {pagination.offset + 1} to{" "}
-                    {Math.min(pagination.offset + pagination.limit, pagination.count)} of{" "}
-                    {pagination.count}
+                    {Math.min(pagination.offset + pagination.limit, totalCount)} of{" "}
+                    {totalCount}
                   </span>
                   <div className="flex gap-2">
                     <Button
@@ -694,7 +638,7 @@ export default function DiscountsPage() {
                       variant="outline"
                       size="sm"
                       disabled={
-                        pagination.offset + pagination.limit >= pagination.count
+                        pagination.offset + pagination.limit >= totalCount
                       }
                       onClick={() =>
                         setPagination((prev) => ({

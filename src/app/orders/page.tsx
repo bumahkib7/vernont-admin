@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import {
   Card,
   CardContent,
@@ -37,7 +37,6 @@ import {
 } from "lucide-react";
 import { BulkActionBar } from "@/components/ui/bulk-action-bar";
 import { DataTable, type Column } from "@/components/ui/data-table";
-import { toast } from "sonner";
 import {
   PaymentStatus,
   FulfillmentStatus,
@@ -47,8 +46,10 @@ import {
   getFulfillmentStatusDisplay,
 } from "@/lib/api";
 import { CsvExportButton } from "@/components/csv-export-button";
-import { useOrdersStore, useWebSocketStore } from "@/stores";
+import { useWebSocketStore } from "@/stores";
 import { usePageContext } from "@/hooks/use-page-context";
+import { useOrdersPage } from "@/hooks/use-orders";
+import { useOrderStore } from "@/stores/order-store";
 
 function PaymentStatusBadge({ status }: { status: PaymentStatus }) {
   const { label, color } = getPaymentStatusDisplay(status);
@@ -70,68 +71,49 @@ function FulfillmentStatusBadge({ status }: { status: FulfillmentStatus }) {
   );
 }
 
-type Filter = {
-  id: string;
-  label: string;
-  value: string;
-};
-
 export default function OrdersPage() {
-  // Use Zustand store instead of local state
   const {
+    // Data
     orders,
-    count,
+    totalCount,
+
+    // Loading / error
     isLoading,
+    isFetching,
     error,
-    filters,
-    fetchOrders,
-    setFilters,
-    subscribeToOrders,
-  } = useOrdersStore();
+    refetch,
+
+    // Pagination
+    page,
+    pageSize,
+    setPage,
+
+    // Search
+    searchQuery,
+    setSearchQuery,
+
+    // Filters
+    activeFilters,
+    addFilter,
+    removeFilter,
+    clearFilters,
+
+    // Selection
+    selectedOrderIds,
+    clearSelection,
+
+    // Bulk actions
+    bulkShip,
+    bulkCancel,
+  } = useOrdersPage();
 
   const { isConnected } = useWebSocketStore();
   usePageContext("orders");
 
-  const [activeFilters, setActiveFilters] = useState<Filter[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
-
-  // Subscribe to WebSocket updates on mount
-  useEffect(() => {
-    const unsubscribe = subscribeToOrders();
-    return unsubscribe;
-  }, [subscribeToOrders]);
-
-  // Initial fetch
-  useEffect(() => {
-    fetchOrders();
-  }, [fetchOrders]);
-
-  // Debounced search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchOrders({ q: searchQuery || undefined, offset: 0 });
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchQuery, fetchOrders]);
-
-  const addFilter = (filter: Filter) => {
-    if (!activeFilters.find((f) => f.id === filter.id && f.value === filter.value)) {
-      setActiveFilters([...activeFilters, filter]);
-    }
-  };
-
-  const removeFilter = (filterId: string, value: string) => {
-    setActiveFilters(activeFilters.filter((f) => !(f.id === filterId && f.value === value)));
-  };
-
-  const clearFilters = () => {
-    setActiveFilters([]);
-  };
-
+  // Handle CSV export
   const handleExport = () => {
     const headers = ["Order", "Date", "Customer", "Payment", "Fulfillment", "Order Total"];
-    const rows = filteredOrders.map((order) => [
+    const rows = orders.map((order) => [
       `#${order.displayId}`,
       formatDate(order.createdAt),
       order.email,
@@ -150,29 +132,22 @@ export default function OrdersPage() {
     URL.revokeObjectURL(url);
   };
 
-  // Filter orders based on active filters
-  const filteredOrders = orders.filter((order) => {
-    for (const filter of activeFilters) {
-      if (filter.id === "payment" && order.paymentStatus !== filter.value) {
-        return false;
-      }
-      if (filter.id === "fulfillment" && order.fulfillmentStatus !== filter.value) {
-        return false;
-      }
-    }
-    return true;
-  });
-
-  const limit = filters.limit || 20;
-  const offset = filters.offset || 0;
-  const totalPages = Math.ceil(count / limit);
-  const currentPage = Math.floor(offset / limit) + 1;
-
-  const goToPage = (page: number) => {
-    fetchOrders({ offset: (page - 1) * limit });
+  const handleBulkMarkShipped = () => {
+    const ids = Array.from(selectedOrderIds);
+    if (ids.length > 0) bulkShip(ids);
   };
 
-  const orderColumns: Column<(typeof filteredOrders)[number]>[] = useMemo(
+  const handleBulkCancel = () => {
+    const ids = Array.from(selectedOrderIds);
+    if (ids.length > 0) bulkCancel(ids);
+  };
+
+  const handleBulkExport = () => {
+    handleExport();
+    clearSelection();
+  };
+
+  const orderColumns: Column<(typeof orders)[number]>[] = useMemo(
     () => [
       {
         id: "order",
@@ -211,21 +186,6 @@ export default function OrdersPage() {
     []
   );
 
-  const handleBulkMarkShipped = async () => {
-    toast.success(`Marked ${selectedOrders.size} orders as shipped`);
-    setSelectedOrders(new Set());
-  };
-
-  const handleBulkCancel = async () => {
-    toast.success(`Cancelled ${selectedOrders.size} orders`);
-    setSelectedOrders(new Set());
-  };
-
-  const handleBulkExport = async () => {
-    toast.success(`Exported ${selectedOrders.size} orders`);
-    setSelectedOrders(new Set());
-  };
-
   return (
     <div className="flex flex-col gap-6 p-4 sm:p-6">
       <Card>
@@ -246,8 +206,8 @@ export default function OrdersPage() {
             )}
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={() => fetchOrders()} disabled={isLoading}>
-              <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+            <Button variant="outline" size="icon" onClick={() => refetch()} disabled={isFetching}>
+              <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
             </Button>
             <CsvExportButton type="orders" />
           </div>
@@ -363,8 +323,8 @@ export default function OrdersPage() {
           {error && (
             <div className="flex items-center gap-2 p-4 mb-4 bg-red-50 text-red-700 dark:bg-red-950/20 dark:text-red-400 rounded-lg">
               <AlertCircle className="h-5 w-5" />
-              <span>{error}</span>
-              <Button variant="ghost" size="sm" onClick={() => fetchOrders()} className="ml-auto">
+              <span>{error.message}</span>
+              <Button variant="ghost" size="sm" onClick={() => refetch()} className="ml-auto">
                 Retry
               </Button>
             </div>
@@ -373,18 +333,22 @@ export default function OrdersPage() {
           {/* Orders Table */}
           <DataTable
             columns={orderColumns}
-            data={filteredOrders}
+            data={orders}
             loading={isLoading}
             selectable
-            selectedIds={selectedOrders}
-            onSelectionChange={setSelectedOrders}
+            selectedIds={selectedOrderIds}
+            onSelectionChange={(ids) => {
+              // DataTable gives us the full Set; sync it into Zustand
+              const store = useOrderStore;
+              store.setState({ selectedOrderIds: ids });
+            }}
             getRowId={(o) => o.id}
             onRowClick={(o) => (window.location.href = `/orders/${o.id}`)}
             pagination={{
-              page: currentPage,
-              pageSize: limit,
-              total: count,
-              onPageChange: goToPage,
+              page,
+              pageSize,
+              total: totalCount,
+              onPageChange: setPage,
             }}
             emptyTitle={orders.length === 0 ? "No orders found" : "No orders match your filters"}
           />
@@ -393,8 +357,8 @@ export default function OrdersPage() {
 
       {/* Bulk Action Bar */}
       <BulkActionBar
-        selectedCount={selectedOrders.size}
-        onClearSelection={() => setSelectedOrders(new Set())}
+        selectedCount={selectedOrderIds.size}
+        onClearSelection={clearSelection}
         actions={[
           { label: "Mark Shipped", icon: <Truck className="h-4 w-4" />, onClick: handleBulkMarkShipped },
           { label: "Cancel", icon: <XCircle className="h-4 w-4" />, onClick: handleBulkCancel, variant: "outline" },

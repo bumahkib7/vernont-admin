@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -67,26 +67,29 @@ import {
   WifiOff,
 } from "lucide-react";
 import { toast } from "sonner";
-import {
-  getRegions,
-  createRegion,
-  updateRegion,
-  deleteRegion,
-  ApiError,
-  type Region,
-  type CreateRegionInput,
-  type UpdateRegionInput,
-} from "@/lib/api";
+import { ApiError, type Region, type CreateRegionInput, type UpdateRegionInput } from "@/lib/api";
 import { useWebSocket } from "@/hooks/use-websocket";
+import { useRegions, useCreateRegion, useUpdateRegion, useDeleteRegion } from "@/hooks/use-regions";
 
 export default function RegionsSettingsPage() {
-  const [regions, setRegions] = useState<Region[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
   // WebSocket for real-time updates
   const { isConnected, subscribe } = useWebSocket();
+
+  // React Query — server state
+  const regionsQuery = useRegions({ limit: 100 });
+  const createMutation = useCreateRegion();
+  const updateMutation = useUpdateRegion();
+  const deleteMutation = useDeleteRegion();
+
+  const regions = regionsQuery.data?.regions ?? [];
+  const isLoading = regionsQuery.isLoading;
+  const error = regionsQuery.error
+    ? regionsQuery.error instanceof ApiError
+      ? regionsQuery.error.message
+      : regionsQuery.error.message
+    : null;
 
   // Create modal state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -95,7 +98,6 @@ export default function RegionsSettingsPage() {
   const [createAutomaticTaxes, setCreateAutomaticTaxes] = useState(false);
   const [createTaxInclusive, setCreateTaxInclusive] = useState(false);
   const [createTaxRate, setCreateTaxRate] = useState("");
-  const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
   // Edit modal state
@@ -106,13 +108,11 @@ export default function RegionsSettingsPage() {
   const [editAutomaticTaxes, setEditAutomaticTaxes] = useState(false);
   const [editTaxInclusive, setEditTaxInclusive] = useState(false);
   const [editTaxRate, setEditTaxRate] = useState("");
-  const [isUpdating, setIsUpdating] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
   // Delete confirmation state
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [deletingRegion, setDeletingRegion] = useState<Region | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   // Extract error message from API error
   const getErrorMessage = (err: unknown): string => {
@@ -124,24 +124,6 @@ export default function RegionsSettingsPage() {
     }
     return "An unexpected error occurred";
   };
-
-  // Fetch regions
-  const fetchRegions = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const response = await getRegions({ limit: 100 });
-      setRegions(response.regions || []);
-    } catch (err) {
-      setError(getErrorMessage(err));
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchRegions();
-  }, [fetchRegions]);
 
   // Subscribe to WebSocket for real-time updates
   useEffect(() => {
@@ -155,7 +137,7 @@ export default function RegionsSettingsPage() {
 
       // Refetch regions when a Region entity is modified
       if (auditLog.entityType === "Region") {
-        fetchRegions();
+        regionsQuery.refetch();
       }
     });
 
@@ -164,7 +146,7 @@ export default function RegionsSettingsPage() {
         subscription.unsubscribe();
       }
     };
-  }, [isConnected, subscribe, fetchRegions]);
+  }, [isConnected, subscribe, regionsQuery.refetch]);
 
   // Filter regions by search
   const filteredRegions = regions.filter((region) => {
@@ -178,33 +160,30 @@ export default function RegionsSettingsPage() {
   });
 
   // Handle create
-  const handleCreate = async () => {
+  const handleCreate = () => {
     if (!createName || !createCurrencyCode) {
       setCreateError("Name and currency code are required");
       return;
     }
 
-    try {
-      setIsCreating(true);
-      setCreateError(null);
+    setCreateError(null);
+    const data: CreateRegionInput = {
+      name: createName,
+      currencyCode: createCurrencyCode.toUpperCase(),
+      automaticTaxes: createAutomaticTaxes,
+      taxInclusive: createTaxInclusive,
+      taxRate: createTaxRate ? parseFloat(createTaxRate) : undefined,
+    };
 
-      const data: CreateRegionInput = {
-        name: createName,
-        currencyCode: createCurrencyCode.toUpperCase(),
-        automaticTaxes: createAutomaticTaxes,
-        taxInclusive: createTaxInclusive,
-        taxRate: createTaxRate ? parseFloat(createTaxRate) : undefined,
-      };
-
-      await createRegion(data);
-      setIsCreateOpen(false);
-      resetCreateForm();
-      fetchRegions();
-    } catch (err) {
-      setCreateError(getErrorMessage(err));
-    } finally {
-      setIsCreating(false);
-    }
+    createMutation.mutate(data, {
+      onSuccess: () => {
+        setIsCreateOpen(false);
+        resetCreateForm();
+      },
+      onError: (err) => {
+        setCreateError(getErrorMessage(err));
+      },
+    });
   };
 
   const resetCreateForm = () => {
@@ -228,33 +207,33 @@ export default function RegionsSettingsPage() {
     setIsEditOpen(true);
   };
 
-  const handleUpdate = async () => {
+  const handleUpdate = () => {
     if (!editingRegion || !editName) {
       setEditError("Name is required");
       return;
     }
 
-    try {
-      setIsUpdating(true);
-      setEditError(null);
+    setEditError(null);
+    const data: UpdateRegionInput = {
+      name: editName,
+      currencyCode: editCurrencyCode.toUpperCase(),
+      automaticTaxes: editAutomaticTaxes,
+      taxInclusive: editTaxInclusive,
+      taxRate: editTaxRate ? parseFloat(editTaxRate) : undefined,
+    };
 
-      const data: UpdateRegionInput = {
-        name: editName,
-        currencyCode: editCurrencyCode.toUpperCase(),
-        automaticTaxes: editAutomaticTaxes,
-        taxInclusive: editTaxInclusive,
-        taxRate: editTaxRate ? parseFloat(editTaxRate) : undefined,
-      };
-
-      await updateRegion(editingRegion.id, data);
-      setIsEditOpen(false);
-      setEditingRegion(null);
-      fetchRegions();
-    } catch (err) {
-      setEditError(getErrorMessage(err));
-    } finally {
-      setIsUpdating(false);
-    }
+    updateMutation.mutate(
+      { id: editingRegion.id, data },
+      {
+        onSuccess: () => {
+          setIsEditOpen(false);
+          setEditingRegion(null);
+        },
+        onError: (err) => {
+          setEditError(getErrorMessage(err));
+        },
+      },
+    );
   };
 
   // Handle delete
@@ -263,22 +242,24 @@ export default function RegionsSettingsPage() {
     setIsDeleteOpen(true);
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!deletingRegion) return;
 
-    try {
-      setIsDeleting(true);
-      await deleteRegion(deletingRegion.id);
-      setIsDeleteOpen(false);
-      setDeletingRegion(null);
-      fetchRegions();
-    } catch (err) {
-      console.error("Failed to delete region:", err);
-      toast.error(err instanceof Error ? err.message : "Failed to delete region");
-    } finally {
-      setIsDeleting(false);
-    }
+    deleteMutation.mutate(deletingRegion.id, {
+      onSuccess: () => {
+        setIsDeleteOpen(false);
+        setDeletingRegion(null);
+      },
+      onError: (err) => {
+        console.error("Failed to delete region:", err);
+        toast.error(err instanceof Error ? err.message : "Failed to delete region");
+      },
+    });
   };
+
+  const isCreating = createMutation.isPending;
+  const isUpdating = updateMutation.isPending;
+  const isDeleting = deleteMutation.isPending;
 
   return (
     <div className="flex flex-col gap-6 p-6">
@@ -339,7 +320,7 @@ export default function RegionsSettingsPage() {
             <div className="flex items-center gap-2 p-4 mb-4 text-red-600 bg-red-50 dark:bg-red-950/20 dark:text-red-400 rounded-lg">
               <AlertCircle className="h-5 w-5" />
               <span>{error}</span>
-              <Button variant="outline" size="sm" onClick={fetchRegions} className="ml-auto">
+              <Button variant="outline" size="sm" onClick={() => regionsQuery.refetch()} className="ml-auto">
                 Retry
               </Button>
             </div>

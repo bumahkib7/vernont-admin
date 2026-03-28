@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import {
   Card,
@@ -62,20 +62,20 @@ import {
   ArrowDownRight,
 } from "lucide-react";
 import {
-  getInventoryLevels,
-  getInventoryStockLocations,
-  adjustInventory,
-  getInventoryMovements,
   getMovementTypeDisplay,
-  backfillInventory,
   type InventoryLevel,
-  type InventoryStockLocation,
-  type InventoryMovement,
   type MovementType,
 } from "@/lib/api";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { toast } from "sonner";
 import { usePageContext } from "@/hooks/use-page-context";
+import {
+  useInventoryLevels,
+  useInventoryStockLocations,
+  useInventoryMovements,
+  useAdjustInventory,
+  useBackfillInventory,
+} from "@/hooks/use-inventory";
 
 type AdjustmentType = "add" | "remove" | "adjust";
 
@@ -120,18 +120,10 @@ function getStatusBadge(status: string) {
 export default function InventoryPage() {
   usePageContext("inventory");
   const [activeTab, setActiveTab] = useState<string>("levels");
-  const [inventoryLevels, setInventoryLevels] = useState<InventoryLevel[]>([]);
-  const [movements, setMovements] = useState<InventoryMovement[]>([]);
-  const [locations, setLocations] = useState<InventoryStockLocation[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMovements, setIsLoadingMovements] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLocation, setSelectedLocation] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [movementTypeFilter, setMovementTypeFilter] = useState<string>("all");
-
-  const [isBackfilling, setIsBackfilling] = useState(false);
 
   // Adjustment dialog state
   const [adjustmentDialog, setAdjustmentDialog] = useState<AdjustmentDialogState>({
@@ -142,85 +134,37 @@ export default function InventoryPage() {
   const [adjustmentQuantity, setAdjustmentQuantity] = useState<number>(1);
   const [adjustmentReason, setAdjustmentReason] = useState<string>("RESTOCK");
   const [adjustmentNote, setAdjustmentNote] = useState<string>("");
-  const [isAdjusting, setIsAdjusting] = useState(false);
 
-  const handleBackfill = async () => {
-    setIsBackfilling(true);
-    try {
-      const result = await backfillInventory();
-      if (result.backfilled > 0) {
-        toast.success(`Created inventory for ${result.backfilled} variant${result.backfilled !== 1 ? "s" : ""}`);
-        await fetchData();
-      } else {
-        toast.info("All variants already have inventory records");
-      }
-    } catch (err) {
-      console.error("Backfill failed:", err);
-      toast.error(err instanceof Error ? err.message : "Failed to backfill inventory");
-    } finally {
-      setIsBackfilling(false);
-    }
-  };
+  // React Query hooks
+  const levelsQuery = useInventoryLevels({ limit: 100 });
+  const locationsQuery = useInventoryStockLocations({ limit: 50 });
+  const movementsQuery = useInventoryMovements(
+    {
+      limit: 100,
+      locationId: selectedLocation !== "all" ? selectedLocation : undefined,
+      movementType: movementTypeFilter !== "all" ? movementTypeFilter : undefined,
+    },
+    activeTab === "movements"
+  );
 
-  const fetchData = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
+  const adjustMutation = useAdjustInventory();
+  const backfillMutation = useBackfillInventory();
 
-      const [levelsResponse, locationsResponse] = await Promise.all([
-        getInventoryLevels({ limit: 100 }),
-        getInventoryStockLocations({ limit: 50 }),
-      ]);
-
-      setInventoryLevels(levelsResponse.inventory_levels);
-      setLocations(locationsResponse.stock_locations);
-    } catch (err) {
-      console.error("Failed to fetch inventory data:", err);
-      setError(err instanceof Error ? err.message : "Failed to load inventory");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  const fetchMovements = useCallback(async () => {
-    try {
-      setIsLoadingMovements(true);
-      const response = await getInventoryMovements({
-        limit: 100,
-        locationId: selectedLocation !== "all" ? selectedLocation : undefined,
-        movementType: movementTypeFilter !== "all" ? movementTypeFilter : undefined,
-      });
-      setMovements(response.movements);
-    } catch (err) {
-      console.error("Failed to fetch movements:", err);
-      toast.error("Failed to load stock movements");
-    } finally {
-      setIsLoadingMovements(false);
-    }
-  }, [selectedLocation, movementTypeFilter]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  useEffect(() => {
-    if (activeTab === "movements") {
-      fetchMovements();
-    }
-  }, [activeTab, fetchMovements]);
+  const inventoryLevels = levelsQuery.data?.inventory_levels ?? [];
+  const locations = locationsQuery.data?.stock_locations ?? [];
+  const movements = movementsQuery.data?.movements ?? [];
+  const isLoading = levelsQuery.isLoading || locationsQuery.isLoading;
+  const error = levelsQuery.error || locationsQuery.error;
 
   // Filter inventory levels
   const filteredLevels = inventoryLevels.filter((level) => {
-    // Search filter
     const searchLower = searchQuery.toLowerCase();
     const matchesSearch = !searchQuery ||
       (level.sku?.toLowerCase().includes(searchLower)) ||
       (level.locationName?.toLowerCase().includes(searchLower));
 
-    // Location filter
     const matchesLocation = selectedLocation === "all" || level.locationId === selectedLocation;
 
-    // Status filter
     const status = getStockStatus(level.availableQuantity, level.stockedQuantity);
     const matchesStatus = statusFilter === "all" || status === statusFilter;
 
@@ -243,7 +187,6 @@ export default function InventoryPage() {
   const openAdjustmentDialog = (type: AdjustmentType, level: InventoryLevel) => {
     setAdjustmentDialog({ isOpen: true, type, level });
     setAdjustmentQuantity(1);
-    // Set default reason based on type
     if (type === "add") {
       setAdjustmentReason("RESTOCK");
     } else if (type === "remove") {
@@ -261,37 +204,34 @@ export default function InventoryPage() {
   const handleAdjustment = async () => {
     if (!adjustmentDialog.level) return;
 
-    try {
-      setIsAdjusting(true);
+    let adjustmentValue = adjustmentQuantity;
+    if (adjustmentDialog.type === "remove") {
+      adjustmentValue = -adjustmentQuantity;
+    } else if (adjustmentDialog.type === "adjust") {
+      adjustmentValue = adjustmentQuantity - adjustmentDialog.level.stockedQuantity;
+    }
 
-      // Calculate the actual adjustment value
-      let adjustmentValue = adjustmentQuantity;
-      if (adjustmentDialog.type === "remove") {
-        adjustmentValue = -adjustmentQuantity;
-      } else if (adjustmentDialog.type === "adjust") {
-        // For "adjust", the user enters the new target quantity
-        // So adjustment = target - current
-        adjustmentValue = adjustmentQuantity - adjustmentDialog.level.stockedQuantity;
-      }
-
-      await adjustInventory({
+    adjustMutation.mutate(
+      {
         inventoryLevelId: adjustmentDialog.level.id,
         adjustment: adjustmentValue,
         reason: adjustmentReason,
         note: adjustmentNote || undefined,
-      });
+      },
+      {
+        onSuccess: () => {
+          toast.success(
+            `Successfully ${adjustmentDialog.type === "add" ? "added" : adjustmentDialog.type === "remove" ? "removed" : "adjusted"} stock`
+          );
+          closeAdjustmentDialog();
+        },
+      }
+    );
+  };
 
-      toast.success(`Successfully ${adjustmentDialog.type === "add" ? "added" : adjustmentDialog.type === "remove" ? "removed" : "adjusted"} stock`);
-
-      // Refresh data
-      await fetchData();
-      closeAdjustmentDialog();
-    } catch (err) {
-      console.error("Failed to adjust inventory:", err);
-      toast.error(err instanceof Error ? err.message : "Failed to adjust inventory");
-    } finally {
-      setIsAdjusting(false);
-    }
+  const handleRefresh = () => {
+    levelsQuery.refetch();
+    locationsQuery.refetch();
   };
 
   const stockLevelColumns: Column<InventoryLevel>[] = useMemo(
@@ -400,8 +340,8 @@ export default function InventoryPage() {
       <div className="flex flex-col items-center justify-center gap-4 p-6">
         <AlertTriangle className="h-12 w-12 text-destructive" />
         <p className="text-lg font-medium">Failed to load inventory</p>
-        <p className="text-muted-foreground">{error}</p>
-        <Button onClick={fetchData}>Retry</Button>
+        <p className="text-muted-foreground">{error.message}</p>
+        <Button onClick={handleRefresh}>Retry</Button>
       </div>
     );
   }
@@ -421,18 +361,18 @@ export default function InventoryPage() {
             <Button
               variant="default"
               className="gap-2"
-              onClick={handleBackfill}
-              disabled={isBackfilling}
+              onClick={() => backfillMutation.mutate()}
+              disabled={backfillMutation.isPending}
             >
-              {isBackfilling ? (
+              {backfillMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Package className="h-4 w-4" />
               )}
-              {isBackfilling ? "Syncing..." : "Sync Inventory"}
+              {backfillMutation.isPending ? "Syncing..." : "Sync Inventory"}
             </Button>
           )}
-          <Button variant="outline" className="gap-2" onClick={fetchData}>
+          <Button variant="outline" className="gap-2" onClick={handleRefresh}>
             <RefreshCcw className="h-4 w-4" />
             Refresh
           </Button>
@@ -652,7 +592,7 @@ export default function InventoryPage() {
                     ))}
                   </SelectContent>
                 </Select>
-                <Button variant="outline" className="gap-2" onClick={fetchMovements}>
+                <Button variant="outline" className="gap-2" onClick={() => movementsQuery.refetch()}>
                   <RefreshCcw className="h-4 w-4" />
                   Refresh
                 </Button>
@@ -669,7 +609,7 @@ export default function InventoryPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {isLoadingMovements ? (
+              {movementsQuery.isLoading ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
@@ -811,11 +751,11 @@ export default function InventoryPage() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={closeAdjustmentDialog} disabled={isAdjusting}>
+            <Button variant="outline" onClick={closeAdjustmentDialog} disabled={adjustMutation.isPending}>
               Cancel
             </Button>
-            <Button onClick={handleAdjustment} disabled={isAdjusting || adjustmentQuantity < 0}>
-              {isAdjusting ? (
+            <Button onClick={handleAdjustment} disabled={adjustMutation.isPending || adjustmentQuantity < 0}>
+              {adjustMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Processing...

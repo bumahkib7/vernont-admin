@@ -35,15 +35,13 @@ import {
 } from "lucide-react";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import {
-  getReturns,
-  getReturnStats,
   ReturnSummary,
-  ReturnStats,
   formatPrice,
   formatDate,
   getReturnStatusDisplay,
 } from "@/lib/api";
 import { usePageContext } from "@/hooks/use-page-context";
+import { useReturns, useReturnStats } from "@/hooks/use-returns";
 
 function ReturnStatusBadge({ status }: { status: string }) {
   const { label, color } = getReturnStatusDisplay(status);
@@ -71,82 +69,54 @@ const returnStatuses = [
 
 export default function ReturnsPage() {
   usePageContext("returns");
-  const [returns, setReturns] = useState<ReturnSummary[]>([]);
-  const [stats, setStats] = useState<ReturnStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [activeFilters, setActiveFilters] = useState<Filter[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [pagination, setPagination] = useState({
-    limit: 20,
-    offset: 0,
-    count: 0,
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [pagination, setPagination] = useState({ limit: 20, offset: 0 });
+
+  // Debounce search input (UI concern, not data fetching)
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const statusFilter = activeFilters.find((f) => f.id === "status")?.value;
+
+  const {
+    data: returnsData,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useReturns({
+    limit: pagination.limit,
+    offset: pagination.offset,
+    q: debouncedSearch || undefined,
+    status: statusFilter,
   });
 
-  const fetchReturns = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const statusFilter = activeFilters.find((f) => f.id === "status");
-      const response = await getReturns({
-        limit: pagination.limit,
-        offset: pagination.offset,
-        q: searchQuery || undefined,
-        status: statusFilter?.value,
-      });
-      setReturns(response.returns);
-      setPagination((prev) => ({
-        ...prev,
-        count: response.count,
-      }));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load returns");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: stats } = useReturnStats();
 
-  const fetchStats = async () => {
-    try {
-      const response = await getReturnStats();
-      setStats(response);
-    } catch (err) {
-      console.error("Failed to load stats:", err);
-    }
-  };
-
-  useEffect(() => {
-    fetchReturns();
-    fetchStats();
-  }, [pagination.offset, pagination.limit]);
-
-  // Debounced search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (pagination.offset === 0) {
-        fetchReturns();
-      } else {
-        setPagination((prev) => ({ ...prev, offset: 0 }));
-      }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchQuery, activeFilters]);
+  const returns = returnsData?.returns ?? [];
+  const count = returnsData?.count ?? 0;
 
   const addFilter = (filter: Filter) => {
-    // Remove existing filter of same type
     const newFilters = activeFilters.filter((f) => f.id !== filter.id);
     setActiveFilters([...newFilters, filter]);
+    setPagination((prev) => ({ ...prev, offset: 0 }));
   };
 
   const removeFilter = (filterId: string) => {
     setActiveFilters(activeFilters.filter((f) => f.id !== filterId));
+    setPagination((prev) => ({ ...prev, offset: 0 }));
   };
 
   const clearFilters = () => {
     setActiveFilters([]);
+    setPagination((prev) => ({ ...prev, offset: 0 }));
   };
 
-  const totalPages = Math.ceil(pagination.count / pagination.limit);
+  const totalPages = Math.ceil(count / pagination.limit);
   const currentPage = Math.floor(pagination.offset / pagination.limit) + 1;
 
   const goToPage = (page: number) => {
@@ -268,8 +238,8 @@ export default function ReturnsPage() {
       <Card>
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pb-4">
           <CardTitle className="text-xl font-semibold">Returns</CardTitle>
-          <Button variant="outline" size="icon" onClick={fetchReturns} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+          <Button variant="outline" size="icon" onClick={() => refetch()} disabled={isLoading}>
+            <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
           </Button>
         </CardHeader>
         <CardContent>
@@ -353,7 +323,10 @@ export default function ReturnsPage() {
                   placeholder="Search by order or email..."
                   className="pl-8 w-full sm:w-[250px]"
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setPagination((prev) => ({ ...prev, offset: 0 }));
+                  }}
                 />
               </div>
               <Button variant="outline" size="icon">
@@ -363,11 +336,11 @@ export default function ReturnsPage() {
           </div>
 
           {/* Error State */}
-          {error && (
+          {isError && (
             <div className="flex items-center gap-2 p-4 mb-4 bg-red-50 text-red-700 dark:bg-red-950/20 dark:text-red-400 rounded-lg">
               <AlertCircle className="h-5 w-5" />
-              <span>{error}</span>
-              <Button variant="ghost" size="sm" onClick={fetchReturns} className="ml-auto">
+              <span>{error instanceof Error ? error.message : "Failed to load returns"}</span>
+              <Button variant="ghost" size="sm" onClick={() => refetch()} className="ml-auto">
                 Retry
               </Button>
             </div>
@@ -377,13 +350,13 @@ export default function ReturnsPage() {
           <DataTable
             columns={returnColumns}
             data={returns}
-            loading={loading}
+            loading={isLoading}
             getRowId={(r) => r.id}
             onRowClick={(r) => (window.location.href = `/returns/${r.id}`)}
             pagination={{
               page: currentPage,
               pageSize: pagination.limit,
-              total: pagination.count,
+              total: count,
               onPageChange: goToPage,
             }}
             emptyTitle="No returns found"
