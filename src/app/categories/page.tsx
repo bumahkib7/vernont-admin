@@ -679,7 +679,7 @@ export default function CategoriesPage() {
     }
   };
 
-  const handleDragEnd = async (event: DragEndEvent) => {
+  const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     const wasProduct = activeProduct !== null;
     setActiveCategory(null);
@@ -1008,14 +1008,14 @@ export default function CategoriesPage() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={handleCloseModal} disabled={saving}>
+            <Button variant="outline" onClick={handleCloseModal} disabled={createMutation.isPending || updateMutation.isPending}>
               Cancel
             </Button>
             <Button
               onClick={editModalOpen ? handleUpdate : handleCreate}
-              disabled={!formData.name.trim() || saving}
+              disabled={!formData.name.trim() || createMutation.isPending || updateMutation.isPending}
             >
-              {saving ? (
+              {(createMutation.isPending || updateMutation.isPending) ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   {editModalOpen ? "Saving..." : "Creating..."}
@@ -1041,9 +1041,6 @@ export default function CategoriesPage() {
         <div className="flex items-center gap-2 p-4 bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 rounded-lg">
           <AlertCircle className="h-5 w-5" />
           <span>{error}</span>
-          <button onClick={() => setError(null)} className="ml-auto">
-            <Trash2 className="h-4 w-4" />
-          </button>
         </div>
       )}
 

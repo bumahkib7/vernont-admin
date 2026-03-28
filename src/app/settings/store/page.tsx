@@ -243,41 +243,7 @@ export default function StoreSettingsPage() {
   });
 
   // Fetch stores
-  const fetchStores = useCallback(async () => {
-    setLoadingStores(true);
-    setError(null);
-    try {
-      const response = await getStores({ limit: 100 });
-      setStores(response.stores);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load stores");
-    } finally {
-      setLoadingStores(false);
-    }
-  }, []);
-
-  // Fetch settings for selected store
-  const fetchSettings = useCallback(async (storeId: string) => {
-    setLoadingSettings(true);
-    setError(null);
-    try {
-      const response = await getStoreSettings(storeId);
-      setSettings(response.storeSettings);
-      populateForms(response.storeSettings);
-    } catch {
-      // Try to initialize settings if they don't exist
-      try {
-        const initResponse = await initializeStoreSettings(storeId);
-        setSettings(initResponse.storeSettings);
-        populateForms(initResponse.storeSettings);
-      } catch (initErr) {
-        setError(initErr instanceof Error ? initErr.message : "Failed to load store settings");
-      }
-    } finally {
-      setLoadingSettings(false);
-    }
-  }, []);
-
+  // Populate forms when settings data arrives from React Query
   const populateForms = (s: StoreSettings) => {
     setBusinessForm({
       description: s.description || "",
@@ -336,178 +302,139 @@ export default function StoreSettingsPage() {
     }
   };
 
-  useEffect(() => {
-    fetchStores();
-  }, [fetchStores]);
-
   // Handle store selection
   const handleSelectStore = (store: Store) => {
     setSelectedStore(store);
-    fetchSettings(store.id);
   };
+
+  // When settingsQuery data changes and we have a selected store, populate forms
+  // Using the query's onSuccess equivalent via checking data
+  const settingsData = settingsQuery.data?.storeSettings;
+  const [lastPopulatedId, setLastPopulatedId] = useState<string | null>(null);
+  if (settingsData && settingsData.storeId !== lastPopulatedId) {
+    populateForms(settingsData);
+    setLastPopulatedId(settingsData.storeId);
+  }
 
   // Handle back to stores list
   const handleBackToStores = () => {
     setSelectedStore(null);
-    setSettings(null);
+    setLastPopulatedId(null);
   };
 
   // Handle create store
-  const handleCreateStore = async () => {
+  const handleCreateStore = () => {
     if (!newStoreName.trim()) return;
 
-    setCreatingStore(true);
-    try {
-      const response = await createStore({
-        name: newStoreName.trim(),
-        default_currency_code: newStoreCurrency,
-      });
-      setStores([...stores, response.store]);
-      setCreateStoreOpen(false);
-      setNewStoreName("");
-      setNewStoreCurrency("GBP");
-      // Auto-select the new store
-      handleSelectStore(response.store);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create store");
-    } finally {
-      setCreatingStore(false);
-    }
+    createStoreMutation.mutate(
+      { name: newStoreName.trim(), default_currency_code: newStoreCurrency },
+      {
+        onSuccess: (response) => {
+          setCreateStoreOpen(false);
+          setNewStoreName("");
+          setNewStoreCurrency("GBP");
+          handleSelectStore(response.store);
+        },
+      },
+    );
   };
 
-  // Save handlers
-  const handleSaveBusinessInfo = async () => {
+  const creatingStore = createStoreMutation.isPending;
+
+  // Save handlers — all use React Query mutations
+  const handleSaveBusinessInfo = () => {
     if (!selectedStore) return;
-    setSaving(true);
-    try {
-      const response = await updateStoreBusinessInfo(selectedStore.id, {
-        description: businessForm.description || undefined,
-        logoUrl: businessForm.logoUrl || undefined,
-        faviconUrl: businessForm.faviconUrl || undefined,
-        contactEmail: businessForm.contactEmail || undefined,
-        contactPhone: businessForm.contactPhone || undefined,
-        legalBusinessName: businessForm.legalBusinessName || undefined,
-        taxId: businessForm.taxId || undefined,
-        socialLinks: businessForm.socialLinks,
-      });
-      setSettings(response.storeSettings);
-      setBusinessInfoOpen(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save business info");
-    } finally {
-      setSaving(false);
-    }
+    updateBusinessInfoMutation.mutate(
+      {
+        storeId: selectedStore.id,
+        data: {
+          description: businessForm.description || undefined,
+          logoUrl: businessForm.logoUrl || undefined,
+          faviconUrl: businessForm.faviconUrl || undefined,
+          contactEmail: businessForm.contactEmail || undefined,
+          contactPhone: businessForm.contactPhone || undefined,
+          legalBusinessName: businessForm.legalBusinessName || undefined,
+          taxId: businessForm.taxId || undefined,
+          socialLinks: businessForm.socialLinks,
+        },
+      },
+      { onSuccess: () => setBusinessInfoOpen(false) },
+    );
   };
 
-  const handleSaveLocalization = async () => {
+  const handleSaveLocalization = () => {
     if (!selectedStore) return;
-    setSaving(true);
-    try {
-      const response = await updateStoreLocalization(selectedStore.id, {
-        timezone: localizationForm.timezone || undefined,
-        defaultLocale: localizationForm.defaultLocale || undefined,
-        dateFormat: localizationForm.dateFormat || undefined,
-        currencyDisplayFormat: localizationForm.currencyDisplayFormat || undefined,
-      });
-      setSettings(response.storeSettings);
-      setLocalizationOpen(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save localization");
-    } finally {
-      setSaving(false);
-    }
+    updateLocalizationMutation.mutate(
+      {
+        storeId: selectedStore.id,
+        data: {
+          timezone: localizationForm.timezone || undefined,
+          defaultLocale: localizationForm.defaultLocale || undefined,
+          dateFormat: localizationForm.dateFormat || undefined,
+          currencyDisplayFormat: localizationForm.currencyDisplayFormat || undefined,
+        },
+      },
+      { onSuccess: () => setLocalizationOpen(false) },
+    );
   };
 
-  const handleSaveFeatures = async () => {
+  const handleSaveFeatures = () => {
     if (!selectedStore) return;
-    setSaving(true);
-    try {
-      const response = await updateStoreFeatures(selectedStore.id, featuresForm);
-      setSettings(response.storeSettings);
-      setFeaturesOpen(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save features");
-    } finally {
-      setSaving(false);
-    }
+    updateFeaturesMutation.mutate(
+      { storeId: selectedStore.id, data: featuresForm },
+      { onSuccess: () => setFeaturesOpen(false) },
+    );
   };
 
-  const handleSavePolicies = async () => {
+  const handleSavePolicies = () => {
     if (!selectedStore) return;
-    setSaving(true);
-    try {
-      const response = await updateStorePolicies(selectedStore.id, { policies: policiesForm });
-      setSettings(response.storeSettings);
-      setPoliciesOpen(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save policies");
-    } finally {
-      setSaving(false);
-    }
+    updatePoliciesMutation.mutate(
+      { storeId: selectedStore.id, data: { policies: policiesForm } },
+      { onSuccess: () => setPoliciesOpen(false) },
+    );
   };
 
-  const handleSaveCheckout = async () => {
+  const handleSaveCheckout = () => {
     if (!selectedStore) return;
-    setSaving(true);
-    try {
-      const response = await updateStoreCheckoutSettings(selectedStore.id, { checkoutSettings: checkoutForm });
-      setSettings(response.storeSettings);
-      setCheckoutOpen(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save checkout settings");
-    } finally {
-      setSaving(false);
-    }
+    updateCheckoutMutation.mutate(
+      { storeId: selectedStore.id, data: { checkoutSettings: checkoutForm } },
+      { onSuccess: () => setCheckoutOpen(false) },
+    );
   };
 
-  const handleSaveShipping = async () => {
+  const handleSaveShipping = () => {
     if (!selectedStore) return;
-    setSaving(true);
-    try {
-      const response = await updateStoreShippingSettings(selectedStore.id, { shippingSettings: shippingForm });
-      setSettings(response.storeSettings);
-      setShippingOpen(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save shipping settings");
-    } finally {
-      setSaving(false);
-    }
+    updateShippingMutation.mutate(
+      { storeId: selectedStore.id, data: { shippingSettings: shippingForm } },
+      { onSuccess: () => setShippingOpen(false) },
+    );
   };
 
-  const handleSaveSeo = async () => {
+  const [seoValidationError, setSeoValidationError] = useState<string | null>(null);
+
+  const handleSaveSeo = () => {
     if (!selectedStore) return;
     if (seoForm.googleAnalyticsId && !seoForm.googleAnalyticsId.match(/^G-[A-Z0-9]+$/i)) {
-      setError("Invalid GA ID format (expected G-XXXXXXXXXX)");
+      setSeoValidationError("Invalid GA ID format (expected G-XXXXXXXXXX)");
       return;
     }
     if (seoForm.facebookPixelId && !seoForm.facebookPixelId.match(/^\d+$/)) {
-      setError("Invalid Pixel ID (expected numbers only)");
+      setSeoValidationError("Invalid Pixel ID (expected numbers only)");
       return;
     }
-    setSaving(true);
-    try {
-      const response = await updateStoreSeoSettings(selectedStore.id, { seoSettings: seoForm });
-      setSettings(response.storeSettings);
-      setSeoOpen(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save SEO settings");
-    } finally {
-      setSaving(false);
-    }
+    setSeoValidationError(null);
+    updateSeoMutation.mutate(
+      { storeId: selectedStore.id, data: { seoSettings: seoForm } },
+      { onSuccess: () => setSeoOpen(false) },
+    );
   };
 
-  const handleSaveTheme = async () => {
+  const handleSaveTheme = () => {
     if (!selectedStore) return;
-    setSaving(true);
-    try {
-      const response = await updateStoreThemeSettings(selectedStore.id, { themeSettings: themeForm });
-      setSettings(response.storeSettings);
-      setThemeOpen(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save theme settings");
-    } finally {
-      setSaving(false);
-    }
+    updateThemeMutation.mutate(
+      { storeId: selectedStore.id, data: { themeSettings: themeForm } },
+      { onSuccess: () => setThemeOpen(false) },
+    );
   };
 
   // Loading skeleton for stores
@@ -570,7 +497,7 @@ export default function StoreSettingsPage() {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="icon" onClick={fetchStores}>
+            <Button variant="outline" size="icon" onClick={() => storesQuery.refetch()}>
               <RefreshCw className="h-4 w-4" />
             </Button>
             <Button onClick={() => setCreateStoreOpen(true)}>
@@ -724,7 +651,7 @@ export default function StoreSettingsPage() {
             </p>
           </div>
         </div>
-        <Button variant="outline" size="icon" onClick={() => fetchSettings(selectedStore.id)}>
+        <Button variant="outline" size="icon" onClick={() => settingsQuery.refetch()}>
           <RefreshCw className="h-4 w-4" />
         </Button>
       </div>
