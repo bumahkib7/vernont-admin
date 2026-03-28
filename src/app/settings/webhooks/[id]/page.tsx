@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -33,41 +34,42 @@ function StatusBadge({ status }: { status: string }) {
 export default function WebhookDetailPage() {
   const params = useParams();
   const id = params.id as string;
-  const [endpoint, setEndpoint] = useState<WebhookEndpoint | null>(null);
-  const [deliveries, setDeliveries] = useState<WebhookDelivery[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [testing, setTesting] = useState(false);
+  const queryClient = useQueryClient();
 
-  const fetchData = useCallback(async () => {
-    try {
+  // Fetch endpoint and deliveries via React Query
+  const webhookQuery = useQuery({
+    queryKey: ["webhook-detail", id],
+    queryFn: async () => {
       const [ep, del] = await Promise.all([
         getWebhookEndpoint(id),
         getWebhookDeliveries(id),
       ]);
-      setEndpoint(ep);
-      setDeliveries(del.deliveries);
-    } catch {
-      toast.error("Failed to load webhook details");
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
+      return { endpoint: ep, deliveries: del.deliveries };
+    },
+    enabled: !!id,
+    staleTime: 15_000,
+  });
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  const endpoint = webhookQuery.data?.endpoint ?? null;
+  const deliveries = webhookQuery.data?.deliveries ?? [];
+  const loading = webhookQuery.isLoading;
 
-  const handleTest = async () => {
-    setTesting(true);
-    try {
-      await testWebhookEndpoint(id);
+  // Test webhook mutation
+  const testMutation = useMutation({
+    mutationFn: () => testWebhookEndpoint(id),
+    onSuccess: () => {
       toast.success("Test webhook sent");
-      fetchData();
-    } catch {
+      queryClient.invalidateQueries({ queryKey: ["webhook-detail", id] });
+    },
+    onError: () => {
       toast.error("Test delivery failed");
-    } finally {
-      setTesting(false);
-    }
+    },
+  });
+
+  const testing = testMutation.isPending;
+
+  const handleTest = () => {
+    testMutation.mutate();
   };
 
   if (loading) {

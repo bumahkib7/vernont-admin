@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Card,
   CardContent,
@@ -63,26 +64,21 @@ import {
 } from "@/lib/api";
 
 export default function ProductTagsSettingsPage() {
-  const [tags, setTags] = useState<ProductTag[]>([]);
-  const [count, setCount] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
 
   // Add tag dialog
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [newTagValue, setNewTagValue] = useState("");
-  const [creating, setCreating] = useState(false);
 
   // Inline edit
   const [editingTagId, setEditingTagId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
-  const [saving, setSaving] = useState(false);
   const editInputRef = useRef<HTMLInputElement>(null);
 
   // Delete confirmation
   const [deleteTag, setDeleteTag] = useState<ProductTag | null>(null);
-  const [deleting, setDeleting] = useState(false);
 
   // Debounce search
   useEffect(() => {
@@ -92,23 +88,16 @@ export default function ProductTagsSettingsPage() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const fetchTags = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response = await getProductTags(debouncedQuery || undefined);
-      setTags(response.product_tags);
-      setCount(response.count);
-    } catch (err) {
-      console.error("Failed to fetch product tags:", err);
-      toast.error("Failed to load product tags");
-    } finally {
-      setLoading(false);
-    }
-  }, [debouncedQuery]);
+  // Fetch tags via React Query
+  const tagsQuery = useQuery({
+    queryKey: ["product-tags", debouncedQuery],
+    queryFn: () => getProductTags(debouncedQuery || undefined),
+    staleTime: 30_000,
+  });
 
-  useEffect(() => {
-    fetchTags();
-  }, [fetchTags]);
+  const tags = tagsQuery.data?.product_tags ?? [];
+  const count = tagsQuery.data?.count ?? 0;
+  const loading = tagsQuery.isLoading;
 
   // Focus edit input when editing starts
   useEffect(() => {
@@ -118,23 +107,55 @@ export default function ProductTagsSettingsPage() {
     }
   }, [editingTagId]);
 
-  const handleCreate = async () => {
-    const trimmed = newTagValue.trim();
-    if (!trimmed) return;
-
-    try {
-      setCreating(true);
-      await createProductTag(trimmed);
-      toast.success(`Tag "${trimmed}" created`);
+  // Create mutation
+  const createMutation = useMutation({
+    mutationFn: (value: string) => createProductTag(value),
+    onSuccess: (_data, value) => {
+      toast.success(`Tag "${value}" created`);
       setNewTagValue("");
       setAddDialogOpen(false);
-      fetchTags();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to create tag";
-      toast.error(message);
-    } finally {
-      setCreating(false);
-    }
+      queryClient.invalidateQueries({ queryKey: ["product-tags"] });
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Failed to create tag");
+    },
+  });
+
+  // Update mutation
+  const updateMutation = useMutation({
+    mutationFn: ({ id, value }: { id: string; value: string }) => updateProductTag(id, value),
+    onSuccess: () => {
+      toast.success("Tag updated");
+      setEditingTagId(null);
+      setEditValue("");
+      queryClient.invalidateQueries({ queryKey: ["product-tags"] });
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Failed to update tag");
+    },
+  });
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteProductTag(id),
+    onSuccess: () => {
+      toast.success(`Tag "${deleteTag?.value}" deleted`);
+      setDeleteTag(null);
+      queryClient.invalidateQueries({ queryKey: ["product-tags"] });
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Failed to delete tag");
+    },
+  });
+
+  const creating = createMutation.isPending;
+  const saving = updateMutation.isPending;
+  const deleting = deleteMutation.isPending;
+
+  const handleCreate = () => {
+    const trimmed = newTagValue.trim();
+    if (!trimmed) return;
+    createMutation.mutate(trimmed);
   };
 
   const handleStartEdit = (tag: ProductTag) => {
@@ -147,41 +168,16 @@ export default function ProductTagsSettingsPage() {
     setEditValue("");
   };
 
-  const handleSaveEdit = async () => {
+  const handleSaveEdit = () => {
     if (!editingTagId) return;
     const trimmed = editValue.trim();
     if (!trimmed) return;
-
-    try {
-      setSaving(true);
-      await updateProductTag(editingTagId, trimmed);
-      toast.success("Tag updated");
-      setEditingTagId(null);
-      setEditValue("");
-      fetchTags();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to update tag";
-      toast.error(message);
-    } finally {
-      setSaving(false);
-    }
+    updateMutation.mutate({ id: editingTagId, value: trimmed });
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!deleteTag) return;
-
-    try {
-      setDeleting(true);
-      await deleteProductTag(deleteTag.id);
-      toast.success(`Tag "${deleteTag.value}" deleted`);
-      setDeleteTag(null);
-      fetchTags();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to delete tag";
-      toast.error(message);
-    } finally {
-      setDeleting(false);
-    }
+    deleteMutation.mutate(deleteTag.id);
   };
 
   return (

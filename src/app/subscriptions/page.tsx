@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import {
   Card,
@@ -77,28 +78,21 @@ function StatusBadge({ label, color }: { label: string; color: string }) {
 }
 
 export default function SubscriptionsPage() {
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("plans");
 
   // Plans state
-  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
-  const [plansLoading, setPlansLoading] = useState(true);
-  const [plansError, setPlansError] = useState<string | null>(null);
   const [plansSearch, setPlansSearch] = useState("");
   const [plansPagination, setPlansPagination] = useState({
     limit: 20,
     offset: 0,
-    count: 0,
   });
 
   // Subscriptions state
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
-  const [subsLoading, setSubsLoading] = useState(true);
-  const [subsError, setSubsError] = useState<string | null>(null);
   const [subsSearch, setSubsSearch] = useState("");
   const [subsPagination, setSubsPagination] = useState({
     limit: 20,
     offset: 0,
-    count: 0,
   });
 
   // Confirm dialog state
@@ -117,49 +111,72 @@ export default function SubscriptionsPage() {
   });
   const [confirmLoading, setConfirmLoading] = useState(false);
 
-  // Fetch plans
-  const fetchPlans = async () => {
-    setPlansLoading(true);
-    setPlansError(null);
-    try {
-      const response = await getSubscriptionPlans({
-        limit: plansPagination.limit,
-        offset: plansPagination.offset,
-      });
-      setPlans(response.plans || []);
-      setPlansPagination((prev) => ({ ...prev, count: response.count || 0 }));
-    } catch (err) {
-      setPlansError(err instanceof Error ? err.message : "Failed to load plans");
-    } finally {
-      setPlansLoading(false);
-    }
-  };
+  // Fetch plans via React Query
+  const plansQuery = useQuery({
+    queryKey: ["subscription-plans", plansPagination.limit, plansPagination.offset],
+    queryFn: () => getSubscriptionPlans({
+      limit: plansPagination.limit,
+      offset: plansPagination.offset,
+    }),
+    staleTime: 30_000,
+  });
 
-  // Fetch subscriptions
-  const fetchSubscriptions = async () => {
-    setSubsLoading(true);
-    setSubsError(null);
-    try {
-      const response = await getSubscriptions({
-        limit: subsPagination.limit,
-        offset: subsPagination.offset,
-      });
-      setSubscriptions(response.subscriptions || []);
-      setSubsPagination((prev) => ({ ...prev, count: response.count || 0 }));
-    } catch (err) {
-      setSubsError(err instanceof Error ? err.message : "Failed to load subscriptions");
-    } finally {
-      setSubsLoading(false);
-    }
-  };
+  const plans = plansQuery.data?.plans || [];
+  const plansLoading = plansQuery.isLoading;
+  const plansError = plansQuery.error ? (plansQuery.error as Error).message : null;
 
-  useEffect(() => {
-    fetchPlans();
-  }, [plansPagination.limit, plansPagination.offset]);
+  // Fetch subscriptions via React Query
+  const subsQuery = useQuery({
+    queryKey: ["subscriptions", subsPagination.limit, subsPagination.offset],
+    queryFn: () => getSubscriptions({
+      limit: subsPagination.limit,
+      offset: subsPagination.offset,
+    }),
+    staleTime: 30_000,
+  });
 
-  useEffect(() => {
-    fetchSubscriptions();
-  }, [subsPagination.limit, subsPagination.offset]);
+  const subscriptions = subsQuery.data?.subscriptions || [];
+  const subsLoading = subsQuery.isLoading;
+  const subsError = subsQuery.error ? (subsQuery.error as Error).message : null;
+
+  // Delete plan mutation
+  const deletePlanMutation = useMutation({
+    mutationFn: (planId: string) => deleteSubscriptionPlan(planId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["subscription-plans"] });
+    },
+  });
+
+  // Subscription action mutations
+  const pauseMutation = useMutation({
+    mutationFn: (subId: string) => pauseSubscription(subId),
+    onSuccess: () => {
+      toast.success("Subscription paused");
+      queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Failed to pause subscription");
+    },
+  });
+
+  const resumeMutation = useMutation({
+    mutationFn: (subId: string) => resumeSubscription(subId),
+    onSuccess: () => {
+      toast.success("Subscription resumed");
+      queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Failed to resume subscription");
+    },
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: (subId: string) => cancelSubscription(subId),
+    onSuccess: () => {
+      toast.success("Subscription cancelled");
+      queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
+    },
+  });
 
   // Plan actions
   const handleDeletePlan = (plan: SubscriptionPlan) => {
@@ -169,9 +186,8 @@ export default function SubscriptionsPage() {
       description: `Are you sure you want to delete "${plan.name}"? This action cannot be undone.`,
       variant: "destructive",
       action: async () => {
-        await deleteSubscriptionPlan(plan.id);
+        await deletePlanMutation.mutateAsync(plan.id);
         toast.success(`Plan "${plan.name}" deleted`);
-        fetchPlans();
       },
     });
   };
@@ -184,31 +200,17 @@ export default function SubscriptionsPage() {
       description: `Cancel subscription for ${sub.customerEmail}? The customer will lose access at the end of their current billing period.`,
       variant: "destructive",
       action: async () => {
-        await cancelSubscription(sub.id);
-        toast.success("Subscription cancelled");
-        fetchSubscriptions();
+        await cancelMutation.mutateAsync(sub.id);
       },
     });
   };
 
-  const handlePauseSubscription = async (sub: Subscription) => {
-    try {
-      await pauseSubscription(sub.id);
-      toast.success("Subscription paused");
-      fetchSubscriptions();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to pause subscription");
-    }
+  const handlePauseSubscription = (sub: Subscription) => {
+    pauseMutation.mutate(sub.id);
   };
 
-  const handleResumeSubscription = async (sub: Subscription) => {
-    try {
-      await resumeSubscription(sub.id);
-      toast.success("Subscription resumed");
-      fetchSubscriptions();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to resume subscription");
-    }
+  const handleResumeSubscription = (sub: Subscription) => {
+    resumeMutation.mutate(sub.id);
   };
 
   const executeConfirmAction = async () => {
@@ -245,9 +247,11 @@ export default function SubscriptionsPage() {
   });
 
   // Pagination helpers
-  const plansTotalPages = Math.ceil(plansPagination.count / plansPagination.limit);
+  const plansCount = plansQuery.data?.count || 0;
+  const subsCount = subsQuery.data?.count || 0;
+  const plansTotalPages = Math.ceil(plansCount / plansPagination.limit);
   const plansCurrentPage = Math.floor(plansPagination.offset / plansPagination.limit) + 1;
-  const subsTotalPages = Math.ceil(subsPagination.count / subsPagination.limit);
+  const subsTotalPages = Math.ceil(subsCount / subsPagination.limit);
   const subsCurrentPage = Math.floor(subsPagination.offset / subsPagination.limit) + 1;
 
   return (
@@ -276,7 +280,7 @@ export default function SubscriptionsPage() {
                   />
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button variant="outline" size="icon" onClick={fetchPlans} disabled={plansLoading}>
+                  <Button variant="outline" size="icon" onClick={() => plansQuery.refetch()} disabled={plansLoading}>
                     <RefreshCw className={`h-4 w-4 ${plansLoading ? "animate-spin" : ""}`} />
                   </Button>
                   <Button asChild>
@@ -292,7 +296,7 @@ export default function SubscriptionsPage() {
                 <div className="flex items-center gap-2 p-4 mb-4 bg-red-50 text-red-700 rounded-lg">
                   <AlertCircle className="h-5 w-5" />
                   <span>{plansError}</span>
-                  <Button variant="ghost" size="sm" onClick={fetchPlans} className="ml-auto">
+                  <Button variant="ghost" size="sm" onClick={() => plansQuery.refetch()} className="ml-auto">
                     Retry
                   </Button>
                 </div>
@@ -384,10 +388,10 @@ export default function SubscriptionsPage() {
                   </Table>
                   </div>
 
-                  {plansPagination.count > 0 && (
+                  {plansCount > 0 && (
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mt-4 text-sm text-muted-foreground">
                       <span>
-                        {plansPagination.offset + 1} — {Math.min(plansPagination.offset + plansPagination.limit, plansPagination.count)} of {plansPagination.count} results
+                        {plansPagination.offset + 1} — {Math.min(plansPagination.offset + plansPagination.limit, plansCount)} of {plansCount} results
                       </span>
                       <div className="flex items-center gap-2">
                         <span>
@@ -438,7 +442,7 @@ export default function SubscriptionsPage() {
                     onChange={(e) => setSubsSearch(e.target.value)}
                   />
                 </div>
-                <Button variant="outline" size="icon" onClick={fetchSubscriptions} disabled={subsLoading}>
+                <Button variant="outline" size="icon" onClick={() => subsQuery.refetch()} disabled={subsLoading}>
                   <RefreshCw className={`h-4 w-4 ${subsLoading ? "animate-spin" : ""}`} />
                 </Button>
               </div>
@@ -447,7 +451,7 @@ export default function SubscriptionsPage() {
                 <div className="flex items-center gap-2 p-4 mb-4 bg-red-50 text-red-700 rounded-lg">
                   <AlertCircle className="h-5 w-5" />
                   <span>{subsError}</span>
-                  <Button variant="ghost" size="sm" onClick={fetchSubscriptions} className="ml-auto">
+                  <Button variant="ghost" size="sm" onClick={() => subsQuery.refetch()} className="ml-auto">
                     Retry
                   </Button>
                 </div>
@@ -553,10 +557,10 @@ export default function SubscriptionsPage() {
                   </Table>
                   </div>
 
-                  {subsPagination.count > 0 && (
+                  {subsCount > 0 && (
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mt-4 text-sm text-muted-foreground">
                       <span>
-                        {subsPagination.offset + 1} — {Math.min(subsPagination.offset + subsPagination.limit, subsPagination.count)} of {subsPagination.count} results
+                        {subsPagination.offset + 1} — {Math.min(subsPagination.offset + subsPagination.limit, subsCount)} of {subsCount} results
                       </span>
                       <div className="flex items-center gap-2">
                         <span>

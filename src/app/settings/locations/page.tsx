@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Card,
   CardContent,
@@ -87,15 +88,7 @@ import {
 import { useWebSocket } from "@/hooks/use-websocket";
 
 export default function LocationsSettingsPage() {
-  // Stock Locations state
-  const [locations, setLocations] = useState<StockLocation[]>([]);
-  const [isLoadingLocations, setIsLoadingLocations] = useState(true);
-  const [locationsError, setLocationsError] = useState<string | null>(null);
-
-  // Shipping Profiles state
-  const [profiles, setProfiles] = useState<ShippingProfile[]>([]);
-  const [isLoadingProfiles, setIsLoadingProfiles] = useState(true);
-  const [profilesError, setProfilesError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   // WebSocket for real-time updates
   const { isConnected, subscribe } = useWebSocket();

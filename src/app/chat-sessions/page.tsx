@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -226,52 +227,48 @@ function MessageBubble({ message }: { message: AiSessionMessage }) {
 // ── Main Page ────────────────────────────────────────────
 
 export default function ChatSessionsPage() {
-  const [sessions, setSessions] = useState<AiSessionSummary[]>([]);
-  const [loadingSessions, setLoadingSessions] = useState(true);
   const [search, setSearch] = useState("");
   const [agentFilter, setAgentFilter] = useState<string>("all");
   const [page, setPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
   const pageSize = 30;
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<AiSessionMessage[]>([]);
-  const [loadingMessages, setLoadingMessages] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const fetchSessions = useCallback(async () => {
-    setLoadingSessions(true);
-    try {
+  // Reset page when filters change
+  useEffect(() => { setPage(0); }, [agentFilter, search]);
+
+  // Fetch sessions via React Query
+  const sessionsQuery = useQuery({
+    queryKey: ["ai-sessions", page, agentFilter, search],
+    queryFn: () => {
       const params: { page: number; size: number; agentType?: AgentType; search?: string } = {
         page,
         size: pageSize,
       };
       if (agentFilter !== "all") params.agentType = agentFilter as AgentType;
       if (search.trim()) params.search = search.trim();
-      const data = await getAiSessions(params);
-      setSessions(data.sessions ?? []);
-      setTotalPages(data.totalPages ?? 0);
-    } catch (err) {
-      console.error("Failed to fetch AI sessions:", err);
-    } finally {
-      setLoadingSessions(false);
-    }
-  }, [page, agentFilter, search]);
+      return getAiSessions(params);
+    },
+    staleTime: 30_000,
+  });
 
-  useEffect(() => { fetchSessions(); }, [fetchSessions]);
-  useEffect(() => { setPage(0); }, [agentFilter, search]);
+  const sessions = sessionsQuery.data?.sessions ?? [];
+  const totalPages = sessionsQuery.data?.totalPages ?? 0;
+  const loadingSessions = sessionsQuery.isLoading;
 
-  useEffect(() => {
-    if (!selectedId) { setMessages([]); return; }
-    let cancelled = false;
-    setLoadingMessages(true);
-    getAiSessionMessages(selectedId)
-      .then((data) => { if (!cancelled) setMessages(data); })
-      .catch(() => { if (!cancelled) setMessages([]); })
-      .finally(() => { if (!cancelled) setLoadingMessages(false); });
-    return () => { cancelled = true; };
-  }, [selectedId]);
+  // Fetch messages for selected session via React Query
+  const messagesQuery = useQuery({
+    queryKey: ["ai-session-messages", selectedId],
+    queryFn: () => getAiSessionMessages(selectedId!),
+    enabled: !!selectedId,
+    staleTime: 60_000,
+  });
 
+  const messages = messagesQuery.data ?? [];
+  const loadingMessages = messagesQuery.isLoading;
+
+  // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -286,7 +283,7 @@ export default function ChatSessionsPage() {
         <div className="p-2.5 border-b border-border space-y-2 flex-shrink-0">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold">Sessions</h2>
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={fetchSessions}>
+            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => sessionsQuery.refetch()}>
               <RefreshCw className="h-3 w-3" />
             </Button>
           </div>

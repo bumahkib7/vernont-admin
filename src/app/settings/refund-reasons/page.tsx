@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Card,
   CardContent,
@@ -81,9 +82,7 @@ import {
 import { useWebSocket } from "@/hooks/use-websocket";
 
 export default function RefundReasonsSettingsPage() {
-  const [reasons, setReasons] = useState<RefundReason[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   // WebSocket for real-time updates
   const { isConnected, subscribe } = useWebSocket();
@@ -96,7 +95,6 @@ export default function RefundReasonsSettingsPage() {
   const [createDisplayOrder, setCreateDisplayOrder] = useState("0");
   const [createIsActive, setCreateIsActive] = useState(true);
   const [createRequiresNote, setCreateRequiresNote] = useState(false);
-  const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
   // Edit dialog state
@@ -108,16 +106,11 @@ export default function RefundReasonsSettingsPage() {
   const [editDisplayOrder, setEditDisplayOrder] = useState("");
   const [editIsActive, setEditIsActive] = useState(true);
   const [editRequiresNote, setEditRequiresNote] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
   // Delete confirmation state
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [deletingReason, setDeletingReason] = useState<RefundReason | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  // Seed dialog state
-  const [isSeeding, setIsSeeding] = useState(false);
 
   // Extract error message from API error
   const getErrorMessage = (err: unknown): string => {
@@ -130,23 +123,23 @@ export default function RefundReasonsSettingsPage() {
     return "An unexpected error occurred";
   };
 
-  // Fetch refund reasons
-  const fetchReasons = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
+  // Fetch refund reasons via React Query
+  const reasonsQuery = useQuery({
+    queryKey: ["refund-reasons"],
+    queryFn: async () => {
       const response = await getRefundReasons({ limit: 100 });
-      setReasons(response.refund_reasons || []);
-    } catch (err) {
-      setError(getErrorMessage(err));
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+      return response.refund_reasons || [];
+    },
+    staleTime: 30_000,
+  });
 
-  useEffect(() => {
-    fetchReasons();
-  }, [fetchReasons]);
+  const reasons = reasonsQuery.data ?? [];
+  const isLoading = reasonsQuery.isLoading;
+  const error = reasonsQuery.error ? getErrorMessage(reasonsQuery.error) : null;
+
+  const invalidateReasons = () => {
+    queryClient.invalidateQueries({ queryKey: ["refund-reasons"] });
+  };
 
   // Subscribe to WebSocket for real-time updates
   useEffect(() => {
@@ -160,7 +153,7 @@ export default function RefundReasonsSettingsPage() {
 
       // Refetch on RefundReasonConfig changes
       if (auditLog.entityType === "RefundReasonConfig") {
-        fetchReasons();
+        invalidateReasons();
       }
     });
 
@@ -169,37 +162,77 @@ export default function RefundReasonsSettingsPage() {
         subscription.unsubscribe();
       }
     };
-  }, [isConnected, subscribe, fetchReasons]);
+  }, [isConnected, subscribe]);
+
+  // Create mutation
+  const createMutation = useMutation({
+    mutationFn: (data: CreateRefundReasonInput) => createRefundReason(data),
+    onSuccess: () => {
+      setIsCreateOpen(false);
+      resetCreateForm();
+      invalidateReasons();
+    },
+    onError: (err) => {
+      setCreateError(getErrorMessage(err));
+    },
+  });
+
+  // Update mutation
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateRefundReasonInput }) =>
+      updateRefundReason(id, data),
+    onSuccess: () => {
+      setIsEditOpen(false);
+      setEditingReason(null);
+      invalidateReasons();
+    },
+    onError: (err) => {
+      setEditError(getErrorMessage(err));
+    },
+  });
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteRefundReason(id),
+    onSuccess: () => {
+      setIsDeleteOpen(false);
+      setDeletingReason(null);
+      invalidateReasons();
+    },
+    onError: (err) => {
+      console.error("Failed to delete refund reason:", err);
+    },
+  });
+
+  // Seed mutation
+  const seedMutation = useMutation({
+    mutationFn: () => seedRefundReasons(),
+    onSuccess: () => {
+      invalidateReasons();
+    },
+  });
+
+  const isCreating = createMutation.isPending;
+  const isUpdating = updateMutation.isPending;
+  const isDeleting = deleteMutation.isPending;
+  const isSeeding = seedMutation.isPending;
 
   // Handle create
-  const handleCreate = async () => {
+  const handleCreate = () => {
     if (!createValue || !createLabel) {
       setCreateError("Value and label are required");
       return;
     }
 
-    try {
-      setIsCreating(true);
-      setCreateError(null);
-
-      const data: CreateRefundReasonInput = {
-        value: createValue,
-        label: createLabel,
-        description: createDescription || undefined,
-        displayOrder: createDisplayOrder ? parseInt(createDisplayOrder) : 0,
-        isActive: createIsActive,
-        requiresNote: createRequiresNote,
-      };
-
-      await createRefundReason(data);
-      setIsCreateOpen(false);
-      resetCreateForm();
-      fetchReasons();
-    } catch (err) {
-      setCreateError(getErrorMessage(err));
-    } finally {
-      setIsCreating(false);
-    }
+    setCreateError(null);
+    createMutation.mutate({
+      value: createValue,
+      label: createLabel,
+      description: createDescription || undefined,
+      displayOrder: createDisplayOrder ? parseInt(createDisplayOrder) : 0,
+      isActive: createIsActive,
+      requiresNote: createRequiresNote,
+    });
   };
 
   const resetCreateForm = () => {
@@ -225,34 +258,24 @@ export default function RefundReasonsSettingsPage() {
     setIsEditOpen(true);
   };
 
-  const handleUpdate = async () => {
+  const handleUpdate = () => {
     if (!editingReason || !editLabel) {
       setEditError("Label is required");
       return;
     }
 
-    try {
-      setIsUpdating(true);
-      setEditError(null);
-
-      const data: UpdateRefundReasonInput = {
+    setEditError(null);
+    updateMutation.mutate({
+      id: editingReason.id,
+      data: {
         value: editValue !== editingReason.value ? editValue : undefined,
         label: editLabel,
         description: editDescription || undefined,
         displayOrder: editDisplayOrder ? parseInt(editDisplayOrder) : undefined,
         isActive: editIsActive,
         requiresNote: editRequiresNote,
-      };
-
-      await updateRefundReason(editingReason.id, data);
-      setIsEditOpen(false);
-      setEditingReason(null);
-      fetchReasons();
-    } catch (err) {
-      setEditError(getErrorMessage(err));
-    } finally {
-      setIsUpdating(false);
-    }
+      },
+    });
   };
 
   // Handle delete
@@ -261,33 +284,14 @@ export default function RefundReasonsSettingsPage() {
     setIsDeleteOpen(true);
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!deletingReason) return;
-
-    try {
-      setIsDeleting(true);
-      await deleteRefundReason(deletingReason.id);
-      setIsDeleteOpen(false);
-      setDeletingReason(null);
-      fetchReasons();
-    } catch (err) {
-      console.error("Failed to delete refund reason:", err);
-    } finally {
-      setIsDeleting(false);
-    }
+    deleteMutation.mutate(deletingReason.id);
   };
 
   // Handle seed
-  const handleSeed = async () => {
-    try {
-      setIsSeeding(true);
-      await seedRefundReasons();
-      fetchReasons();
-    } catch (err) {
-      setError(getErrorMessage(err));
-    } finally {
-      setIsSeeding(false);
-    }
+  const handleSeed = () => {
+    seedMutation.mutate();
   };
 
   return (
@@ -353,7 +357,7 @@ export default function RefundReasonsSettingsPage() {
             <div className="flex items-center gap-2 p-4 mb-4 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 rounded-lg">
               <AlertCircle className="h-5 w-5" />
               <span>{error}</span>
-              <Button variant="outline" size="sm" onClick={fetchReasons} className="ml-auto">
+              <Button variant="outline" size="sm" onClick={() => reasonsQuery.refetch()} className="ml-auto">
                 Retry
               </Button>
             </div>

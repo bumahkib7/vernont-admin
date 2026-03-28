@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useConfirm } from "@/hooks/use-confirm";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -20,35 +21,38 @@ import { getWebhookEndpoints, deleteWebhookEndpoint, type WebhookEndpoint } from
 import { toast } from "sonner";
 
 export default function WebhooksPage() {
-  const [endpoints, setEndpoints] = useState<WebhookEndpoint[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [ConfirmDialog, confirm] = useConfirm();
 
-  const fetchEndpoints = useCallback(async () => {
-    try {
+  // Fetch webhooks via React Query
+  const endpointsQuery = useQuery({
+    queryKey: ["webhook-endpoints"],
+    queryFn: async () => {
       const data = await getWebhookEndpoints();
-      setEndpoints(data.endpoints);
-    } catch {
-      toast.error("Failed to load webhooks");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      return data.endpoints;
+    },
+    staleTime: 30_000,
+  });
 
-  useEffect(() => {
-    fetchEndpoints();
-  }, [fetchEndpoints]);
+  const endpoints = endpointsQuery.data ?? [];
+  const loading = endpointsQuery.isLoading;
+
+  // Delete mutation
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteWebhookEndpoint(id),
+    onSuccess: () => {
+      toast.success("Webhook deleted");
+      queryClient.invalidateQueries({ queryKey: ["webhook-endpoints"] });
+    },
+    onError: () => {
+      toast.error("Failed to delete webhook");
+    },
+  });
 
   const handleDelete = async (id: string) => {
     const ok = await confirm({ title: "Delete webhook", description: "Delete this webhook endpoint? This action cannot be undone.", confirmLabel: "Delete", variant: "destructive" });
     if (!ok) return;
-    try {
-      await deleteWebhookEndpoint(id);
-      toast.success("Webhook deleted");
-      fetchEndpoints();
-    } catch {
-      toast.error("Failed to delete webhook");
-    }
+    deleteMutation.mutate(id);
   };
 
   return (

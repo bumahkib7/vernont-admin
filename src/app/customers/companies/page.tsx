@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import {
   Card,
@@ -64,47 +65,37 @@ function CompanyStatusBadge({ status }: { status: CompanyStatus }) {
 }
 
 export default function CompaniesPage() {
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [activeFilters, setActiveFilters] = useState<Filter[]>([]);
   const [pagination, setPagination] = useState({
     limit: 20,
     offset: 0,
-    count: 0,
   });
 
-  const fetchCompanies = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await getCompanies({
-        limit: pagination.limit,
-        offset: pagination.offset,
-        q: searchQuery || undefined,
-      });
-      setCompanies(response.companies || []);
-      setPagination((prev) => ({ ...prev, count: response.count || 0 }));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load companies");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchCompanies();
-  }, [pagination.limit, pagination.offset]);
-
-  // Debounced search
+  // Debounce search
   useEffect(() => {
     const timeout = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
       setPagination((prev) => ({ ...prev, offset: 0 }));
-      fetchCompanies();
     }, 300);
     return () => clearTimeout(timeout);
   }, [searchQuery]);
+
+  // Fetch companies via React Query
+  const companiesQuery = useQuery({
+    queryKey: ["companies", pagination.limit, pagination.offset, debouncedSearch],
+    queryFn: () => getCompanies({
+      limit: pagination.limit,
+      offset: pagination.offset,
+      q: debouncedSearch || undefined,
+    }),
+    staleTime: 30_000,
+  });
+
+  const companies = companiesQuery.data?.companies || [];
+  const loading = companiesQuery.isLoading;
+  const error = companiesQuery.error ? (companiesQuery.error as Error).message : null;
 
   const addFilter = (filter: Filter) => {
     if (!activeFilters.find((f) => f.id === filter.id && f.value === filter.value)) {
@@ -129,7 +120,8 @@ export default function CompaniesPage() {
     return true;
   });
 
-  const totalPages = Math.ceil(pagination.count / pagination.limit);
+  const companiesCount = companiesQuery.data?.count || 0;
+  const totalPages = Math.ceil(companiesCount / pagination.limit);
   const currentPage = Math.floor(pagination.offset / pagination.limit) + 1;
 
   const goToPage = (page: number) => {
@@ -148,7 +140,7 @@ export default function CompaniesPage() {
             <CardTitle className="text-xl font-semibold">Companies</CardTitle>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={fetchCompanies} disabled={loading}>
+            <Button variant="outline" size="icon" onClick={() => companiesQuery.refetch()} disabled={loading}>
               <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             </Button>
             <Button asChild>
@@ -239,7 +231,7 @@ export default function CompaniesPage() {
             <div className="flex items-center gap-2 p-4 mb-4 bg-red-50 text-red-700 dark:bg-red-950/20 dark:text-red-400 rounded-lg">
               <AlertCircle className="h-5 w-5" />
               <span>{error}</span>
-              <Button variant="ghost" size="sm" onClick={fetchCompanies} className="ml-auto">
+              <Button variant="ghost" size="sm" onClick={() => companiesQuery.refetch()} className="ml-auto">
                 Retry
               </Button>
             </div>
@@ -318,10 +310,10 @@ export default function CompaniesPage() {
                 </TableBody>
               </Table>
 
-              {pagination.count > 0 && (
+              {companiesCount > 0 && (
                 <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
                   <span>
-                    {pagination.offset + 1} — {Math.min(pagination.offset + pagination.limit, pagination.count)} of {pagination.count} results
+                    {pagination.offset + 1} — {Math.min(pagination.offset + pagination.limit, companiesCount)} of {companiesCount} results
                   </span>
                   <div className="flex items-center gap-2">
                     <span>

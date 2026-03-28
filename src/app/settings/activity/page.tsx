@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -81,36 +82,23 @@ function formatTimestamp(ts: string): string {
 }
 
 export default function ActivityLogPage() {
-  const [events, setEvents] = useState<ActivityItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const fetchEvents = useCallback(async () => {
-    try {
+  // Fetch events via React Query with auto-refresh
+  const eventsQuery = useQuery({
+    queryKey: ["activity-events"],
+    queryFn: async () => {
       const data = await getRecentActivity(100);
-      setEvents(data.items);
-    } catch (err) {
-      console.error("Failed to fetch activity:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      return data.items;
+    },
+    staleTime: 15_000,
+    refetchInterval: autoRefresh ? 30_000 : false,
+  });
 
-  useEffect(() => {
-    fetchEvents();
-  }, [fetchEvents]);
-
-  useEffect(() => {
-    if (autoRefresh) {
-      intervalRef.current = setInterval(fetchEvents, 30000); // 30s refresh
-    }
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [autoRefresh, fetchEvents]);
+  const events = eventsQuery.data ?? [];
+  const loading = eventsQuery.isLoading;
 
   const filteredEvents = events.filter((event) => {
     const matchesSearch =
@@ -152,7 +140,7 @@ export default function ActivityLogPage() {
             <Activity className="h-3.5 w-3.5 mr-1" />
             {autoRefresh ? "Live" : "Paused"}
           </Button>
-          <Button variant="outline" size="sm" onClick={fetchEvents}>
+          <Button variant="outline" size="sm" onClick={() => eventsQuery.refetch()}>
             <RefreshCw className="h-3.5 w-3.5 mr-1" />
             Refresh
           </Button>
