@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Card,
   CardContent,
@@ -92,13 +93,10 @@ interface PendingChange {
 const CURRENCY_SYMBOL = "£"; // Centralized — change here for multi-currency support
 
 export default function PricingPage() {
-  const [items, setItems] = useState<WorkbenchItem[]>([]);
-  const [stats, setStats] = useState<WorkbenchStats | null>(null);
-  const [rules, setRules] = useState<PricingRuleDto[]>([]);
-  const [history, setHistory] = useState<PriceChangeLogDto[]>([]);
-  const [loading, setLoading] = useState(true);
+  const pricingQueryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [pendingChanges, setPendingChanges] = useState<Map<string, PendingChange>>(new Map());
   const [saving, setSaving] = useState(false);
@@ -106,7 +104,6 @@ export default function PricingPage() {
   const [pagination, setPagination] = useState({
     offset: 0,
     limit: 50,
-    count: 0,
   });
 
   // Rule dialog state
@@ -128,35 +125,63 @@ export default function PricingPage() {
     },
   });
 
-  const fetchWorkbench = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await getPricingWorkbench({
-        limit: pagination.limit,
-        offset: pagination.offset,
-        q: searchQuery || undefined,
-      });
-      setItems(response.items);
-      setStats(response.stats);
-      setPagination((prev) => ({
-        ...prev,
-        count: response.count,
-      }));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load pricing data");
-    } finally {
-      setLoading(false);
-    }
-  }, [pagination.limit, pagination.offset, searchQuery]);
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Fetch workbench via React Query
+  const workbenchQuery = useQuery({
+    queryKey: ["pricing-workbench", pagination.limit, pagination.offset, debouncedSearch],
+    queryFn: () => getPricingWorkbench({
+      limit: pagination.limit,
+      offset: pagination.offset,
+      q: debouncedSearch || undefined,
+    }),
+    staleTime: 15_000,
+  });
+
+  const items = workbenchQuery.data?.items ?? [];
+  const stats = workbenchQuery.data?.stats ?? null;
+  const loading = workbenchQuery.isLoading;
+
+  // Fetch rules via React Query
+  const rulesQuery = useQuery({
+    queryKey: ["pricing-rules"],
+    queryFn: async () => {
+      const response = await getPricingRules();
+      return response.rules;
+    },
+    staleTime: 30_000,
+  });
+
+  const rules = rulesQuery.data ?? [];
+
+  // Fetch history via React Query
+  const historyQuery = useQuery({
+    queryKey: ["price-history"],
+    queryFn: async () => {
+      const response = await getPriceHistory({ limit: 50 });
+      return response.changes;
+    },
+    staleTime: 30_000,
+  });
+
+  const history = historyQuery.data ?? [];
+
+  const fetchWorkbench = () => {
+    pricingQueryClient.invalidateQueries({ queryKey: ["pricing-workbench"] });
+  };
 
   const fetchRules = async () => {
-    try {
-      const response = await getPricingRules();
-      setRules(response.rules);
-    } catch (err) {
-      console.error("Failed to load pricing rules:", err);
-    }
+    await pricingQueryClient.invalidateQueries({ queryKey: ["pricing-rules"] });
+  };
+
+  const fetchHistory = async () => {
+    await pricingQueryClient.invalidateQueries({ queryKey: ["price-history"] });
   };
 
   const handleCreateRule = () => {
@@ -260,27 +285,10 @@ export default function PricingPage() {
     "pricing"
   );
 
-  const fetchHistory = async () => {
-    try {
-      const response = await getPriceHistory({ limit: 50 });
-      setHistory(response.changes);
-    } catch (err) {
-      console.error("Failed to load price history:", err);
-    }
-  };
-
+  // Re-fetch workbench when pagination changes (search already handled via debouncedSearch)
   useEffect(() => {
-    fetchWorkbench();
-    fetchRules();
-    fetchHistory();
-  }, []);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchWorkbench();
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [searchQuery, pagination.offset]);
+    pricingQueryClient.invalidateQueries({ queryKey: ["pricing-workbench"] });
+  }, [pagination.offset]);
 
   const handlePriceChange = (variantId: string, originalPrice: number, newValue: string) => {
     // Always update the editing value so the user sees what they type
@@ -652,11 +660,11 @@ export default function PricingPage() {
                   )}
 
                   {/* Pagination */}
-                  {pagination.count > pagination.limit && (
+                  {(workbenchQuery.data?.count ?? 0) > pagination.limit && (
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mt-4 text-sm text-muted-foreground">
                       <span>
-                        {pagination.offset + 1} — {Math.min(pagination.offset + pagination.limit, pagination.count)}{" "}
-                        of {pagination.count} variants
+                        {pagination.offset + 1} — {Math.min(pagination.offset + pagination.limit, (workbenchQuery.data?.count ?? 0))}{" "}
+                        of {(workbenchQuery.data?.count ?? 0)} variants
                       </span>
                       <div className="flex items-center gap-2">
                         <Button
@@ -675,7 +683,7 @@ export default function PricingPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          disabled={pagination.offset + pagination.limit >= pagination.count}
+                          disabled={pagination.offset + pagination.limit >= (workbenchQuery.data?.count ?? 0)}
                           onClick={() =>
                             setPagination((prev) => ({
                               ...prev,

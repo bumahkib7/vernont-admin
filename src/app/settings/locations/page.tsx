@@ -158,38 +158,33 @@ export default function LocationsSettingsPage() {
     return "An unexpected error occurred";
   };
 
-  // Fetch stock locations
-  const fetchLocations = useCallback(async () => {
-    try {
-      setIsLoadingLocations(true);
-      setLocationsError(null);
+  // Fetch stock locations via React Query
+  const locationsQuery = useQuery({
+    queryKey: ["stock-locations"],
+    queryFn: async () => {
       const response = await getStockLocations({ limit: 100 });
-      setLocations(response.locations || []);
-    } catch (err) {
-      setLocationsError(getErrorMessage(err));
-    } finally {
-      setIsLoadingLocations(false);
-    }
-  }, []);
+      return response.locations || [];
+    },
+    staleTime: 30_000,
+  });
 
-  // Fetch shipping profiles
-  const fetchProfiles = useCallback(async () => {
-    try {
-      setIsLoadingProfiles(true);
-      setProfilesError(null);
+  const locations = locationsQuery.data ?? [];
+  const isLoadingLocations = locationsQuery.isLoading;
+  const locationsError = locationsQuery.error ? getErrorMessage(locationsQuery.error) : null;
+
+  // Fetch shipping profiles via React Query
+  const profilesQuery = useQuery({
+    queryKey: ["shipping-profiles"],
+    queryFn: async () => {
       const response = await getShippingProfiles({ limit: 100 });
-      setProfiles(response.profiles || []);
-    } catch (err) {
-      setProfilesError(getErrorMessage(err));
-    } finally {
-      setIsLoadingProfiles(false);
-    }
-  }, []);
+      return response.profiles || [];
+    },
+    staleTime: 30_000,
+  });
 
-  useEffect(() => {
-    fetchLocations();
-    fetchProfiles();
-  }, [fetchLocations, fetchProfiles]);
+  const profiles = profilesQuery.data ?? [];
+  const isLoadingProfiles = profilesQuery.isLoading;
+  const profilesError = profilesQuery.error ? getErrorMessage(profilesQuery.error) : null;
 
   // Subscribe to WebSocket for real-time updates
   useEffect(() => {
@@ -203,10 +198,10 @@ export default function LocationsSettingsPage() {
 
       // Refetch on StockLocation or ShippingProfile changes
       if (auditLog.entityType === "StockLocation") {
-        fetchLocations();
+        queryClient.invalidateQueries({ queryKey: ["stock-locations"] });
       }
       if (auditLog.entityType === "ShippingProfile") {
-        fetchProfiles();
+        queryClient.invalidateQueries({ queryKey: ["shipping-profiles"] });
       }
     });
 
@@ -215,7 +210,7 @@ export default function LocationsSettingsPage() {
         subscription.unsubscribe();
       }
     };
-  }, [isConnected, subscribe, fetchLocations, fetchProfiles]);
+  }, [isConnected, subscribe]);
 
   // =========================================================================
   // Stock Location Handlers
@@ -246,7 +241,7 @@ export default function LocationsSettingsPage() {
       await createStockLocation(data);
       setIsCreateLocationOpen(false);
       resetCreateLocationForm();
-      fetchLocations();
+      queryClient.invalidateQueries({ queryKey: ["stock-locations"] });
     } catch (err) {
       setCreateLocationError(getErrorMessage(err));
     } finally {
@@ -307,7 +302,7 @@ export default function LocationsSettingsPage() {
       await updateStockLocation(editingLocation.id, data);
       setIsEditLocationOpen(false);
       setEditingLocation(null);
-      fetchLocations();
+      queryClient.invalidateQueries({ queryKey: ["stock-locations"] });
     } catch (err) {
       setEditLocationError(getErrorMessage(err));
     } finally {
@@ -328,7 +323,7 @@ export default function LocationsSettingsPage() {
       await deleteStockLocation(deletingLocation.id);
       setIsDeleteLocationOpen(false);
       setDeletingLocation(null);
-      fetchLocations();
+      queryClient.invalidateQueries({ queryKey: ["stock-locations"] });
     } catch (err) {
       console.error("Failed to delete location:", err);
     } finally {
@@ -358,7 +353,7 @@ export default function LocationsSettingsPage() {
       await createShippingProfile(data);
       setIsCreateProfileOpen(false);
       resetCreateProfileForm();
-      fetchProfiles();
+      queryClient.invalidateQueries({ queryKey: ["shipping-profiles"] });
     } catch (err) {
       setCreateProfileError(getErrorMessage(err));
     } finally {
@@ -398,7 +393,7 @@ export default function LocationsSettingsPage() {
       await updateShippingProfile(editingProfile.id, data);
       setIsEditProfileOpen(false);
       setEditingProfile(null);
-      fetchProfiles();
+      queryClient.invalidateQueries({ queryKey: ["shipping-profiles"] });
     } catch (err) {
       setEditProfileError(getErrorMessage(err));
     } finally {
@@ -419,7 +414,7 @@ export default function LocationsSettingsPage() {
       await deleteShippingProfile(deletingProfile.id);
       setIsDeleteProfileOpen(false);
       setDeletingProfile(null);
-      fetchProfiles();
+      queryClient.invalidateQueries({ queryKey: ["shipping-profiles"] });
     } catch (err) {
       console.error("Failed to delete profile:", err);
     } finally {
@@ -485,7 +480,7 @@ export default function LocationsSettingsPage() {
             <div className="flex items-center gap-2 p-4 mb-4 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 rounded-lg">
               <AlertCircle className="h-5 w-5" />
               <span>{locationsError}</span>
-              <Button variant="outline" size="sm" onClick={fetchLocations} className="ml-auto">
+              <Button variant="outline" size="sm" onClick={() => locationsQuery.refetch()} className="ml-auto">
                 Retry
               </Button>
             </div>
@@ -609,7 +604,7 @@ export default function LocationsSettingsPage() {
             <div className="flex items-center gap-2 p-4 mb-4 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 rounded-lg">
               <AlertCircle className="h-5 w-5" />
               <span>{profilesError}</span>
-              <Button variant="outline" size="sm" onClick={fetchProfiles} className="ml-auto">
+              <Button variant="outline" size="sm" onClick={() => profilesQuery.refetch()} className="ml-auto">
                 Retry
               </Button>
             </div>

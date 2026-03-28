@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -60,16 +61,14 @@ export default function CreateDraftOrderPage() {
 
   // Customer
   const [customerSearch, setCustomerSearch] = useState("");
-  const [customerResults, setCustomerResults] = useState<CustomerSummary[]>([]);
-  const [customerLoading, setCustomerLoading] = useState(false);
+  const [debouncedCustomerSearch, setDebouncedCustomerSearch] = useState("");
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerSummary | null>(null);
   const [customerEmail, setCustomerEmail] = useState("");
   const [showCustomerSearch, setShowCustomerSearch] = useState(false);
 
   // Products
   const [productSearch, setProductSearch] = useState("");
-  const [productResults, setProductResults] = useState<ProductSummary[]>([]);
-  const [productLoading, setProductLoading] = useState(false);
+  const [debouncedProductSearch, setDebouncedProductSearch] = useState("");
   const [showProductSearch, setShowProductSearch] = useState(false);
 
   // Items
@@ -103,51 +102,52 @@ export default function CreateDraftOrderPage() {
   // Note
   const [note, setNote] = useState("");
 
-  // Customer search with debounce
+  // Debounce customer search
   useEffect(() => {
-    if (!customerSearch || customerSearch.length < 2) {
-      setCustomerResults([]);
-      return;
-    }
-    const timer = setTimeout(async () => {
-      setCustomerLoading(true);
-      try {
-        const response = await getCustomers({ q: customerSearch, limit: 5 });
-        setCustomerResults(response.customers);
-      } catch {
-        setCustomerResults([]);
-      } finally {
-        setCustomerLoading(false);
-      }
+    const timer = setTimeout(() => {
+      setDebouncedCustomerSearch(customerSearch);
     }, 300);
     return () => clearTimeout(timer);
   }, [customerSearch]);
 
-  // Product search with debounce
+  // Debounce product search
   useEffect(() => {
-    if (!productSearch || productSearch.length < 2) {
-      setProductResults([]);
-      return;
-    }
-    const timer = setTimeout(async () => {
-      setProductLoading(true);
-      try {
-        const response = await getProducts({ q: productSearch, end: 10 });
-        setProductResults(response.content);
-      } catch {
-        setProductResults([]);
-      } finally {
-        setProductLoading(false);
-      }
+    const timer = setTimeout(() => {
+      setDebouncedProductSearch(productSearch);
     }, 300);
     return () => clearTimeout(timer);
   }, [productSearch]);
+
+  // Customer search via React Query
+  const customerSearchQuery = useQuery({
+    queryKey: ["draft-customer-search", debouncedCustomerSearch],
+    queryFn: () => getCustomers({ q: debouncedCustomerSearch, limit: 5 }),
+    enabled: debouncedCustomerSearch.length >= 2,
+    staleTime: 10_000,
+  });
+
+  const customerResults = debouncedCustomerSearch.length >= 2
+    ? (customerSearchQuery.data?.customers ?? [])
+    : [];
+  const customerLoading = customerSearchQuery.isFetching;
+
+  // Product search via React Query
+  const productSearchQuery = useQuery({
+    queryKey: ["draft-product-search", debouncedProductSearch],
+    queryFn: () => getProducts({ q: debouncedProductSearch, end: 10 }),
+    enabled: debouncedProductSearch.length >= 2,
+    staleTime: 10_000,
+  });
+
+  const productResults = debouncedProductSearch.length >= 2
+    ? (productSearchQuery.data?.content ?? [])
+    : [];
+  const productLoading = productSearchQuery.isFetching;
 
   const selectCustomer = (customer: CustomerSummary) => {
     setSelectedCustomer(customer);
     setCustomerEmail(customer.email);
     setCustomerSearch("");
-    setCustomerResults([]);
     setShowCustomerSearch(false);
   };
 
@@ -185,7 +185,6 @@ export default function CreateDraftOrderPage() {
       setItems((prev) => [...prev, newItem]);
     }
     setProductSearch("");
-    setProductResults([]);
     setShowProductSearch(false);
   };
 

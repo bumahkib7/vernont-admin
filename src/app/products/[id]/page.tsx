@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import {
@@ -131,10 +132,8 @@ export default function ProductDetailPage() {
   const productId = params.id as string;
   usePageContext("products", productId, "product");
 
+  const productQueryClient = useQueryClient();
   const [product, setProduct] = useState<Product | null>(null);
-  const [categories, setCategories] = useState<ProductCategory[]>([]);
-  const [collections, setCollections] = useState<ProductCollection[]>([]);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -201,17 +200,20 @@ export default function ProductDetailPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [ConfirmDialog, confirm] = useConfirm();
 
-  useEffect(() => {
-    fetchProduct();
-    fetchCategories();
-    fetchCollections();
-  }, [productId]);
+  // Fetch product via React Query
+  const productQuery = useQuery({
+    queryKey: ["product-detail", productId],
+    queryFn: () => getProduct(productId),
+    enabled: !!productId,
+    staleTime: 30_000,
+  });
 
-  const fetchProduct = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await getProduct(productId);
+  const loading = productQuery.isLoading;
+
+  // Populate form when product data arrives
+  useEffect(() => {
+    if (productQuery.data) {
+      const data = productQuery.data;
       setProduct(data);
       setFormData({
         title: data.title || "",
@@ -229,29 +231,38 @@ export default function ProductDetailPage() {
         collectionId: data.collectionId || "",
       });
       setHasChanges(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load product");
-    } finally {
-      setLoading(false);
     }
-  };
+    if (productQuery.error) {
+      setError(productQuery.error instanceof Error ? productQuery.error.message : "Failed to load product");
+    }
+  }, [productQuery.data, productQuery.error]);
 
-  const fetchCategories = async () => {
-    try {
+  // Fetch categories via React Query
+  const categoriesQuery = useQuery({
+    queryKey: ["product-categories"],
+    queryFn: async () => {
       const response = await getCategories({ limit: 100 });
-      setCategories(response.categories || []);
-    } catch (err) {
-      console.error("Failed to load categories:", err);
-    }
-  };
+      return response.categories || [];
+    },
+    staleTime: 5 * 60_000,
+  });
 
-  const fetchCollections = async () => {
-    try {
+  const categories = categoriesQuery.data ?? [];
+
+  // Fetch collections via React Query
+  const collectionsQuery = useQuery({
+    queryKey: ["product-collections"],
+    queryFn: async () => {
       const response = await getCollections({ limit: 100 });
-      setCollections(response.collections || []);
-    } catch (err) {
-      console.error("Failed to load collections:", err);
-    }
+      return response.collections || [];
+    },
+    staleTime: 5 * 60_000,
+  });
+
+  const collections = collectionsQuery.data ?? [];
+
+  const fetchProduct = () => {
+    productQueryClient.invalidateQueries({ queryKey: ["product-detail", productId] });
   };
 
   const updateField = <K extends keyof typeof formData>(

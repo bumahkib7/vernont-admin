@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -132,8 +133,8 @@ export default function OrderDetailsPage() {
   const orderId = params.id as string;
   usePageContext("orders", orderId, "order");
 
+  const orderQueryClient = useQueryClient();
   const [order, setOrder] = useState<Order | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -172,52 +173,92 @@ export default function OrderDetailsPage() {
   const [voidLoading, setVoidLoading] = useState(false);
   const [trackingDialogOpen, setTrackingDialogOpen] = useState(false);
 
-  const fetchOrder = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await getOrder(orderId);
+  // Fetch order via React Query
+  const orderQuery = useQuery({
+    queryKey: ["order-detail", orderId],
+    queryFn: () => getOrder(orderId),
+    enabled: !!orderId && !!user && !authLoading,
+    staleTime: 15_000,
+  });
+
+  const loading = orderQuery.isLoading;
+
+  // Populate order state when data arrives
+  useEffect(() => {
+    if (orderQuery.data) {
+      const data = orderQuery.data;
       setOrder(data);
-      // Set default carrier based on order's shipping method
       if (data.shippingMethodId) {
         setCarrier(data.shippingMethodId);
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load order");
-    } finally {
-      setLoading(false);
     }
-  };
+    if (orderQuery.error) {
+      setError(orderQuery.error instanceof Error ? orderQuery.error.message : "Failed to load order");
+    }
+  }, [orderQuery.data, orderQuery.error]);
 
-  const fetchShippingOptions = async () => {
-    try {
+  // Fetch shipping options via React Query
+  const shippingOptionsQuery = useQuery({
+    queryKey: ["shipping-options"],
+    queryFn: async () => {
       const response = await getShippingOptions();
-      setShippingOptions(response.shipping_options || []);
-    } catch (err) {
-      console.error("Failed to load shipping options:", err);
-    }
-  };
+      return response.shipping_options || [];
+    },
+    enabled: !!user && !authLoading,
+    staleTime: 5 * 60_000,
+  });
 
-  const fetchShippingConfig = async () => {
-    try {
-      const config = await getShippingConfig();
+  // Populate shippingOptions from query
+  useEffect(() => {
+    if (shippingOptionsQuery.data) {
+      setShippingOptions(shippingOptionsQuery.data);
+    }
+  }, [shippingOptionsQuery.data]);
+
+  // Fetch shipping config via React Query
+  const shippingConfigQuery = useQuery({
+    queryKey: ["shipping-config"],
+    queryFn: () => getShippingConfig(),
+    enabled: !!user && !authLoading,
+    staleTime: 5 * 60_000,
+  });
+
+  // Populate shippingConfig from query
+  useEffect(() => {
+    if (shippingConfigQuery.data) {
+      const config = shippingConfigQuery.data;
       setShippingConfig(config);
       if (config.shipEngineConfigured) {
         setSelectedCarrier(config.defaultCarrierId);
         setSelectedService(config.defaultServiceCode);
       }
-    } catch (err) {
-      console.error("Failed to load shipping config:", err);
     }
+  }, [shippingConfigQuery.data]);
+
+  // Fetch fulfillments via React Query
+  const fulfillmentsQuery = useQuery({
+    queryKey: ["order-fulfillments", orderId],
+    queryFn: async () => {
+      const data = await getOrderFulfillments(orderId);
+      return data.fulfillments || [];
+    },
+    enabled: !!orderId && !!user && !authLoading,
+    staleTime: 15_000,
+  });
+
+  // Populate fulfillments from query
+  useEffect(() => {
+    if (fulfillmentsQuery.data) {
+      setFulfillments(fulfillmentsQuery.data);
+    }
+  }, [fulfillmentsQuery.data]);
+
+  const fetchOrder = async () => {
+    await orderQueryClient.invalidateQueries({ queryKey: ["order-detail", orderId] });
   };
 
   const fetchFulfillments = async () => {
-    try {
-      const data = await getOrderFulfillments(orderId);
-      setFulfillments(data.fulfillments || []);
-    } catch (err) {
-      console.error("Failed to load fulfillments:", err);
-    }
+    await orderQueryClient.invalidateQueries({ queryKey: ["order-fulfillments", orderId] });
   };
 
   const fetchCarrierServices = async (carrierId: string) => {
@@ -285,21 +326,12 @@ export default function OrderDetailsPage() {
     }
   };
 
+  // Redirect to login if not authenticated
   useEffect(() => {
-    // Redirect to login if not authenticated
     if (!authLoading && !user) {
       router.push("/login");
-      return;
     }
-
-    // Only fetch data when authenticated
-    if (user) {
-      fetchOrder();
-      fetchShippingOptions();
-      fetchShippingConfig();
-      fetchFulfillments();
-    }
-  }, [orderId, user, authLoading, router]);
+  }, [authLoading, user, router]);
 
   const copyToClipboard = (text: string, field: string) => {
     navigator.clipboard.writeText(text);
