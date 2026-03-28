@@ -533,16 +533,32 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
     [formData.options]
   );
 
-  // Sync variantPrices when options change
+  // Sync variantPrices when options change.
+  // Uses a stable key (sorted option values joined) to match existing entries
+  // even when the option name changes (e.g., user editing "Siz" → "Size").
   React.useEffect(() => {
     if (!formData.hasVariants) return;
 
-    const newVariantPrices: VariantPricing[] = variantCombinations.map(combo => {
-      // Try to find existing pricing for this combination
-      const existing = formData.variantPrices.find(vp =>
+    const comboKey = (combo: Record<string, string>) =>
+      Object.values(combo).sort().join("|").toLowerCase();
+
+    const newVariantPrices: VariantPricing[] = variantCombinations.map((combo, idx) => {
+      // Match by exact option values first
+      const exactMatch = formData.variantPrices.find(vp =>
         JSON.stringify(vp.optionValues) === JSON.stringify(combo)
       );
-      return existing || {
+      if (exactMatch) return exactMatch;
+
+      // Fall back to matching by sorted values (handles option name renames)
+      const key = comboKey(combo);
+      const fuzzyMatch = formData.variantPrices.find(vp => comboKey(vp.optionValues) === key);
+      if (fuzzyMatch) return { ...fuzzyMatch, optionValues: combo };
+
+      // Fall back to positional match (preserves pricing when editing option names)
+      const positional = formData.variantPrices[idx];
+      if (positional && positional.price) return { ...positional, optionValues: combo };
+
+      return {
         optionValues: combo,
         price: "",
         sku: "",
@@ -550,7 +566,6 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
       };
     });
 
-    // Only update if actually changed
     if (JSON.stringify(newVariantPrices) !== JSON.stringify(formData.variantPrices)) {
       updateFormData("variantPrices", newVariantPrices);
     }
