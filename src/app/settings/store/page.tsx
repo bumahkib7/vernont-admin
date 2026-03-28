@@ -106,8 +106,10 @@ export default function StoreSettingsPage() {
   const loadingStores = storesQuery.isLoading;
   const settings = settingsQuery.data?.storeSettings ?? null;
   const loadingSettings = settingsQuery.isLoading;
+  const [localError, setLocalError] = useState<string | null>(null);
   const error =
-    storesQuery.error?.message ?? settingsQuery.error?.message ?? null;
+    localError ?? storesQuery.error?.message ?? settingsQuery.error?.message ?? null;
+  const setError = setLocalError;
   const saving =
     updateBusinessInfoMutation.isPending ||
     updateLocalizationMutation.isPending ||
@@ -122,8 +124,6 @@ export default function StoreSettingsPage() {
   const [createStoreOpen, setCreateStoreOpen] = useState(false);
   const [newStoreName, setNewStoreName] = useState("");
   const [newStoreCurrency, setNewStoreCurrency] = useState("GBP");
-  const [creatingStore, setCreatingStore] = useState(false);
-
   // Dialog states for settings
   const [businessInfoOpen, setBusinessInfoOpen] = useState(false);
   const [localizationOpen, setLocalizationOpen] = useState(false);
@@ -410,19 +410,17 @@ export default function StoreSettingsPage() {
     );
   };
 
-  const [seoValidationError, setSeoValidationError] = useState<string | null>(null);
-
   const handleSaveSeo = () => {
     if (!selectedStore) return;
     if (seoForm.googleAnalyticsId && !seoForm.googleAnalyticsId.match(/^G-[A-Z0-9]+$/i)) {
-      setSeoValidationError("Invalid GA ID format (expected G-XXXXXXXXXX)");
+      setError("Invalid GA ID format (expected G-XXXXXXXXXX)");
       return;
     }
     if (seoForm.facebookPixelId && !seoForm.facebookPixelId.match(/^\d+$/)) {
-      setSeoValidationError("Invalid Pixel ID (expected numbers only)");
+      setError("Invalid Pixel ID (expected numbers only)");
       return;
     }
-    setSeoValidationError(null);
+    setError(null);
     updateSeoMutation.mutate(
       { storeId: selectedStore.id, data: { seoSettings: seoForm } },
       { onSuccess: () => setSeoOpen(false) },
