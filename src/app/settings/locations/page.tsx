@@ -67,6 +67,8 @@ import {
   Wifi,
   WifiOff,
   MapPin,
+  Star,
+  Send,
 } from "lucide-react";
 import {
   getStockLocations,
@@ -77,13 +79,21 @@ import {
   createShippingProfile,
   updateShippingProfile,
   deleteShippingProfile,
+  getShipFromAddresses,
+  createShipFromAddress,
+  updateShipFromAddress,
+  setDefaultShipFromAddress,
+  deleteShipFromAddress,
   ApiError,
   type StockLocation,
   type ShippingProfile,
+  type ShipFromAddress,
   type CreateStockLocationInput,
   type UpdateStockLocationInput,
   type CreateShippingProfileInput,
   type UpdateShippingProfileInput,
+  type CreateShipFromAddressInput,
+  type UpdateShipFromAddressInput,
 } from "@/lib/api";
 import { useWebSocket } from "@/hooks/use-websocket";
 
@@ -147,6 +157,42 @@ export default function LocationsSettingsPage() {
   const [deletingProfile, setDeletingProfile] = useState<ShippingProfile | null>(null);
   const [isDeletingProfile, setIsDeletingProfile] = useState(false);
 
+  // Create Ship-From Address modal state
+  const [isCreateAddressOpen, setIsCreateAddressOpen] = useState(false);
+  const [createAddressLabel, setCreateAddressLabel] = useState("");
+  const [createAddressName, setCreateAddressName] = useState("");
+  const [createAddressCompany, setCreateAddressCompany] = useState("");
+  const [createAddressStreet1, setCreateAddressStreet1] = useState("");
+  const [createAddressStreet2, setCreateAddressStreet2] = useState("");
+  const [createAddressCity, setCreateAddressCity] = useState("");
+  const [createAddressState, setCreateAddressState] = useState("");
+  const [createAddressPostal, setCreateAddressPostal] = useState("");
+  const [createAddressCountry, setCreateAddressCountry] = useState("");
+  const [createAddressPhone, setCreateAddressPhone] = useState("");
+  const [isCreatingAddress, setIsCreatingAddress] = useState(false);
+  const [createAddressError, setCreateAddressError] = useState<string | null>(null);
+
+  // Edit Ship-From Address modal state
+  const [isEditAddressOpen, setIsEditAddressOpen] = useState(false);
+  const [editingAddress, setEditingAddress] = useState<ShipFromAddress | null>(null);
+  const [editAddressLabel, setEditAddressLabel] = useState("");
+  const [editAddressName, setEditAddressName] = useState("");
+  const [editAddressCompany, setEditAddressCompany] = useState("");
+  const [editAddressStreet1, setEditAddressStreet1] = useState("");
+  const [editAddressStreet2, setEditAddressStreet2] = useState("");
+  const [editAddressCity, setEditAddressCity] = useState("");
+  const [editAddressState, setEditAddressState] = useState("");
+  const [editAddressPostal, setEditAddressPostal] = useState("");
+  const [editAddressCountry, setEditAddressCountry] = useState("");
+  const [editAddressPhone, setEditAddressPhone] = useState("");
+  const [isUpdatingAddress, setIsUpdatingAddress] = useState(false);
+  const [editAddressError, setEditAddressError] = useState<string | null>(null);
+
+  // Delete Ship-From Address confirmation state
+  const [isDeleteAddressOpen, setIsDeleteAddressOpen] = useState(false);
+  const [deletingAddress, setDeletingAddress] = useState<ShipFromAddress | null>(null);
+  const [isDeletingAddress, setIsDeletingAddress] = useState(false);
+
   // Extract error message from API error
   const getErrorMessage = (err: unknown): string => {
     if (err instanceof ApiError) {
@@ -186,6 +232,20 @@ export default function LocationsSettingsPage() {
   const isLoadingProfiles = profilesQuery.isLoading;
   const profilesError = profilesQuery.error ? getErrorMessage(profilesQuery.error) : null;
 
+  // Fetch ship-from addresses via React Query
+  const addressesQuery = useQuery({
+    queryKey: ["ship-from-addresses"],
+    queryFn: async () => {
+      const response = await getShipFromAddresses();
+      return response.addresses || [];
+    },
+    staleTime: 30_000,
+  });
+
+  const fromAddresses = addressesQuery.data ?? [];
+  const isLoadingAddresses = addressesQuery.isLoading;
+  const addressesError = addressesQuery.error ? getErrorMessage(addressesQuery.error) : null;
+
   // Subscribe to WebSocket for real-time updates
   useEffect(() => {
     if (!isConnected) return;
@@ -202,6 +262,9 @@ export default function LocationsSettingsPage() {
       }
       if (auditLog.entityType === "ShippingProfile") {
         queryClient.invalidateQueries({ queryKey: ["shipping-profiles"] });
+      }
+      if (auditLog.entityType === "ShipFromAddress") {
+        queryClient.invalidateQueries({ queryKey: ["ship-from-addresses"] });
       }
     });
 
@@ -422,6 +485,149 @@ export default function LocationsSettingsPage() {
     }
   };
 
+  // =========================================================================
+  // Ship-From Address Handlers
+  // =========================================================================
+
+  const handleCreateAddress = async () => {
+    if (!createAddressLabel || !createAddressName || !createAddressStreet1 || !createAddressCity || !createAddressPostal || !createAddressCountry) {
+      setCreateAddressError("Label, Name, Street, City, Postal Code, and Country are required");
+      return;
+    }
+
+    try {
+      setIsCreatingAddress(true);
+      setCreateAddressError(null);
+
+      const data: CreateShipFromAddressInput = {
+        label: createAddressLabel,
+        name: createAddressName,
+        company: createAddressCompany || undefined,
+        street1: createAddressStreet1,
+        street2: createAddressStreet2 || undefined,
+        city: createAddressCity,
+        state_province: createAddressState || undefined,
+        postal_code: createAddressPostal,
+        country_code: createAddressCountry,
+        phone: createAddressPhone || undefined,
+      };
+
+      await createShipFromAddress(data);
+      setIsCreateAddressOpen(false);
+      resetCreateAddressForm();
+      queryClient.invalidateQueries({ queryKey: ["ship-from-addresses"] });
+    } catch (err) {
+      setCreateAddressError(getErrorMessage(err));
+    } finally {
+      setIsCreatingAddress(false);
+    }
+  };
+
+  const resetCreateAddressForm = () => {
+    setCreateAddressLabel("");
+    setCreateAddressName("");
+    setCreateAddressCompany("");
+    setCreateAddressStreet1("");
+    setCreateAddressStreet2("");
+    setCreateAddressCity("");
+    setCreateAddressState("");
+    setCreateAddressPostal("");
+    setCreateAddressCountry("");
+    setCreateAddressPhone("");
+    setCreateAddressError(null);
+  };
+
+  const openEditAddressModal = (address: ShipFromAddress) => {
+    setEditingAddress(address);
+    setEditAddressLabel(address.label);
+    setEditAddressName(address.name);
+    setEditAddressCompany(address.company || "");
+    setEditAddressStreet1(address.street1);
+    setEditAddressStreet2(address.street2 || "");
+    setEditAddressCity(address.city);
+    setEditAddressState(address.state_province || "");
+    setEditAddressPostal(address.postal_code);
+    setEditAddressCountry(address.country_code);
+    setEditAddressPhone(address.phone || "");
+    setEditAddressError(null);
+    setIsEditAddressOpen(true);
+  };
+
+  const handleUpdateAddress = async () => {
+    if (!editingAddress || !editAddressLabel || !editAddressName || !editAddressStreet1 || !editAddressCity || !editAddressPostal || !editAddressCountry) {
+      setEditAddressError("Label, Name, Street, City, Postal Code, and Country are required");
+      return;
+    }
+
+    try {
+      setIsUpdatingAddress(true);
+      setEditAddressError(null);
+
+      const data: UpdateShipFromAddressInput = {
+        label: editAddressLabel,
+        name: editAddressName,
+        company: editAddressCompany || undefined,
+        street1: editAddressStreet1,
+        street2: editAddressStreet2 || undefined,
+        city: editAddressCity,
+        state_province: editAddressState || undefined,
+        postal_code: editAddressPostal,
+        country_code: editAddressCountry,
+        phone: editAddressPhone || undefined,
+      };
+
+      await updateShipFromAddress(editingAddress.id, data);
+      setIsEditAddressOpen(false);
+      setEditingAddress(null);
+      queryClient.invalidateQueries({ queryKey: ["ship-from-addresses"] });
+    } catch (err) {
+      setEditAddressError(getErrorMessage(err));
+    } finally {
+      setIsUpdatingAddress(false);
+    }
+  };
+
+  const openDeleteAddressConfirm = (address: ShipFromAddress) => {
+    setDeletingAddress(address);
+    setIsDeleteAddressOpen(true);
+  };
+
+  const handleDeleteAddress = async () => {
+    if (!deletingAddress) return;
+
+    try {
+      setIsDeletingAddress(true);
+      await deleteShipFromAddress(deletingAddress.id);
+      setIsDeleteAddressOpen(false);
+      setDeletingAddress(null);
+      queryClient.invalidateQueries({ queryKey: ["ship-from-addresses"] });
+    } catch (err) {
+      console.error("Failed to delete ship-from address:", err);
+    } finally {
+      setIsDeletingAddress(false);
+    }
+  };
+
+  const handleSetDefaultAddress = async (address: ShipFromAddress) => {
+    try {
+      await setDefaultShipFromAddress(address.id);
+      queryClient.invalidateQueries({ queryKey: ["ship-from-addresses"] });
+    } catch (err) {
+      console.error("Failed to set default address:", err);
+    }
+  };
+
+  // Format ship-from address display
+  const formatFromAddress = (address: ShipFromAddress): string => {
+    const parts = [
+      address.street1,
+      address.city,
+      address.state_province,
+      address.postal_code,
+    ].filter(Boolean);
+    return parts.join(", ") || "No address";
+  };
+
   // Format address display
   const formatAddress = (location: StockLocation): string => {
     const parts = [
@@ -448,6 +654,132 @@ export default function LocationsSettingsPage() {
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
+
+      {/* Ship-From Addresses Card */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              Ship-From Addresses
+            </CardTitle>
+            <CardDescription>Configure return addresses used on shipping labels</CardDescription>
+          </div>
+          <Button className="gap-2" onClick={() => setIsCreateAddressOpen(true)}>
+            <Plus className="h-4 w-4" />
+            Add Address
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {/* Error state */}
+          {addressesError && (
+            <div className="flex items-center gap-2 p-4 mb-4 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 rounded-lg">
+              <AlertCircle className="h-5 w-5" />
+              <span>{addressesError}</span>
+              <Button variant="outline" size="sm" onClick={() => addressesQuery.refetch()} className="ml-auto">
+                Retry
+              </Button>
+            </div>
+          )}
+
+          {/* Loading state */}
+          {isLoadingAddresses ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : fromAddresses.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Send className="h-10 w-10 text-muted-foreground mb-3" />
+              <p className="text-muted-foreground mb-4">No ship-from addresses configured yet</p>
+              <Button variant="outline" className="gap-2" onClick={() => setIsCreateAddressOpen(true)}>
+                <Plus className="h-4 w-4" />
+                Add Your First Address
+              </Button>
+            </div>
+          ) : (
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Label</TableHead>
+                    <TableHead>Address</TableHead>
+                    <TableHead>Country</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {fromAddresses.map((address) => (
+                    <TableRow key={address.id}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          <Send className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <div>{address.label}</div>
+                            <div className="text-xs text-muted-foreground">{address.name}</div>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <MapPin className="h-3 w-3" />
+                          {formatFromAddress(address)}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{address.country_code}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        {address.is_default ? (
+                          <Badge className="bg-blue-100 dark:bg-blue-950/30 text-blue-800 dark:text-blue-400 gap-1">
+                            <Star className="h-3 w-3" />
+                            Default
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary">Active</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                              <span className="sr-only">Open menu</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {!address.is_default && (
+                              <DropdownMenuItem onClick={() => handleSetDefaultAddress(address)}>
+                                <Star className="h-4 w-4 mr-2" />
+                                Set as Default
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem onClick={() => openEditAddressModal(address)}>
+                              <Pencil className="h-4 w-4 mr-2" />
+                              Edit Address
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => openDeleteAddressConfirm(address)}
+                              className="text-red-600"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete Address
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
+              <div className="mt-4 text-sm text-muted-foreground">
+                {fromAddresses.length} address{fromAddresses.length === 1 ? "" : "es"}
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Stock Locations Card */}
       <Card>
@@ -1160,6 +1492,327 @@ export default function LocationsSettingsPage() {
                 </>
               ) : (
                 "Delete Profile"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* =========================================================================
+          Create Ship-From Address Dialog
+          ========================================================================= */}
+      <Dialog
+        open={isCreateAddressOpen}
+        onOpenChange={(open) => {
+          setIsCreateAddressOpen(open);
+          if (!open) resetCreateAddressForm();
+        }}
+      >
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Send className="h-5 w-5" />
+              Add Ship-From Address
+            </DialogTitle>
+            <DialogDescription>
+              Add a return address for shipping labels.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-4">
+            {createAddressError && (
+              <div className="flex items-center gap-2 p-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 rounded-lg">
+                <AlertCircle className="h-4 w-4" />
+                {createAddressError}
+              </div>
+            )}
+
+            <div className="grid gap-2">
+              <Label htmlFor="create-address-label">Label *</Label>
+              <Input
+                id="create-address-label"
+                placeholder="e.g., Main Office, Warehouse"
+                value={createAddressLabel}
+                onChange={(e) => setCreateAddressLabel(e.target.value)}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="create-address-name">Name *</Label>
+                <Input
+                  id="create-address-name"
+                  placeholder="Contact name"
+                  value={createAddressName}
+                  onChange={(e) => setCreateAddressName(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="create-address-company">Company</Label>
+                <Input
+                  id="create-address-company"
+                  placeholder="Company name"
+                  value={createAddressCompany}
+                  onChange={(e) => setCreateAddressCompany(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="create-address-street1">Street Address *</Label>
+              <Input
+                id="create-address-street1"
+                placeholder="Street address"
+                value={createAddressStreet1}
+                onChange={(e) => setCreateAddressStreet1(e.target.value)}
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="create-address-street2">Street Address 2</Label>
+              <Input
+                id="create-address-street2"
+                placeholder="Suite, apt, unit, etc."
+                value={createAddressStreet2}
+                onChange={(e) => setCreateAddressStreet2(e.target.value)}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="create-address-city">City *</Label>
+                <Input
+                  id="create-address-city"
+                  placeholder="City"
+                  value={createAddressCity}
+                  onChange={(e) => setCreateAddressCity(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="create-address-state">State/Province</Label>
+                <Input
+                  id="create-address-state"
+                  placeholder="State or province"
+                  value={createAddressState}
+                  onChange={(e) => setCreateAddressState(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="create-address-postal">Postal Code *</Label>
+                <Input
+                  id="create-address-postal"
+                  placeholder="Postal code"
+                  value={createAddressPostal}
+                  onChange={(e) => setCreateAddressPostal(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="create-address-country">Country Code *</Label>
+                <Input
+                  id="create-address-country"
+                  placeholder="e.g., US"
+                  value={createAddressCountry}
+                  onChange={(e) => setCreateAddressCountry(e.target.value.toUpperCase())}
+                  maxLength={2}
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="create-address-phone">Phone</Label>
+              <Input
+                id="create-address-phone"
+                placeholder="Phone number"
+                value={createAddressPhone}
+                onChange={(e) => setCreateAddressPhone(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateAddressOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateAddress} disabled={isCreatingAddress}>
+              {isCreatingAddress ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                "Create Address"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* =========================================================================
+          Edit Ship-From Address Dialog
+          ========================================================================= */}
+      <Dialog open={isEditAddressOpen} onOpenChange={setIsEditAddressOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-5 w-5" />
+              Edit Ship-From Address
+            </DialogTitle>
+            <DialogDescription>Update ship-from address details.</DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-4">
+            {editAddressError && (
+              <div className="flex items-center gap-2 p-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 rounded-lg">
+                <AlertCircle className="h-4 w-4" />
+                {editAddressError}
+              </div>
+            )}
+
+            <div className="grid gap-2">
+              <Label htmlFor="edit-address-label">Label *</Label>
+              <Input
+                id="edit-address-label"
+                value={editAddressLabel}
+                onChange={(e) => setEditAddressLabel(e.target.value)}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="edit-address-name">Name *</Label>
+                <Input
+                  id="edit-address-name"
+                  value={editAddressName}
+                  onChange={(e) => setEditAddressName(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-address-company">Company</Label>
+                <Input
+                  id="edit-address-company"
+                  value={editAddressCompany}
+                  onChange={(e) => setEditAddressCompany(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="edit-address-street1">Street Address *</Label>
+              <Input
+                id="edit-address-street1"
+                value={editAddressStreet1}
+                onChange={(e) => setEditAddressStreet1(e.target.value)}
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="edit-address-street2">Street Address 2</Label>
+              <Input
+                id="edit-address-street2"
+                value={editAddressStreet2}
+                onChange={(e) => setEditAddressStreet2(e.target.value)}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="edit-address-city">City *</Label>
+                <Input
+                  id="edit-address-city"
+                  value={editAddressCity}
+                  onChange={(e) => setEditAddressCity(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-address-state">State/Province</Label>
+                <Input
+                  id="edit-address-state"
+                  value={editAddressState}
+                  onChange={(e) => setEditAddressState(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="edit-address-postal">Postal Code *</Label>
+                <Input
+                  id="edit-address-postal"
+                  value={editAddressPostal}
+                  onChange={(e) => setEditAddressPostal(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="edit-address-country">Country Code *</Label>
+                <Input
+                  id="edit-address-country"
+                  value={editAddressCountry}
+                  onChange={(e) => setEditAddressCountry(e.target.value.toUpperCase())}
+                  maxLength={2}
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="edit-address-phone">Phone</Label>
+              <Input
+                id="edit-address-phone"
+                value={editAddressPhone}
+                onChange={(e) => setEditAddressPhone(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditAddressOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateAddress} disabled={isUpdatingAddress}>
+              {isUpdatingAddress ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Changes"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* =========================================================================
+          Delete Ship-From Address Confirmation Dialog
+          ========================================================================= */}
+      <AlertDialog open={isDeleteAddressOpen} onOpenChange={setIsDeleteAddressOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-red-600">
+              <Trash2 className="h-5 w-5" />
+              Delete Ship-From Address
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{deletingAddress?.label}</strong>? This action
+              cannot be undone. Shipping labels using this address will need a new ship-from address.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteAddress}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={isDeletingAddress}
+            >
+              {isDeletingAddress ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete Address"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -212,3 +212,93 @@ export async function deleteShippingProfile(id: string): Promise<{ id: string; d
     method: "DELETE",
   });
 }
+
+// =========================================================================
+// Ship-From Addresses API
+// =========================================================================
+
+export interface ShipFromAddress {
+  id: string;
+  label: string;
+  name: string;
+  company: string | null;
+  street1: string;
+  street2: string | null;
+  city: string;
+  state_province: string | null;
+  postal_code: string;
+  country_code: string;
+  phone: string | null;
+  is_default: boolean;
+}
+
+export interface ShipFromAddressesResponse {
+  addresses: ShipFromAddress[];
+}
+
+export interface ShipFromAddressResponse {
+  address: ShipFromAddress;
+}
+
+export interface CreateShipFromAddressInput {
+  label: string;
+  name: string;
+  company?: string;
+  street1: string;
+  street2?: string;
+  city: string;
+  state_province?: string;
+  postal_code: string;
+  country_code: string;
+  phone?: string;
+  is_default?: boolean;
+}
+
+export interface UpdateShipFromAddressInput {
+  label?: string;
+  name?: string;
+  company?: string;
+  street1?: string;
+  street2?: string;
+  city?: string;
+  state_province?: string;
+  postal_code?: string;
+  country_code?: string;
+  phone?: string;
+  is_default?: boolean;
+}
+
+// Get all ship-from addresses
+export async function getShipFromAddresses(): Promise<ShipFromAddressesResponse> {
+  return apiFetch<ShipFromAddressesResponse>("/admin/shipping/from-addresses");
+}
+
+// Create a ship-from address
+export async function createShipFromAddress(data: CreateShipFromAddressInput): Promise<ShipFromAddressResponse> {
+  return apiFetch<ShipFromAddressResponse>("/admin/shipping/from-addresses", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+// Update a ship-from address
+export async function updateShipFromAddress(id: string, data: UpdateShipFromAddressInput): Promise<ShipFromAddressResponse> {
+  return apiFetch<ShipFromAddressResponse>(`/admin/shipping/from-addresses/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+// Set a ship-from address as the default
+export async function setDefaultShipFromAddress(id: string): Promise<ShipFromAddressResponse> {
+  return apiFetch<ShipFromAddressResponse>(`/admin/shipping/from-addresses/${id}/set-default`, {
+    method: "PUT",
+  });
+}
+
+// Delete a ship-from address
+export async function deleteShipFromAddress(id: string): Promise<{ id: string; deleted: boolean }> {
+  return apiFetch<{ id: string; deleted: boolean }>(`/admin/shipping/from-addresses/${id}`, {
+    method: "DELETE",
+  });
+}
