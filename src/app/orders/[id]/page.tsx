@@ -165,6 +165,7 @@ export default function OrderDetailsPage() {
   // Rates, tracking, fulfillment state
   const [rates, setRates] = useState<ShippingRate[]>([]);
   const [ratesLoading, setRatesLoading] = useState(false);
+  const [ratesError, setRatesError] = useState<string | null>(null);
   const [carrierServices, setCarrierServices] = useState<ServiceInfo[]>([]);
   const [servicesLoading, setServicesLoading] = useState(false);
   const [fulfillments, setFulfillments] = useState<FulfillmentDetail[]>([]);
@@ -235,6 +236,14 @@ export default function OrderDetailsPage() {
     }
   }, [shippingConfigQuery.data]);
 
+  // Auto-fetch rates when ship dialog opens with ShipEngine enabled
+  useEffect(() => {
+    if (shipDialogOpen && useShipEngine && shippingConfig?.shipEngineConfigured) {
+      fetchRates();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shipDialogOpen, useShipEngine]);
+
   // Fetch fulfillments via React Query
   const fulfillmentsQuery = useQuery({
     queryKey: ["order-fulfillments", orderId],
@@ -279,6 +288,7 @@ export default function OrderDetailsPage() {
 
   const fetchRates = async () => {
     setRatesLoading(true);
+    setRatesError(null);
     try {
       const data = await getShippingRates(orderId, {
         packageWeight: packageDimensions.weight ? parseFloat(packageDimensions.weight) : undefined,
@@ -289,6 +299,7 @@ export default function OrderDetailsPage() {
       setRates(data.rates || []);
     } catch (err) {
       console.error("Failed to load rates:", err);
+      setRatesError("Failed to fetch rates. Check ShipEngine configuration.");
       toast.error("Failed to fetch shipping rates");
     } finally {
       setRatesLoading(false);
@@ -1097,7 +1108,7 @@ export default function OrderDetailsPage() {
                   <label className="text-sm font-medium text-muted-foreground">Package Dimensions</label>
                   <div className="grid grid-cols-4 gap-2">
                     <div>
-                      <label className="text-xs text-muted-foreground">Weight (oz)</label>
+                      <label className="text-xs text-muted-foreground">Weight (kg)</label>
                       <Input
                         type="text"
                         inputMode="decimal"
@@ -1109,7 +1120,7 @@ export default function OrderDetailsPage() {
                       />
                     </div>
                     <div>
-                      <label className="text-xs text-muted-foreground">Length (in)</label>
+                      <label className="text-xs text-muted-foreground">Length (cm)</label>
                       <Input
                         type="text"
                         inputMode="decimal"
@@ -1121,7 +1132,7 @@ export default function OrderDetailsPage() {
                       />
                     </div>
                     <div>
-                      <label className="text-xs text-muted-foreground">Width (in)</label>
+                      <label className="text-xs text-muted-foreground">Width (cm)</label>
                       <Input
                         type="text"
                         inputMode="decimal"
@@ -1133,7 +1144,7 @@ export default function OrderDetailsPage() {
                       />
                     </div>
                     <div>
-                      <label className="text-xs text-muted-foreground">Height (in)</label>
+                      <label className="text-xs text-muted-foreground">Height (cm)</label>
                       <Input
                         type="text"
                         inputMode="decimal"
@@ -1221,7 +1232,10 @@ export default function OrderDetailsPage() {
                         })}
                     </div>
                   )}
-                  {rates.length === 0 && !ratesLoading && (
+                  {ratesError && (
+                    <p className="text-xs text-destructive text-center py-2">{ratesError}</p>
+                  )}
+                  {rates.length === 0 && !ratesLoading && !ratesError && (
                     <p className="text-xs text-muted-foreground text-center py-2">
                       Click &quot;Get Rates&quot; to compare shipping prices across carriers.
                     </p>
