@@ -375,6 +375,7 @@ export default function OrderDetailsPage() {
       });
 
       await fetchOrder();
+      await fetchFulfillments();
 
       // If we got a label URL, show the label dialog
       if (result.labelUrls && result.labelUrls.length > 0) {
@@ -1326,7 +1327,6 @@ export default function OrderDetailsPage() {
               variant="outline"
               onClick={() => {
                 setLabelDialogOpen(false);
-                setLabelUrl(null);
               }}
             >
               Done
