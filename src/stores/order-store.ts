@@ -28,7 +28,13 @@ export type OrderSortDirection = "asc" | "desc";
 // Zustand Store — Client UI State Only
 // ============================================================================
 
+export type OrderViewMode = "table" | "pipeline";
+
 interface OrderUIState {
+  // View mode
+  viewMode: OrderViewMode;
+  setViewMode: (mode: OrderViewMode) => void;
+
   // Search
   searchQuery: string;
   setSearchQuery: (query: string) => void;
@@ -75,6 +81,7 @@ interface OrderUIState {
 }
 
 const initialState = {
+  viewMode: "table" as OrderViewMode,
   searchQuery: "",
   activeFilters: [] as OrderFilter[],
   sortField: "createdAt" as OrderSortField,
@@ -91,6 +98,9 @@ const initialState = {
 
 export const useOrderStore = create<OrderUIState>((set, get) => ({
   ...initialState,
+
+  // View mode
+  setViewMode: (mode) => set({ viewMode: mode }),
 
   // Search
   setSearchQuery: (query) => set({ searchQuery: query, page: 1 }),
