@@ -229,6 +229,7 @@ export interface ShipFromAddress {
   postal_code: string;
   country_code: string;
   phone: string | null;
+  email: string | null;
   is_default: boolean;
 }
 
@@ -251,6 +252,7 @@ export interface CreateShipFromAddressInput {
   postal_code: string;
   country_code: string;
   phone?: string;
+  email?: string;
   is_default?: boolean;
 }
 
@@ -265,6 +267,7 @@ export interface UpdateShipFromAddressInput {
   postal_code?: string;
   country_code?: string;
   phone?: string;
+  email?: string;
   is_default?: boolean;
 }
 

@@ -169,6 +169,7 @@ export default function LocationsSettingsPage() {
   const [createAddressPostal, setCreateAddressPostal] = useState("");
   const [createAddressCountry, setCreateAddressCountry] = useState("");
   const [createAddressPhone, setCreateAddressPhone] = useState("");
+  const [createAddressEmail, setCreateAddressEmail] = useState("");
   const [isCreatingAddress, setIsCreatingAddress] = useState(false);
   const [createAddressError, setCreateAddressError] = useState<string | null>(null);
 
@@ -185,6 +186,7 @@ export default function LocationsSettingsPage() {
   const [editAddressPostal, setEditAddressPostal] = useState("");
   const [editAddressCountry, setEditAddressCountry] = useState("");
   const [editAddressPhone, setEditAddressPhone] = useState("");
+  const [editAddressEmail, setEditAddressEmail] = useState("");
   const [isUpdatingAddress, setIsUpdatingAddress] = useState(false);
   const [editAddressError, setEditAddressError] = useState<string | null>(null);
 
@@ -510,6 +512,7 @@ export default function LocationsSettingsPage() {
         postal_code: createAddressPostal,
         country_code: createAddressCountry,
         phone: createAddressPhone || undefined,
+        email: createAddressEmail || undefined,
       };
 
       await createShipFromAddress(data);
@@ -534,6 +537,7 @@ export default function LocationsSettingsPage() {
     setCreateAddressPostal("");
     setCreateAddressCountry("");
     setCreateAddressPhone("");
+    setCreateAddressEmail("");
     setCreateAddressError(null);
   };
 
@@ -549,6 +553,7 @@ export default function LocationsSettingsPage() {
     setEditAddressPostal(address.postal_code);
     setEditAddressCountry(address.country_code);
     setEditAddressPhone(address.phone || "");
+    setEditAddressEmail(address.email || "");
     setEditAddressError(null);
     setIsEditAddressOpen(true);
   };
@@ -574,6 +579,7 @@ export default function LocationsSettingsPage() {
         postal_code: editAddressPostal,
         country_code: editAddressCountry,
         phone: editAddressPhone || undefined,
+        email: editAddressEmail || undefined,
       };
 
       await updateShipFromAddress(editingAddress.id, data);
@@ -1630,6 +1636,17 @@ export default function LocationsSettingsPage() {
                 onChange={(e) => setCreateAddressPhone(e.target.value)}
               />
             </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="create-address-email">Email</Label>
+              <Input
+                id="create-address-email"
+                type="email"
+                placeholder="warehouse@example.com"
+                value={createAddressEmail}
+                onChange={(e) => setCreateAddressEmail(e.target.value)}
+              />
+            </div>
           </div>
 
           <DialogFooter>
@@ -1762,6 +1779,17 @@ export default function LocationsSettingsPage() {
                 id="edit-address-phone"
                 value={editAddressPhone}
                 onChange={(e) => setEditAddressPhone(e.target.value)}
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="edit-address-email">Email</Label>
+              <Input
+                id="edit-address-email"
+                type="email"
+                placeholder="warehouse@example.com"
+                value={editAddressEmail}
+                onChange={(e) => setEditAddressEmail(e.target.value)}
               />
             </div>
           </div>
