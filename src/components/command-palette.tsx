@@ -12,7 +12,7 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from "@/components/ui/command";
-import { KeyboardShortcutsModal } from "@/components/keyboard-shortcuts-modal";
+import { KeyboardShortcutsDialog } from "@/components/keyboard-shortcuts-dialog";
 import { useConfirm } from "@/hooks/use-confirm";
 import {
   ShoppingCart,
@@ -695,7 +695,7 @@ export function CommandPalette() {
         </div>
       </CommandDialog>
 
-      <KeyboardShortcutsModal
+      <KeyboardShortcutsDialog
         open={shortcutsOpen}
         onOpenChange={setShortcutsOpen}
       />

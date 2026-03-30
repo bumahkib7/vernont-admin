@@ -13,6 +13,7 @@ import { useAuth } from "@/lib/auth-context";
 
 import { PageBreadcrumbs } from "@/components/page-breadcrumbs";
 import { AiChatButton } from "@/components/ai/ai-chat-button";
+import { GlobalKeyboardShortcuts } from "@/components/global-keyboard-shortcuts";
 import { useAgentNavigation } from "@/hooks/use-agent-navigation";
 import { useAiPanelStore } from "@/stores/ai-panel";
 
@@ -92,6 +93,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {children}
           </main>
         </SidebarInset>
+        <GlobalKeyboardShortcuts />
         <AiChatButton />
       </SidebarProvider>
     </NotificationHandlerProvider>
