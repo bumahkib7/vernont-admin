@@ -40,6 +40,7 @@ const settingsNav: NavSection[] = [
       { title: "Product Types", href: "/settings/product-types" },
       { title: "Product Tags", href: "/settings/product-tags" },
       { title: "Locations & Shipping", href: "/settings/locations" },
+      { title: "Shipping Carriers", href: "/settings/shipping" },
       { title: "Email Templates", href: "/settings/email-templates" },
     ],
   },
