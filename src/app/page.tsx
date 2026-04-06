@@ -878,9 +878,9 @@ export default function DashboardPage() {
                 <ActivitySkeleton />
               </>
             ) : filteredActivities.length > 0 ? (
-              filteredActivities.map((activity, index) => (
+              filteredActivities.map((activity: any, index: number) => (
                 <div
-                  key={activity.id}
+                  key={activity.id ?? index}
                   className={`p-4 transition-colors ${
                     index === 0 && isConnected
                       ? "bg-green-50/50 dark:bg-emerald-950/20"
