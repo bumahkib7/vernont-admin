@@ -44,6 +44,7 @@ import {
   Gift,
   CheckCircle,
   UsersRound,
+  RefreshCw,
 } from "lucide-react";
 import { BulkActionBar } from "@/components/ui/bulk-action-bar";
 import { DataTable, type Column } from "@/components/ui/data-table";
@@ -60,6 +61,7 @@ import {
   type CustomerTier,
   type CustomerStatus,
 } from "@/lib/api";
+import { apiFetch } from "@/lib/api/client";
 import { CsvImportDialog } from "@/components/csv-import-dialog";
 import { CsvExportButton } from "@/components/csv-export-button";
 import { SendEmailDialog } from "@/components/customers/SendEmailDialog";
@@ -312,6 +314,22 @@ export default function CustomersPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={async () => {
+              try {
+                const result = await apiFetch<{ updated: number; total: number }>("/admin/customers/recalculate-stats", { method: "POST" });
+                toast.success(`Updated ${result.updated} of ${result.total} customers`);
+                refetch();
+              } catch {
+                toast.error("Failed to recalculate stats");
+              }
+            }}
+          >
+            <RefreshCw className="h-4 w-4" />
+            Sync Stats
+          </Button>
           <CsvExportButton type="customers" />
           <CsvImportDialog type="customers" onImport={importCustomersCsv} onComplete={() => refetch()} />
           <Button className="gap-2" onClick={() => toast.info("Add customer coming soon")}>
