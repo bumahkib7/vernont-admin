@@ -151,9 +151,6 @@ export default function OrderDetailsPage() {
     if (orderQuery.data) {
       const data = orderQuery.data;
       setOrder(data);
-      if (data.shippingMethodId) {
-        setCarrier(data.shippingMethodId);
-      }
     }
     if (orderQuery.error) {
       setError(orderQuery.error instanceof Error ? orderQuery.error.message : "Failed to load order");
