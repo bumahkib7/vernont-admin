@@ -355,7 +355,7 @@ export default function ProductDetailPage() {
         tags: formData.tags.length > 0 ? formData.tags : undefined,
         categories: formData.categoryId ? [formData.categoryId] : undefined,
         collectionId: formData.collectionId || undefined,
-        brandId: formData.brandId || undefined,
+        brandId: formData.brandId || "",
       };
 
       await updateProduct(product.id, updateData);

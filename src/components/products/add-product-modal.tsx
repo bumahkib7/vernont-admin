@@ -246,7 +246,7 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
         status: isDraft ? "draft" : "published",
         shippingProfileId: "default",
         categoryIds: store.category ? [store.category] : [],
-        brandId: store.brandId || undefined,
+        brandId: store.brandId || undefined,  // omit if no brand selected
         tags: store.tags.length > 0 ? store.tags : undefined,
         images: uploadedImages.length > 0 ? uploadedImages : undefined,
         options: store.hasVariants
