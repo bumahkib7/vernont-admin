@@ -12,6 +12,8 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
+  bulkDeleteProducts,
+  type BulkDeleteResponse,
   getCategories,
   type ProductStatus,
   type ProductsResponse,
@@ -126,6 +128,20 @@ export function useDeleteProduct() {
 
   return useMutation<void, Error, string>({
     mutationFn: deleteProduct,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: productKeys.lists() });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Bulk delete products mutation
+// ---------------------------------------------------------------------------
+export function useBulkDeleteProducts() {
+  const queryClient = useQueryClient();
+
+  return useMutation<BulkDeleteResponse, Error, string[]>({
+    mutationFn: bulkDeleteProducts,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: productKeys.lists() });
     },

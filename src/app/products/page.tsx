@@ -61,7 +61,7 @@ import { resolveImageUrl, formatPrice } from "@/lib/api/client";
 import type { ProductSummary, ProductStatus } from "@/lib/api/products";
 import { usePageContext } from "@/hooks/use-page-context";
 import { useProductStore } from "@/stores/product-store";
-import { useProducts, useCategories, useDeleteProduct } from "@/hooks/use-products";
+import { useProducts, useCategories, useDeleteProduct, useBulkDeleteProducts } from "@/hooks/use-products";
 
 function getStatusBadge(status: ProductStatus) {
   switch (status) {
@@ -140,6 +140,7 @@ export default function ProductsPage() {
   const { data: categoriesData } = useCategories();
 
   const deleteMutation = useDeleteProduct();
+  const bulkDeleteMutation = useBulkDeleteProducts();
 
   const products = productsData?.content ?? [];
   const totalElements = productsData?.totalElements ?? 0;
@@ -195,9 +196,21 @@ export default function ProductsPage() {
   }, [selectedIds.size, clearSelection]);
 
   const handleBulkDelete = useCallback(async () => {
-    toast.success(`Deleted ${selectedIds.size} products`);
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    try {
+      const result = await bulkDeleteMutation.mutateAsync(ids);
+      if (result.failed.length > 0) {
+        toast.error(`${result.failed.length} product(s) failed to delete`);
+      }
+      if (result.deleted > 0) {
+        toast.success(`Deleted ${result.deleted} product(s)`);
+      }
+    } catch {
+      toast.error("Failed to delete products");
+    }
     clearSelection();
-  }, [selectedIds.size, clearSelection]);
+  }, [selectedIds, bulkDeleteMutation, clearSelection]);
 
   // --------------- Table columns ---------------
   const productColumns: Column<ProductSummary>[] = useMemo(

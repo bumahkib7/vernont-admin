@@ -275,6 +275,19 @@ export async function deleteProduct(id: string): Promise<void> {
   });
 }
 
+// Bulk delete products
+export interface BulkDeleteResponse {
+  deleted: number;
+  failed: string[];
+}
+
+export async function bulkDeleteProducts(ids: string[]): Promise<BulkDeleteResponse> {
+  return apiFetch<BulkDeleteResponse>(`/admin/products/batch/delete`, {
+    method: "POST",
+    body: JSON.stringify({ ids }),
+  });
+}
+
 // =============================================================================
 // Categories API (Admin)
 // =============================================================================
