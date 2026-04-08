@@ -38,6 +38,7 @@ import {
   type CreateProductInput,
   type ImageInput,
 } from "@/lib/api";
+import { getBrands, type Brand } from "@/lib/api/brands";
 import {
   useProductFormStore,
   getVariantDisplayName,
@@ -65,6 +66,7 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
   // Backend data (kept local — not form state)
   const [categories, setCategories] = React.useState<ProductCategory[]>([]);
   const [collections, setCollections] = React.useState<ProductCollection[]>([]);
+  const [brands, setBrands] = React.useState<Brand[]>([]);
   const [loadingData, setLoadingData] = React.useState(false);
 
   // WebSocket for progress tracking
@@ -146,9 +148,10 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
     setLoadingData(true);
     store.setError(null);
     try {
-      const [categoriesRes, collectionsRes] = await Promise.allSettled([
+      const [categoriesRes, collectionsRes, brandsRes] = await Promise.allSettled([
         getCategories({ limit: 100 }),
         getCollections({ limit: 100 }),
+        getBrands(0, 100),
       ]);
 
       if (categoriesRes.status === "fulfilled") {
@@ -161,6 +164,12 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
         setCollections(collectionsRes.value?.collections || []);
       } else {
         console.error("Failed to fetch collections:", collectionsRes.reason);
+      }
+
+      if (brandsRes.status === "fulfilled") {
+        setBrands(brandsRes.value?.content || []);
+      } else {
+        console.error("Failed to fetch brands:", brandsRes.reason);
       }
     } catch (err) {
       console.error("Failed to fetch data:", err);
@@ -237,6 +246,7 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
         status: isDraft ? "draft" : "published",
         shippingProfileId: "default",
         categoryIds: store.category ? [store.category] : [],
+        brandId: store.brandId || undefined,
         tags: store.tags.length > 0 ? store.tags : undefined,
         images: uploadedImages.length > 0 ? uploadedImages : undefined,
         options: store.hasVariants
@@ -615,6 +625,22 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                           loading={loadingData}
                         />
                       </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Brand</Label>
+                      <Autocomplete
+                        options={brands.map((b) => ({
+                          value: b.id,
+                          label: b.name,
+                        }))}
+                        value={store.brandId}
+                        onValueChange={(value) => store.setField("brandId", value)}
+                        placeholder="Select a brand"
+                        searchPlaceholder="Search brands..."
+                        emptyMessage="No brands found."
+                        loading={loadingData}
+                      />
                     </div>
                   </div>
 

@@ -105,6 +105,7 @@ import {
   getProductSalesChannels,
   assignProductSalesChannels,
 } from "@/lib/api";
+import { getBrands } from "@/lib/api/brands";
 import { SpecificationsEditor } from "@/components/products/specifications-editor";
 import { useRef } from "react";
 import { toast } from "sonner";
@@ -193,6 +194,7 @@ export default function ProductDetailPage() {
     tags: [] as string[],
     categoryId: "",
     collectionId: "",
+    brandId: "",
   });
 
   // New tag input
@@ -232,6 +234,7 @@ export default function ProductDetailPage() {
         tags: data.tags || [],
         categoryId: data.categories?.[0] || "",
         collectionId: data.collectionId || "",
+        brandId: data.brandId || "",
       });
       setHasChanges(false);
     }
@@ -263,6 +266,18 @@ export default function ProductDetailPage() {
   });
 
   const collections = collectionsQuery.data ?? [];
+
+  // Fetch brands via React Query
+  const brandsQuery = useQuery({
+    queryKey: ["product-brands"],
+    queryFn: async () => {
+      const response = await getBrands(0, 100);
+      return response.content || [];
+    },
+    staleTime: 5 * 60_000,
+  });
+
+  const brands = brandsQuery.data ?? [];
 
   // Fetch all sales channels
   const salesChannelsQuery = useQuery({
@@ -340,6 +355,7 @@ export default function ProductDetailPage() {
         tags: formData.tags.length > 0 ? formData.tags : undefined,
         categories: formData.categoryId ? [formData.categoryId] : undefined,
         collectionId: formData.collectionId || undefined,
+        brandId: formData.brandId || undefined,
       };
 
       await updateProduct(product.id, updateData);
@@ -942,8 +958,21 @@ export default function ProductDetailPage() {
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="space-y-2">
                   <Label htmlFor="brand">Brand</Label>
-                  <Input id="brand" value={product.brandName || ""} disabled className="bg-muted" />
-                  <p className="text-xs text-muted-foreground">Brand is set at product creation</p>
+                  <Select
+                    value={formData.brandId}
+                    onValueChange={(value) => updateField("brandId", value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select brand" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {brands.map((b) => (
+                        <SelectItem key={b.id} value={b.id}>
+                          {b.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="category">Category</Label>
@@ -1465,8 +1494,10 @@ export default function ProductDetailPage() {
               </div>
               <Separator />
               <div className="space-y-2">
-                <Label htmlFor="vendor">Vendor</Label>
-                <Input id="vendor" value={product.brandName || ""} disabled className="bg-muted" />
+                <Label htmlFor="vendor">Brand</Label>
+                <p className="text-sm text-muted-foreground">
+                  {brands.find((b) => b.id === formData.brandId)?.name || product?.brandName || "No brand"}
+                </p>
               </div>
               <Separator />
               <div className="space-y-2">

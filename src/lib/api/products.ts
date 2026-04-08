@@ -194,6 +194,7 @@ export interface CreateProductInput {
   categoryIds?: string[];
   tags?: string[];
   salesChannelIds?: string[];
+  brandId?: string;
 }
 
 // Get products list
@@ -251,6 +252,7 @@ export interface UpdateProductInput {
   material?: string;
   collectionId?: string;
   typeId?: string;
+  brandId?: string;
   tags?: string[];
   categories?: string[];  // category IDs
   shippingProfileId?: string;
