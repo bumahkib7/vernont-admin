@@ -192,6 +192,7 @@ export interface CreateProductInput {
   options?: { title: string; values: string[] }[];
   variants?: CreateProductVariantInput[];
   categoryIds?: string[];
+  tags?: string[];
   salesChannelIds?: string[];
 }
 
@@ -866,6 +867,35 @@ export async function deleteProductSpecifications(
   await apiFetch<void>(`/admin/products/${productId}/specifications`, {
     method: "DELETE",
   });
+}
+
+// =============================================================================
+// Product Sales Channels API
+// =============================================================================
+
+export interface ProductSalesChannelsResponse {
+  sales_channels: { id: string; name: string }[];
+}
+
+export async function getProductSalesChannels(
+  productId: string
+): Promise<ProductSalesChannelsResponse> {
+  return apiFetch<ProductSalesChannelsResponse>(
+    `/admin/products/${productId}/sales-channels`
+  );
+}
+
+export async function assignProductSalesChannels(
+  productId: string,
+  salesChannelIds: string[]
+): Promise<{ product_id: string; sales_channel_ids: string[] }> {
+  return apiFetch<{ product_id: string; sales_channel_ids: string[] }>(
+    `/admin/products/${productId}/sales-channels`,
+    {
+      method: "POST",
+      body: JSON.stringify({ salesChannelIds }),
+    }
+  );
 }
 
 // =============================================================================

@@ -101,6 +101,9 @@ import {
   type ProductGender,
   resolveImageUrl,
   STOREFRONT_URL,
+  getSalesChannels,
+  getProductSalesChannels,
+  assignProductSalesChannels,
 } from "@/lib/api";
 import { SpecificationsEditor } from "@/components/products/specifications-editor";
 import { useRef } from "react";
@@ -261,6 +264,48 @@ export default function ProductDetailPage() {
 
   const collections = collectionsQuery.data ?? [];
 
+  // Fetch all sales channels
+  const salesChannelsQuery = useQuery({
+    queryKey: ["sales-channels-all"],
+    queryFn: async () => {
+      const response = await getSalesChannels({ limit: 100 });
+      return response.sales_channels || [];
+    },
+    staleTime: 5 * 60_000,
+  });
+
+  const allSalesChannels = salesChannelsQuery.data ?? [];
+
+  // Fetch product's assigned sales channels
+  const productSalesChannelsQuery = useQuery({
+    queryKey: ["product-sales-channels", productId],
+    queryFn: async () => {
+      const response = await getProductSalesChannels(productId);
+      return (response.sales_channels || []).map((sc: { id: string }) => sc.id);
+    },
+    enabled: !!productId,
+    staleTime: 30_000,
+  });
+
+  const [selectedSalesChannelIds, setSelectedSalesChannelIds] = useState<string[]>([]);
+  const [salesChannelsDirty, setSalesChannelsDirty] = useState(false);
+
+  // Sync product sales channels when data arrives
+  useEffect(() => {
+    if (productSalesChannelsQuery.data) {
+      setSelectedSalesChannelIds(productSalesChannelsQuery.data);
+      setSalesChannelsDirty(false);
+    }
+  }, [productSalesChannelsQuery.data]);
+
+  const toggleSalesChannel = (channelId: string) => {
+    setSelectedSalesChannelIds((prev) =>
+      prev.includes(channelId) ? prev.filter((id) => id !== channelId) : [...prev, channelId]
+    );
+    setSalesChannelsDirty(true);
+    setHasChanges(true);
+  };
+
   const fetchProduct = () => {
     productQueryClient.invalidateQueries({ queryKey: ["product-detail", productId] });
   };
@@ -298,6 +343,14 @@ export default function ProductDetailPage() {
       };
 
       await updateProduct(product.id, updateData);
+
+      // Save sales channel assignments if changed
+      if (salesChannelsDirty) {
+        await assignProductSalesChannels(product.id, selectedSalesChannelIds);
+        setSalesChannelsDirty(false);
+        productQueryClient.invalidateQueries({ queryKey: ["product-sales-channels", productId] });
+      }
+
       setSuccess("Product saved successfully");
       toast.success("Product saved successfully");
       setHasChanges(false);
@@ -1414,6 +1467,37 @@ export default function ProductDetailPage() {
               <div className="space-y-2">
                 <Label htmlFor="vendor">Vendor</Label>
                 <Input id="vendor" value={product.brandName || ""} disabled className="bg-muted" />
+              </div>
+              <Separator />
+              <div className="space-y-2">
+                <Label>Sales Channels</Label>
+                {allSalesChannels.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No sales channels configured.{" "}
+                    <Link href="/settings/sales-channels" className="underline">
+                      Create one
+                    </Link>
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {allSalesChannels
+                      .filter((ch) => !ch.is_disabled)
+                      .map((channel) => (
+                        <label
+                          key={channel.id}
+                          className="flex items-center gap-2 cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedSalesChannelIds.includes(channel.id)}
+                            onChange={() => toggleSalesChannel(channel.id)}
+                            className="h-4 w-4 rounded border-gray-300"
+                          />
+                          <span className="text-sm">{channel.name}</span>
+                        </label>
+                      ))}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

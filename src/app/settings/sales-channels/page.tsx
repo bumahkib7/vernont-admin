@@ -56,6 +56,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   MoreHorizontal,
   Plus,
   Search,
@@ -67,6 +74,29 @@ import {
 } from "lucide-react";
 import { useSalesChannelsPage } from "@/hooks/use-sales-channels";
 import { ApiError } from "@/lib/api";
+
+const CHANNEL_TYPES = [
+  { value: "online_store", label: "Online Store" },
+  { value: "mobile_app", label: "Mobile App" },
+  { value: "marketplace", label: "Marketplace" },
+  { value: "pos", label: "POS" },
+  { value: "b2b_portal", label: "B2B Portal" },
+  { value: "social_commerce", label: "Social Commerce" },
+];
+
+const CURRENCIES = ["GBP", "USD", "EUR", "AED", "SAR"];
+
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function channelTypeLabel(value: string): string {
+  return CHANNEL_TYPES.find((t) => t.value === value)?.label ?? value;
+}
 
 export default function SalesChannelsSettingsPage() {
   const {
@@ -111,11 +141,18 @@ export default function SalesChannelsSettingsPage() {
   const [createName, setCreateName] = useState("");
   const [createDescription, setCreateDescription] = useState("");
   const [createIsActive, setCreateIsActive] = useState(true);
+  const [createChannelType, setCreateChannelType] = useState("online_store");
+  const [createCurrency, setCreateCurrency] = useState("GBP");
+  const [createApiIdentifier, setCreateApiIdentifier] = useState("");
+  const [createApiIdManuallyEdited, setCreateApiIdManuallyEdited] = useState(false);
 
   // Form state for edit
   const [editName, setEditName] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editIsActive, setEditIsActive] = useState(true);
+  const [editChannelType, setEditChannelType] = useState("online_store");
+  const [editCurrency, setEditCurrency] = useState("GBP");
+  const [editApiIdentifier, setEditApiIdentifier] = useState("");
 
   const getErrorMessage = (err: unknown): string => {
     if (err instanceof ApiError) return err.message;
@@ -127,6 +164,17 @@ export default function SalesChannelsSettingsPage() {
     setCreateName("");
     setCreateDescription("");
     setCreateIsActive(true);
+    setCreateChannelType("online_store");
+    setCreateCurrency("GBP");
+    setCreateApiIdentifier("");
+    setCreateApiIdManuallyEdited(false);
+  };
+
+  const handleCreateNameChange = (value: string) => {
+    setCreateName(value);
+    if (!createApiIdManuallyEdited) {
+      setCreateApiIdentifier(slugify(value));
+    }
   };
 
   const handleCreate = () => {
@@ -135,6 +183,9 @@ export default function SalesChannelsSettingsPage() {
       name: createName.trim(),
       description: createDescription.trim() || undefined,
       is_active: createIsActive,
+      channel_type: createChannelType,
+      default_currency: createCurrency,
+      api_identifier: createApiIdentifier.trim() || undefined,
     });
     resetCreateForm();
   };
@@ -144,6 +195,9 @@ export default function SalesChannelsSettingsPage() {
     setEditName(channel.name);
     setEditDescription(channel.description || "");
     setEditIsActive(channel.is_active);
+    setEditChannelType(channel.channel_type || "online_store");
+    setEditCurrency(channel.default_currency || "GBP");
+    setEditApiIdentifier(channel.api_identifier || "");
     openEditModal(channel);
   };
 
@@ -153,6 +207,9 @@ export default function SalesChannelsSettingsPage() {
       name: editName.trim(),
       description: editDescription.trim() || undefined,
       is_active: editIsActive,
+      channel_type: editChannelType,
+      default_currency: editCurrency,
+      api_identifier: editApiIdentifier.trim() || undefined,
     });
   };
 
@@ -230,6 +287,8 @@ export default function SalesChannelsSettingsPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Currency</TableHead>
                     <TableHead>Description</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Created</TableHead>
@@ -239,7 +298,7 @@ export default function SalesChannelsSettingsPage() {
                 <TableBody>
                   {channels.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                         {searchQuery ? "No channels match your search" : "No sales channels found"}
                       </TableCell>
                     </TableRow>
@@ -247,6 +306,10 @@ export default function SalesChannelsSettingsPage() {
                     channels.map((channel) => (
                       <TableRow key={channel.id}>
                         <TableCell className="font-medium">{channel.name}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{channelTypeLabel(channel.channel_type)}</Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{channel.default_currency}</TableCell>
                         <TableCell className="text-muted-foreground max-w-[300px] truncate">
                           {channel.description || "-"}
                         </TableCell>
@@ -335,7 +398,7 @@ export default function SalesChannelsSettingsPage() {
                 id="create-name"
                 placeholder="e.g., Mobile App"
                 value={createName}
-                onChange={(e) => setCreateName(e.target.value)}
+                onChange={(e) => handleCreateNameChange(e.target.value)}
               />
             </div>
 
@@ -347,6 +410,54 @@ export default function SalesChannelsSettingsPage() {
                 value={createDescription}
                 onChange={(e) => setCreateDescription(e.target.value)}
               />
+            </div>
+
+            <div className="grid gap-2">
+              <Label>Channel Type</Label>
+              <Select value={createChannelType} onValueChange={setCreateChannelType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CHANNEL_TYPES.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>
+                      {t.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-2">
+              <Label>Default Currency</Label>
+              <Select value={createCurrency} onValueChange={setCreateCurrency}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select currency" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CURRENCIES.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="create-api-id">API Identifier</Label>
+              <Input
+                id="create-api-id"
+                placeholder="e.g., online-store"
+                value={createApiIdentifier}
+                onChange={(e) => {
+                  setCreateApiIdentifier(e.target.value);
+                  setCreateApiIdManuallyEdited(true);
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                Auto-generated from name. Used for API integrations.
+              </p>
             </div>
 
             <div className="flex items-center justify-between rounded-lg border p-3">
@@ -415,6 +526,51 @@ export default function SalesChannelsSettingsPage() {
                 value={editDescription}
                 onChange={(e) => setEditDescription(e.target.value)}
               />
+            </div>
+
+            <div className="grid gap-2">
+              <Label>Channel Type</Label>
+              <Select value={editChannelType} onValueChange={setEditChannelType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CHANNEL_TYPES.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>
+                      {t.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-2">
+              <Label>Default Currency</Label>
+              <Select value={editCurrency} onValueChange={setEditCurrency}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select currency" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CURRENCIES.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="edit-api-id">API Identifier</Label>
+              <Input
+                id="edit-api-id"
+                placeholder="e.g., online-store"
+                value={editApiIdentifier}
+                onChange={(e) => setEditApiIdentifier(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Used for API integrations.
+              </p>
             </div>
 
             <div className="flex items-center justify-between rounded-lg border p-3">

@@ -1298,6 +1298,9 @@ export interface SalesChannel {
   description: string | null;
   is_active: boolean;
   is_disabled: boolean;
+  channel_type: string;
+  default_currency: string;
+  api_identifier: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -1317,12 +1320,18 @@ export interface CreateSalesChannelInput {
   name: string;
   description?: string;
   is_active?: boolean;
+  channel_type?: string;
+  default_currency?: string;
+  api_identifier?: string;
 }
 
 export interface UpdateSalesChannelInput {
   name?: string;
   description?: string;
   is_active?: boolean;
+  channel_type?: string;
+  default_currency?: string;
+  api_identifier?: string;
 }
 
 // List all sales channels
