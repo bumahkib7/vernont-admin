@@ -124,6 +124,11 @@ const navItems: NavItem[] = [
     icon: Tag,
   },
   {
+    title: "Brands",
+    url: "/brands",
+    icon: Building2,
+  },
+  {
     title: "Inventory",
     url: "/inventory",
     icon: Warehouse,

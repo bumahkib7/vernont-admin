@@ -100,7 +100,8 @@ export function startTokenRefreshInterval(): void {
     return; // Already running
   }
 
-  // Refresh every 10 minutes (tokens typically expire in 15-30 minutes)
+  // Refresh every 4 minutes — access token cookie lives for 1 hour,
+  // so this gives plenty of margin even if a cycle is delayed
   refreshInterval = setInterval(async () => {
     if (typeof window !== "undefined") {
       const refreshed = await refreshAuthToken();
@@ -108,7 +109,7 @@ export function startTokenRefreshInterval(): void {
         console.warn("[API] Proactive token refresh failed - session may expire soon");
       }
     }
-  }, 10 * 60 * 1000); // 10 minutes
+  }, 4 * 60 * 1000); // 4 minutes
 }
 
 /**
