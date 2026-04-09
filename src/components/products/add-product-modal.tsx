@@ -58,10 +58,54 @@ type AddProductModalProps = {
   onSave?: (isDraft: boolean) => void;
 };
 
+const HANDLE_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+type FieldErrors = Record<string, string>;
+
+function validateDetailsStep(title: string, handle: string): FieldErrors {
+  const errors: FieldErrors = {};
+  if (!title.trim()) {
+    errors.title = "Title is required";
+  }
+  // Handle is optional — auto-generated from title if empty.
+  // But if manually entered, enforce format.
+  if (handle.trim()) {
+    if (handle.length < 3) {
+      errors.handle = "Handle must be at least 3 characters";
+    } else if (handle.length > 128) {
+      errors.handle = "Handle must be 128 characters or less";
+    } else if (!HANDLE_PATTERN.test(handle)) {
+      errors.handle = "Handle must be lowercase letters, numbers, and hyphens (e.g. winter-jacket)";
+    }
+  }
+  return errors;
+}
+
+function validatePricingStep(
+  hasVariants: boolean,
+  price: string,
+  variantPrices: { price: string }[]
+): FieldErrors {
+  const errors: FieldErrors = {};
+  if (hasVariants) {
+    const emptyPrices = variantPrices.filter((v) => !v.price || parseFloat(v.price) <= 0);
+    if (emptyPrices.length > 0) {
+      errors.variantPrices = `${emptyPrices.length} variant(s) missing a price`;
+    }
+  } else {
+    const parsed = parseFloat(price);
+    if (!price || isNaN(parsed) || parsed <= 0) {
+      errors.price = "Price must be greater than 0";
+    }
+  }
+  return errors;
+}
+
 export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProps) {
   const [dragActive, setDragActive] = React.useState(false);
   const [newTag, setNewTag] = React.useState("");
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [fieldErrors, setFieldErrors] = React.useState<FieldErrors>({});
 
   // Backend data (kept local — not form state)
   const [categories, setCategories] = React.useState<ProductCategory[]>([]);
@@ -181,10 +225,24 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
   const handleClose = () => {
     store.reset();
     setNewTag("");
+    setFieldErrors({});
     onClose();
   };
 
   const handleContinue = async () => {
+    // Validate current step before proceeding
+    if (store.currentStep === 0) {
+      const errors = validateDetailsStep(store.title, store.handle);
+      setFieldErrors(errors);
+      if (Object.keys(errors).length > 0) return;
+    }
+    if (store.currentStep === 2) {
+      const errors = validatePricingStep(store.hasVariants, store.price, store.variantPrices);
+      setFieldErrors(errors);
+      if (Object.keys(errors).length > 0) return;
+    }
+
+    setFieldErrors({});
     if (store.currentStep < steps.length - 1) {
       store.nextStep();
     } else {
@@ -193,6 +251,11 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
   };
 
   const handleSaveAsDraft = async () => {
+    // Drafts still need a title
+    const errors = validateDetailsStep(store.title, store.handle);
+    setFieldErrors(errors);
+    if (errors.title) return;
+    setFieldErrors({});
     await saveProduct(true);
   };
 
@@ -442,13 +505,24 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
 
                     <div className="grid grid-cols-3 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="title">Title</Label>
+                        <Label htmlFor="title">
+                          Title <span className="text-red-500">*</span>
+                        </Label>
                         <Input
                           id="title"
                           placeholder="Winter jacket"
                           value={store.title}
-                          onChange={(e) => store.setTitle(e.target.value)}
+                          onChange={(e) => {
+                            store.setTitle(e.target.value);
+                            if (fieldErrors.title) setFieldErrors((prev) => { const { title, ...rest } = prev; return rest; });
+                          }}
+                          className={fieldErrors.title ? "border-red-500" : ""}
                         />
+                        {fieldErrors.title && (
+                          <p className="text-xs text-red-500 flex items-center gap-1">
+                            <AlertCircle className="h-3 w-3" /> {fieldErrors.title}
+                          </p>
+                        )}
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="subtitle" className="text-muted-foreground">
@@ -465,7 +539,7 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                         <Label htmlFor="handle" className="flex items-center gap-1 text-muted-foreground">
                           Handle
                           <Info className="h-3 w-3" />
-                          <span className="text-xs">(Optional)</span>
+                          <span className="text-xs">(Auto-generated if empty)</span>
                         </Label>
                         <div className="flex">
                           <span className="inline-flex items-center px-3 border border-r-0 rounded-l-md bg-muted text-muted-foreground text-sm">
@@ -474,11 +548,19 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                           <Input
                             id="handle"
                             placeholder="winter-jacket"
-                            className="rounded-l-none"
+                            className={cn("rounded-l-none", fieldErrors.handle && "border-red-500")}
                             value={store.handle}
-                            onChange={(e) => store.setField("handle", e.target.value)}
+                            onChange={(e) => {
+                              store.setField("handle", e.target.value);
+                              if (fieldErrors.handle) setFieldErrors((prev) => { const { handle, ...rest } = prev; return rest; });
+                            }}
                           />
                         </div>
+                        {fieldErrors.handle && (
+                          <p className="text-xs text-red-500 flex items-center gap-1">
+                            <AlertCircle className="h-3 w-3" /> {fieldErrors.handle}
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -501,7 +583,7 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                   {/* Media */}
                   <div className="space-y-4">
                     <Label className="text-muted-foreground">
-                      Media <span className="text-xs">(Optional)</span>
+                      Media <span className="text-xs">(Optional, required to publish)</span>
                     </Label>
 
                     <div
@@ -698,7 +780,9 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                         <h2 className="text-lg font-semibold">Pricing</h2>
                         <div className="grid grid-cols-3 gap-4">
                           <div className="space-y-2">
-                            <Label>Price</Label>
+                            <Label>
+                              Price <span className="text-red-500">*</span>
+                            </Label>
                             <div className="relative">
                               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                                 {CURRENCY_SYMBOL}
@@ -707,11 +791,19 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                                 type="text"
                                 inputMode="decimal"
                                 placeholder="0.00"
-                                className="pl-7"
+                                className={cn("pl-7", fieldErrors.price && "border-red-500")}
                                 value={store.price}
-                                onChange={(e) => store.setField("price", e.target.value)}
+                                onChange={(e) => {
+                                  store.setField("price", e.target.value);
+                                  if (fieldErrors.price) setFieldErrors((prev) => { const { price, ...rest } = prev; return rest; });
+                                }}
                               />
                             </div>
+                            {fieldErrors.price && (
+                              <p className="text-xs text-red-500 flex items-center gap-1">
+                                <AlertCircle className="h-3 w-3" /> {fieldErrors.price}
+                              </p>
+                            )}
                           </div>
                           <div className="space-y-2">
                             <Label className="text-muted-foreground">
@@ -888,6 +980,11 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                       </div>
 
                       {/* Variant Pricing Table */}
+                      {fieldErrors.variantPrices && (
+                        <p className="text-sm text-red-500 flex items-center gap-1">
+                          <AlertCircle className="h-4 w-4" /> {fieldErrors.variantPrices}
+                        </p>
+                      )}
                       {variantCombinations.length > 0 && (
                         <>
                           <Separator />
