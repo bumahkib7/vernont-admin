@@ -215,28 +215,32 @@ export default function ProductDetailPage() {
 
   const loading = productQuery.isLoading;
 
-  // Populate form when product data arrives
+  // Populate form when product data arrives — skip if user has unsaved edits
+  const hasChangesRef = useRef(false);
+  useEffect(() => { hasChangesRef.current = hasChanges; }, [hasChanges]);
+
   useEffect(() => {
     if (productQuery.data) {
       const data = productQuery.data;
       setProduct(data);
-      setFormData({
-        title: data.title || "",
-        handle: data.handle || "",
-        subtitle: data.subtitle || "",
-        description: data.description || "",
-        status: data.status,
-        condition: data.condition || "new",
-        gender: data.gender || "unisex",
-        material: data.material || "",
-        weight: data.weight ? (typeof data.weight === "number" ? (data.weight / 1000).toString() : data.weight) : "",
-        originCountry: data.originCountry || "",
-        tags: data.tags || [],
-        categoryId: data.categories?.[0] || "",
-        collectionId: data.collectionId || "",
-        brandId: data.brandId || "",
-      });
-      setHasChanges(false);
+      if (!hasChangesRef.current) {
+        setFormData({
+          title: data.title || "",
+          handle: data.handle || "",
+          subtitle: data.subtitle || "",
+          description: data.description || "",
+          status: data.status,
+          condition: data.condition || "new",
+          gender: data.gender || "unisex",
+          material: data.material || "",
+          weight: data.weight ? (typeof data.weight === "number" ? (data.weight / 1000).toString() : data.weight) : "",
+          originCountry: data.originCountry || "",
+          tags: data.tags || [],
+          categoryId: data.categories?.[0] || "",
+          collectionId: data.collectionId || "",
+          brandId: data.brandId || "",
+        });
+      }
     }
     if (productQuery.error) {
       setError(productQuery.error instanceof Error ? productQuery.error.message : "Failed to load product");
@@ -355,7 +359,7 @@ export default function ProductDetailPage() {
         tags: formData.tags.length > 0 ? formData.tags : undefined,
         categories: formData.categoryId ? [formData.categoryId] : undefined,
         collectionId: formData.collectionId || undefined,
-        brandId: formData.brandId || "",
+        brandId: formData.brandId || undefined,
       };
 
       await updateProduct(product.id, updateData);
