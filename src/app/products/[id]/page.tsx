@@ -166,6 +166,7 @@ export default function ProductDetailPage() {
     currencyCode: "GBP",
     manageInventory: true,
     allowBackorder: false,
+    inventoryQuantity: "",
     weight: "",
     imageUrl: "",
   });
@@ -422,6 +423,7 @@ export default function ProductDetailPage() {
       currencyCode: "GBP",
       manageInventory: true,
       allowBackorder: false,
+      inventoryQuantity: "",
       weight: "",
       imageUrl: "",
     });
@@ -445,6 +447,7 @@ export default function ProductDetailPage() {
       currencyCode: mainPrice?.currencyCode || "GBP",
       manageInventory: variant.manageInventory,
       allowBackorder: variant.allowBackorder,
+      inventoryQuantity: variant.inventoryQuantity?.toString() ?? "",
       weight: variant.weight || "",
       imageUrl: variant.imageUrl ?? "",
     });
@@ -461,12 +464,17 @@ export default function ProductDetailPage() {
     setVariantError(null);
 
     try {
+      const parsedQty = variantForm.inventoryQuantity.trim() === ""
+        ? undefined
+        : Math.max(0, parseInt(variantForm.inventoryQuantity, 10) || 0);
+
       const input: CreateVariantInput = {
         title: variantForm.title.trim(),
         sku: variantForm.sku || undefined,
         barcode: variantForm.barcode || undefined,
         manageInventory: variantForm.manageInventory,
         allowBackorder: variantForm.allowBackorder,
+        inventoryQuantity: parsedQty,
         weight: variantForm.weight || undefined,
         prices: variantForm.price
           ? [
@@ -505,12 +513,17 @@ export default function ProductDetailPage() {
     setVariantError(null);
 
     try {
+      const parsedQty = variantForm.inventoryQuantity.trim() === ""
+        ? undefined
+        : Math.max(0, parseInt(variantForm.inventoryQuantity, 10) || 0);
+
       const input: UpdateVariantInput = {
         title: variantForm.title.trim(),
         sku: variantForm.sku || undefined,
         barcode: variantForm.barcode || undefined,
         manageInventory: variantForm.manageInventory,
         allowBackorder: variantForm.allowBackorder,
+        inventoryQuantity: parsedQty,
         weight: variantForm.weight || undefined,
         prices: [
           {
@@ -1788,6 +1801,23 @@ export default function ProductDetailPage() {
                 <span className="text-sm">Allow backorder</span>
               </label>
             </div>
+            {variantForm.manageInventory && (
+              <div className="space-y-2">
+                <Label htmlFor="variant-inventory-qty-add">Inventory quantity</Label>
+                <Input
+                  id="variant-inventory-qty-add"
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  value={variantForm.inventoryQuantity}
+                  onChange={(e) => setVariantForm({ ...variantForm, inventoryQuantity: e.target.value })}
+                  placeholder="0"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Stocked quantity at the default location. Updates the variant&apos;s stock level immediately.
+                </p>
+              </div>
+            )}
             <Separator />
             <div className="space-y-2">
               <Label>Variant image (optional)</Label>
@@ -1935,6 +1965,23 @@ export default function ProductDetailPage() {
                 <span className="text-sm">Allow backorder</span>
               </label>
             </div>
+            {variantForm.manageInventory && (
+              <div className="space-y-2">
+                <Label htmlFor="variant-inventory-qty-edit">Inventory quantity</Label>
+                <Input
+                  id="variant-inventory-qty-edit"
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  value={variantForm.inventoryQuantity}
+                  onChange={(e) => setVariantForm({ ...variantForm, inventoryQuantity: e.target.value })}
+                  placeholder="0"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Stocked quantity at the default location. Leave blank to keep the current value unchanged.
+                </p>
+              </div>
+            )}
             <Separator />
             <div className="space-y-2">
               <Label>Variant image (optional)</Label>

@@ -243,10 +243,14 @@ export default function ProductsPage() {
         id: "product",
         header: "Product",
         cell: (product) => (
-          <Link href={`/products/${product.id}`} className="flex flex-col" onClick={(e) => e.stopPropagation()}>
-            <span className="font-medium hover:underline">{product.title}</span>
+          <Link
+            href={`/products/${product.id}`}
+            className="flex flex-col max-w-[320px]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span className="font-medium hover:underline line-clamp-1">{product.title}</span>
             {product.subtitle && (
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-muted-foreground line-clamp-1">
                 {product.subtitle}
               </span>
             )}
@@ -257,12 +261,17 @@ export default function ProductsPage() {
         id: "handle",
         header: "Handle",
         hideOnMobile: true,
-        cell: (product) => <span className="text-muted-foreground">/{product.handle}</span>,
+        hideOnTablet: true,
+        cell: (product) => (
+          <span className="text-muted-foreground block max-w-[220px] truncate">
+            /{product.handle}
+          </span>
+        ),
       },
       {
         id: "variants",
         header: "Variants",
-        className: "text-center",
+        className: "text-center w-[90px]",
         hideOnMobile: true,
         cell: (product) => <>{product.variantCount ?? 0}</>,
       },
