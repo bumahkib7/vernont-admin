@@ -13,9 +13,14 @@ interface StatCardProps {
   loading?: boolean;
 }
 
+// Matches the Card primitive's raised treatment so stat cards on the
+// dashboard feel like first-class surfaces rather than flat rectangles.
+const STAT_CARD_SURFACE =
+  "rounded-lg border bg-card p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_2px_8px_rgba(0,0,0,0.06)] hover:shadow-[0_2px_4px_rgba(0,0,0,0.06),0_8px_24px_rgba(0,0,0,0.08)] transition-shadow duration-200";
+
 function StatCardSkeleton() {
   return (
-    <div className="rounded-lg border bg-card p-6">
+    <div className={STAT_CARD_SURFACE}>
       <div className="flex items-center justify-between">
         <Skeleton className="h-4 w-24" />
         <Skeleton className="h-4 w-4" />
@@ -43,7 +48,7 @@ function StatCard({
   }
 
   return (
-    <div className="rounded-lg border bg-card p-6">
+    <div className={STAT_CARD_SURFACE}>
       <div className="flex items-center justify-between">
         <span className="text-small-regular text-muted-foreground">{title}</span>
         {icon && (
