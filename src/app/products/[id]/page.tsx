@@ -107,6 +107,7 @@ import {
 } from "@/lib/api";
 import { getBrands } from "@/lib/api/brands";
 import { SpecificationsEditor } from "@/components/products/specifications-editor";
+import { VariantImagePicker } from "@/components/products/VariantImagePicker";
 import { useRef } from "react";
 import { toast } from "sonner";
 
@@ -166,6 +167,7 @@ export default function ProductDetailPage() {
     manageInventory: true,
     allowBackorder: false,
     weight: "",
+    imageUrl: "",
   });
 
   // Option modal state
@@ -421,6 +423,7 @@ export default function ProductDetailPage() {
       manageInventory: true,
       allowBackorder: false,
       weight: "",
+      imageUrl: "",
     });
     setVariantError(null);
   };
@@ -443,6 +446,7 @@ export default function ProductDetailPage() {
       manageInventory: variant.manageInventory,
       allowBackorder: variant.allowBackorder,
       weight: variant.weight || "",
+      imageUrl: variant.imageUrl ?? "",
     });
     setVariantError(null);
     setShowEditVariantModal(true);
@@ -475,6 +479,7 @@ export default function ProductDetailPage() {
               },
             ]
           : undefined,
+        imageUrl: variantForm.imageUrl || undefined,
       };
 
       await createVariant(product.id, input);
@@ -516,6 +521,7 @@ export default function ProductDetailPage() {
               : undefined,
           },
         ],
+        imageUrl: variantForm.imageUrl || undefined,
       };
 
       await updateVariant(editingVariant.id, input);
@@ -1257,6 +1263,7 @@ export default function ProductDetailPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead className="w-[72px]">Image</TableHead>
                         <TableHead>Variant</TableHead>
                         <TableHead>SKU</TableHead>
                         <TableHead className="text-right">Price</TableHead>
@@ -1265,8 +1272,24 @@ export default function ProductDetailPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {product.variants.map((variant) => (
+                      {product.variants.map((variant) => {
+                        const variantImgUrl = getImageUrl(variant.imageUrl || undefined);
+                        return (
                         <TableRow key={variant.id}>
+                          <TableCell>
+                            {variantImgUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={variantImgUrl}
+                                alt=""
+                                className="w-14 h-10 object-cover rounded border"
+                              />
+                            ) : (
+                              <div className="w-14 h-10 flex items-center justify-center rounded border bg-muted">
+                                <Package className="h-4 w-4 text-muted-foreground" />
+                              </div>
+                            )}
+                          </TableCell>
                           <TableCell className="font-medium">{variant.title}</TableCell>
                           <TableCell className="text-muted-foreground font-mono text-sm">
                             {variant.sku || "-"}
@@ -1302,10 +1325,11 @@ export default function ProductDetailPage() {
                             </DropdownMenu>
                           </TableCell>
                         </TableRow>
-                      ))}
+                        );
+                      })}
                       {product.variants.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                             No variants defined
                           </TableCell>
                         </TableRow>
@@ -1764,6 +1788,17 @@ export default function ProductDetailPage() {
                 <span className="text-sm">Allow backorder</span>
               </label>
             </div>
+            <Separator />
+            <div className="space-y-2">
+              <Label>Variant image (optional)</Label>
+              <VariantImagePicker
+                productImages={product.images}
+                value={variantForm.imageUrl || null}
+                onChange={(url) => setVariantForm((f) => ({ ...f, imageUrl: url ?? "" }))}
+                productId={product.id}
+                onImageUploaded={() => fetchProduct()}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddVariantModal(false)}>
@@ -1899,6 +1934,17 @@ export default function ProductDetailPage() {
                 />
                 <span className="text-sm">Allow backorder</span>
               </label>
+            </div>
+            <Separator />
+            <div className="space-y-2">
+              <Label>Variant image (optional)</Label>
+              <VariantImagePicker
+                productImages={product.images}
+                value={variantForm.imageUrl || null}
+                onChange={(url) => setVariantForm((f) => ({ ...f, imageUrl: url ?? "" }))}
+                productId={product.id}
+                onImageUploaded={() => fetchProduct()}
+              />
             </div>
           </div>
           <DialogFooter>

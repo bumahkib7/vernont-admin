@@ -45,6 +45,7 @@ export interface ProductVariant {
     originalAmount: number;
     currencyCode: string;
   };
+  imageUrl?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -577,6 +578,7 @@ export interface CreateVariantInput {
   width?: string;
   prices?: { currencyCode: string; amount: number; compareAtPrice?: number }[];
   options?: Record<string, string>;
+  imageUrl?: string | null;
 }
 
 export interface UpdateVariantInput {
@@ -590,6 +592,7 @@ export interface UpdateVariantInput {
   height?: string;
   width?: string;
   prices?: { currencyCode: string; amount: number; compareAtPrice?: number }[];
+  imageUrl?: string | null;
 }
 
 // Create variant for a product
