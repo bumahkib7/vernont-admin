@@ -15,8 +15,13 @@ interface StatCardProps {
 
 // Matches the Card primitive's raised treatment so stat cards on the
 // dashboard feel like first-class surfaces rather than flat rectangles.
+// Same shadow recipe as Card: crisp 3px bottom edge + layered ambient halo,
+// bigger lift on hover.
 const STAT_CARD_SURFACE =
-  "rounded-lg border bg-card p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_2px_8px_rgba(0,0,0,0.06)] hover:shadow-[0_2px_4px_rgba(0,0,0,0.06),0_8px_24px_rgba(0,0,0,0.08)] transition-shadow duration-200";
+  "rounded-lg border bg-card p-6 " +
+  "shadow-[0_3px_0_-1px_rgba(17,24,39,0.04),0_12px_24px_-8px_rgba(17,24,39,0.12),0_4px_8px_-4px_rgba(17,24,39,0.08)] " +
+  "hover:shadow-[0_4px_0_-1px_rgba(17,24,39,0.06),0_20px_40px_-12px_rgba(17,24,39,0.18),0_8px_16px_-6px_rgba(17,24,39,0.1)] " +
+  "transition-shadow duration-200";
 
 function StatCardSkeleton() {
   return (

@@ -4,15 +4,23 @@ import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
-// Shared tactile depth applied to every solid/outline button:
-//  - shadow-sm at rest gives a 1px raise
-//  - shadow on hover nudges it up very slightly
-//  - active:translate-y-px + shadow-none presses it back into the surface
-//  - transition-all (100ms in the base class below) keeps the press snappy
+// Shared tactile depth applied to every solid/outline button.
+// The shadow recipe is a crisp 2px hard edge at the bottom (so the button
+// has a visible "lip") stacked with a soft 12px ambient halo. On hover
+// both layers grow slightly. On press the whole button drops 2px and the
+// shadow collapses to a tight 1px, giving an unmistakable click.
 //
-// The ghost + link variants opt out because they're meant to be flat.
-const depth =
-  "shadow-sm hover:shadow active:translate-y-px active:shadow-none"
+// Ghost + link variants opt out because they're meant to read flat.
+const depth = [
+  // rest
+  "shadow-[0_2px_0_0_rgba(17,24,39,0.06),0_4px_12px_-2px_rgba(17,24,39,0.12)]",
+  // hover — bigger lift
+  "hover:shadow-[0_3px_0_0_rgba(17,24,39,0.08),0_8px_20px_-4px_rgba(17,24,39,0.16)]",
+  "hover:-translate-y-[1px]",
+  // press
+  "active:translate-y-[1px]",
+  "active:shadow-[0_1px_0_0_rgba(17,24,39,0.08),0_1px_2px_0_rgba(17,24,39,0.08)]",
+].join(" ")
 
 const buttonVariants = cva(
   "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all duration-100 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",

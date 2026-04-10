@@ -7,10 +7,14 @@ function Card({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card"
       className={cn(
-        // Raised surface: stronger shadow + subtle hover lift so cards feel
-        // tactile against the page background. transition-shadow keeps it
-        // cheap — no layout thrash, just the shadow fades.
-        "bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_2px_8px_rgba(0,0,0,0.06)] hover:shadow-[0_2px_4px_rgba(0,0,0,0.06),0_8px_24px_rgba(0,0,0,0.08)] transition-shadow duration-200",
+        // Raised surface: a crisp 3px bottom edge + a soft 24px ambient halo
+        // so cards sit visibly above the page background. On hover the
+        // elevation grows to ~40px ambient. Transition stays cheap — just
+        // the shadow fades, no layout thrash.
+        "bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6",
+        "shadow-[0_3px_0_-1px_rgba(17,24,39,0.04),0_12px_24px_-8px_rgba(17,24,39,0.12),0_4px_8px_-4px_rgba(17,24,39,0.08)]",
+        "hover:shadow-[0_4px_0_-1px_rgba(17,24,39,0.06),0_20px_40px_-12px_rgba(17,24,39,0.18),0_8px_16px_-6px_rgba(17,24,39,0.1)]",
+        "transition-shadow duration-200",
         className
       )}
       {...props}
