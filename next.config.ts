@@ -81,6 +81,10 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "*.workers.dev",
       },
+      {
+        protocol: "https",
+        hostname: "cdn.vernont.com",
+      },
     ],
     // Disable image optimization in development to avoid private IP blocking
     unoptimized: isDev,
