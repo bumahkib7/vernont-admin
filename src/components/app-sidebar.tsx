@@ -27,6 +27,8 @@ import {
   Sparkles,
   MessageSquare,
   HeartPulse,
+  FileText,
+  Zap,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -179,6 +181,16 @@ const navItems: NavItem[] = [
       { title: "Ad Campaigns", url: "/marketing/advertising/campaigns" },
       { title: "Ad Platforms", url: "/marketing/advertising" },
       { title: "Product Catalog", url: "/marketing/advertising/catalogs" },
+    ],
+  },
+  {
+    title: "SEO Content",
+    url: "/content",
+    icon: Zap,
+    children: [
+      { title: "Dashboard", url: "/content" },
+      { title: "All Content", url: "/content/list" },
+      { title: "Generate New", url: "/content/generate" },
     ],
   },
   {
