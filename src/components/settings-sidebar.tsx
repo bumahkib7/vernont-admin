@@ -52,6 +52,7 @@ const settingsNav: NavSection[] = [
       { title: "Workflows", href: "/settings/workflows" },
       { title: "Human Interventions", href: "/settings/interventions" },
       { title: "Webhooks", href: "/settings/webhooks" },
+      { title: "Cache", href: "/settings/cache" },
     ],
   },
   {
