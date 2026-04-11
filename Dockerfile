@@ -15,6 +15,9 @@ ENV NEXT_PUBLIC_WS_URL=${NEXT_PUBLIC_WS_URL}
 ENV NEXT_PUBLIC_IMAGE_CDN_URL=${NEXT_PUBLIC_IMAGE_CDN_URL}
 ENV NEXT_PUBLIC_STOREFRONT_URL=${NEXT_PUBLIC_STOREFRONT_URL}
 
+# Set NODE_ENV to production so Next.js loads .env.production during build
+ENV NODE_ENV=production
+
 RUN pnpm build
 
 FROM node:20-alpine AS runner
