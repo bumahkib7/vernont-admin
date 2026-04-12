@@ -60,6 +60,8 @@ import {
   Check,
   Star,
   GripVertical,
+  Search,
+  Globe,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -107,6 +109,7 @@ import {
 } from "@/lib/api";
 import { getBrands } from "@/lib/api/brands";
 import { SpecificationsEditor } from "@/components/products/specifications-editor";
+import { ProductAiAssistant } from "@/components/products/product-ai-assistant";
 import { VariantImagePicker } from "@/components/products/VariantImagePicker";
 import { useRef } from "react";
 import { toast } from "sonner";
@@ -198,6 +201,18 @@ export default function ProductDetailPage() {
     categoryId: "",
     collectionId: "",
     brandId: "",
+    // SEO meta overrides — all optional free-text inputs. Blank string
+    // is the cleared state; the save handler turns blank into explicit
+    // empty string on the payload so the backend clears the override.
+    metaTitle: "",
+    metaDescription: "",
+    metaKeywords: "",
+    canonicalUrl: "",
+    noindex: false,
+    ogTitle: "",
+    ogDescription: "",
+    ogImageUrl: "",
+    focusKeyword: "",
   });
 
   // New tag input
@@ -242,6 +257,15 @@ export default function ProductDetailPage() {
           categoryId: data.categories?.[0] || "",
           collectionId: data.collectionId || "",
           brandId: data.brandId || "",
+          metaTitle: data.metaTitle ?? "",
+          metaDescription: data.metaDescription ?? "",
+          metaKeywords: data.metaKeywords ?? "",
+          canonicalUrl: data.canonicalUrl ?? "",
+          noindex: data.noindex ?? false,
+          ogTitle: data.ogTitle ?? "",
+          ogDescription: data.ogDescription ?? "",
+          ogImageUrl: data.ogImageUrl ?? "",
+          focusKeyword: data.focusKeyword ?? "",
         });
       }
     }
@@ -363,6 +387,17 @@ export default function ProductDetailPage() {
         categories: formData.categoryId ? [formData.categoryId] : undefined,
         collectionId: formData.collectionId || undefined,
         brandId: formData.brandId || undefined,
+        // SEO meta: always send the current form value so blank-string
+        // explicitly clears the backend override (service treats "" as null).
+        metaTitle: formData.metaTitle,
+        metaDescription: formData.metaDescription,
+        metaKeywords: formData.metaKeywords,
+        canonicalUrl: formData.canonicalUrl,
+        noindex: formData.noindex,
+        ogTitle: formData.ogTitle,
+        ogDescription: formData.ogDescription,
+        ogImageUrl: formData.ogImageUrl,
+        focusKeyword: formData.focusKeyword,
       };
 
       await updateProduct(product.id, updateData);
@@ -1396,6 +1431,231 @@ export default function ProductDetailPage() {
 
           {/* Specifications */}
           <SpecificationsEditor productId={product.id} />
+
+          {/* AI Product Assistant */}
+          {product && (
+            <ProductAiAssistant
+              productId={product.id}
+              title={formData.title}
+              brand={brands.find((b: { id: string; name: string }) => b.id === formData.brandId)?.name}
+              images={product.images?.map((img: { url: string }) => resolveImageUrl(img.url) || img.url).filter(Boolean) as string[]}
+              onApplyField={(field, value) => {
+                if (field === "tags" && Array.isArray(value)) {
+                  updateField("tags", value);
+                } else if (typeof value === "string") {
+                  updateField(field as keyof typeof formData, value as never);
+                }
+                setHasChanges(true);
+              }}
+            />
+          )}
+
+          {/* SEO & Search Appearance */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Search className="h-5 w-5" />
+                SEO &amp; Search Appearance
+              </CardTitle>
+              <CardDescription>
+                Override how this product is indexed by search engines and how it
+                renders in Google results and social share cards. Leave a field
+                blank to fall back to the auto-generated default.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* SERP preview — shows how the page will render in Google
+                  results using the live form values as the user types. */}
+              <div className="rounded-lg border bg-muted/30 p-4">
+                <div className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
+                  Google Preview
+                </div>
+                <div className="flex items-center gap-2 text-[13px] text-muted-foreground truncate">
+                  <Globe className="h-3 w-3 flex-shrink-0" />
+                  vernont.com › product › {formData.handle || "handle"}
+                </div>
+                <div className="mt-1 text-[18px] text-[#1a0dab] leading-tight line-clamp-1">
+                  {formData.metaTitle?.trim() || formData.title || "Product title"}
+                </div>
+                <p className="mt-1 text-[13px] text-[#4d5156] line-clamp-2">
+                  {formData.metaDescription?.trim() ||
+                    formData.description?.substring(0, 160) ||
+                    "Add a meta description to control how this product appears in search results."}
+                </p>
+              </div>
+
+              {/* Meta title with char counter */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="seo-meta-title">Meta title</Label>
+                  <span
+                    className={`text-[11px] tabular-nums ${
+                      formData.metaTitle.length > 60
+                        ? "text-destructive"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {formData.metaTitle.length} / 60
+                  </span>
+                </div>
+                <Input
+                  id="seo-meta-title"
+                  value={formData.metaTitle}
+                  onChange={(e) => updateField("metaTitle", e.target.value)}
+                  placeholder={formData.title || "Uses product title if blank"}
+                  maxLength={70}
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Overrides the <code>&lt;title&gt;</code> tag. Recommended 50–60 characters.
+                </p>
+              </div>
+
+              {/* Meta description with char counter */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="seo-meta-description">Meta description</Label>
+                  <span
+                    className={`text-[11px] tabular-nums ${
+                      formData.metaDescription.length > 160
+                        ? "text-destructive"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {formData.metaDescription.length} / 160
+                  </span>
+                </div>
+                <Textarea
+                  id="seo-meta-description"
+                  value={formData.metaDescription}
+                  onChange={(e) => updateField("metaDescription", e.target.value)}
+                  placeholder="Uses product description if blank"
+                  rows={3}
+                  maxLength={320}
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Recommended 150–160 characters. Longer text will still be saved but
+                  search engines typically truncate it.
+                </p>
+              </div>
+
+              {/* Focus keyword — internal tracking */}
+              <div className="space-y-2">
+                <Label htmlFor="seo-focus-keyword">Focus keyword</Label>
+                <Input
+                  id="seo-focus-keyword"
+                  value={formData.focusKeyword}
+                  onChange={(e) => updateField("focusKeyword", e.target.value)}
+                  placeholder="e.g. prada black sunglasses"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Internal tracking only. The keyword you&apos;re trying to rank this
+                  product for — not emitted in the page HTML.
+                </p>
+              </div>
+
+              {/* Meta keywords (comma-separated) */}
+              <div className="space-y-2">
+                <Label htmlFor="seo-meta-keywords">Meta keywords</Label>
+                <Input
+                  id="seo-meta-keywords"
+                  value={formData.metaKeywords}
+                  onChange={(e) => updateField("metaKeywords", e.target.value)}
+                  placeholder="prada, black sunglasses, designer eyewear"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Comma-separated. Low modern SEO value but some admins track them.
+                </p>
+              </div>
+
+              {/* Canonical URL override */}
+              <div className="space-y-2">
+                <Label htmlFor="seo-canonical-url">Canonical URL</Label>
+                <Input
+                  id="seo-canonical-url"
+                  type="url"
+                  value={formData.canonicalUrl}
+                  onChange={(e) => updateField("canonicalUrl", e.target.value)}
+                  placeholder="Uses /product/{handle} if blank"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Only set this if the canonical product page lives on a different URL
+                  (e.g. a syndicated listing). Leave blank for the default.
+                </p>
+              </div>
+
+              {/* Noindex toggle */}
+              <div className="flex items-start gap-3 rounded-lg border p-4">
+                <input
+                  id="seo-noindex"
+                  type="checkbox"
+                  checked={formData.noindex}
+                  onChange={(e) => updateField("noindex", e.target.checked)}
+                  className="mt-1 rounded border-gray-300"
+                />
+                <div className="flex-1">
+                  <Label htmlFor="seo-noindex" className="cursor-pointer">
+                    Hide from search engines (noindex)
+                  </Label>
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Emits <code>&lt;meta name=&quot;robots&quot; content=&quot;noindex&quot;&gt;</code>{" "}
+                    on the PDP and excludes the product from the sitemap. Use for
+                    unlisted, test, or legally-restricted products.
+                  </p>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div>
+                <h4 className="text-sm font-semibold mb-1">Social share card (Open Graph)</h4>
+                <p className="text-[11px] text-muted-foreground mb-4">
+                  Controls how this product renders when shared on Facebook, LinkedIn,
+                  WhatsApp, iMessage, etc. Falls back to the meta title / description /
+                  product thumbnail when blank.
+                </p>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="seo-og-title">Share title</Label>
+                    <Input
+                      id="seo-og-title"
+                      value={formData.ogTitle}
+                      onChange={(e) => updateField("ogTitle", e.target.value)}
+                      placeholder="Uses meta title if blank"
+                      maxLength={100}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="seo-og-description">Share description</Label>
+                    <Textarea
+                      id="seo-og-description"
+                      value={formData.ogDescription}
+                      onChange={(e) => updateField("ogDescription", e.target.value)}
+                      placeholder="Uses meta description if blank"
+                      rows={2}
+                      maxLength={300}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="seo-og-image">Share image URL</Label>
+                    <Input
+                      id="seo-og-image"
+                      type="url"
+                      value={formData.ogImageUrl}
+                      onChange={(e) => updateField("ogImageUrl", e.target.value)}
+                      placeholder="Uses product thumbnail if blank"
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      Recommended size 1200×630. Uses the product&apos;s main thumbnail
+                      when left blank.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
         </div>
 

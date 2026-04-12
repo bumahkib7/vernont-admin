@@ -178,3 +178,40 @@ export async function cancelAiWorkflow(sessionId: string): Promise<void> {
     body: JSON.stringify({ sessionId }),
   });
 }
+
+// ============================================================================
+// Product AI Agent
+// ============================================================================
+
+export interface ProductAgentRequest {
+  productId?: string;
+  title?: string;
+  brand?: string;
+  images?: string[];
+}
+
+export interface ProductContentResult {
+  description?: string;
+  subtitle?: string;
+  tags?: string[];
+  metaTitle?: string;
+  metaDescription?: string;
+  metaKeywords?: string;
+}
+
+/**
+ * Start a multi-agent AI product content generation pipeline.
+ * Returns a raw Response for NDJSON streaming.
+ */
+export async function aiProductAgent(request: ProductAgentRequest): Promise<Response> {
+  const response = await fetch(`${API_BASE_URL}/admin/ai/product-agent`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+    body: JSON.stringify(request),
+  });
+  if (!response.ok) {
+    throw await parseErrorResponse(response);
+  }
+  return response;
+}

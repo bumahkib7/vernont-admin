@@ -26,6 +26,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { ProductAiAssistant } from "@/components/products/product-ai-assistant";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { useAgentActionsStore } from "@/stores/agent-actions";
 import {
@@ -576,6 +577,23 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                         onChange={(e) => store.setField("description", e.target.value)}
                       />
                     </div>
+
+                    {/* AI Product Assistant */}
+                    <ProductAiAssistant
+                      title={store.title}
+                      brand={brands.find((b) => b.id === store.brandId)?.name}
+                      onApplyField={(field, value) => {
+                        if (field === "description" && typeof value === "string") {
+                          store.setField("description", value);
+                        }
+                        if (field === "subtitle" && typeof value === "string") {
+                          store.setField("subtitle", value);
+                        }
+                        if (field === "tags" && Array.isArray(value)) {
+                          store.setField("tags", value);
+                        }
+                      }}
+                    />
                   </div>
 
                   <Separator />
