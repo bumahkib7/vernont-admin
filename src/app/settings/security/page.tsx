@@ -83,9 +83,14 @@ import {
   Wifi,
   WifiOff,
   Map,
+  Smartphone,
+  Eye,
+  EyeOff,
+  QrCode,
 } from "lucide-react";
 import { SessionMap } from "@/components/session-map";
 import { ApiError, type SecuritySession, type SecurityEvent, type SecurityConfig } from "@/lib/api";
+import { apiFetch } from "@/lib/api/client";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { useSecurityDashboard, useSessionsWebSocketUpdate } from "@/hooks/use-security-dashboard";
 import { formatRelativeTime } from "@/lib/format";
@@ -222,6 +227,19 @@ export default function SecuritySettingsPage() {
   // General error display
   const [displayError, setDisplayError] = useState<string | null>(null);
 
+  // 2FA state
+  const [is2faEnabled, setIs2faEnabled] = useState(false);
+  const [is2faLoading, setIs2faLoading] = useState(true);
+  const [is2faSetupOpen, setIs2faSetupOpen] = useState(false);
+  const [is2faDisableOpen, setIs2faDisableOpen] = useState(false);
+  const [setupQrData, setSetupQrData] = useState<string | null>(null);
+  const [setupSecret, setSetupSecret] = useState<string | null>(null);
+  const [totpCode, setTotpCode] = useState("");
+  const [disablePassword, setDisablePassword] = useState("");
+  const [showDisablePassword, setShowDisablePassword] = useState(false);
+  const [is2faSubmitting, setIs2faSubmitting] = useState(false);
+  const [twoFaError, setTwoFaError] = useState<string | null>(null);
+
   // WebSocket for real-time updates
   const { isConnected, subscribe } = useWebSocket({ autoConnect: true, debug: false });
   const wsUpdates = useSessionsWebSocketUpdate();
@@ -295,6 +313,95 @@ export default function SecuritySettingsPage() {
 
   const handleConfigNumber = (key: keyof SecurityConfig, value: number) => {
     updateConfig({ [key]: value });
+  };
+
+  // 2FA: Check current status on mount
+  useEffect(() => {
+    const check2faStatus = async () => {
+      try {
+        const data = await apiFetch<{ enabled: boolean }>("/admin/auth/2fa/status");
+        setIs2faEnabled(data.enabled);
+      } catch {
+        // Endpoint may not exist yet — default to not enabled
+        setIs2faEnabled(false);
+      } finally {
+        setIs2faLoading(false);
+      }
+    };
+    check2faStatus();
+  }, []);
+
+  // 2FA: Begin setup flow
+  const handle2faSetup = async () => {
+    setTwoFaError(null);
+    setTotpCode("");
+    setSetupQrData(null);
+    setSetupSecret(null);
+    setIs2faSetupOpen(true);
+    setIs2faSubmitting(true);
+    try {
+      const data = await apiFetch<{ qrCodeDataUrl?: string; secret?: string }>(
+        "/admin/auth/2fa/setup",
+        { method: "POST" }
+      );
+      setSetupQrData(data.qrCodeDataUrl || null);
+      setSetupSecret(data.secret || null);
+    } catch (err) {
+      setTwoFaError(
+        err instanceof ApiError && err.status !== 500
+          ? err.message
+          : "2FA setup is being configured. Please try again later."
+      );
+    } finally {
+      setIs2faSubmitting(false);
+    }
+  };
+
+  // 2FA: Verify TOTP code to enable
+  const handle2faVerify = async () => {
+    if (totpCode.length !== 6) return;
+    setIs2faSubmitting(true);
+    setTwoFaError(null);
+    try {
+      await apiFetch("/admin/auth/2fa/verify", {
+        method: "POST",
+        body: JSON.stringify({ code: totpCode }),
+      });
+      setIs2faEnabled(true);
+      setIs2faSetupOpen(false);
+    } catch (err) {
+      setTwoFaError(
+        err instanceof ApiError && err.status !== 500
+          ? err.message
+          : "2FA setup is being configured. Please try again later."
+      );
+    } finally {
+      setIs2faSubmitting(false);
+    }
+  };
+
+  // 2FA: Disable with password confirmation
+  const handle2faDisable = async () => {
+    if (!disablePassword) return;
+    setIs2faSubmitting(true);
+    setTwoFaError(null);
+    try {
+      await apiFetch("/admin/auth/2fa", {
+        method: "DELETE",
+        body: JSON.stringify({ password: disablePassword }),
+      });
+      setIs2faEnabled(false);
+      setIs2faDisableOpen(false);
+      setDisablePassword("");
+    } catch (err) {
+      setTwoFaError(
+        err instanceof ApiError && err.status !== 500
+          ? err.message
+          : "2FA setup is being configured. Please try again later."
+      );
+    } finally {
+      setIs2faSubmitting(false);
+    }
   };
 
   return (
@@ -390,6 +497,66 @@ export default function SecuritySettingsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Two-Factor Authentication */}
+      <Card className="max-w-2xl">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Smartphone className="h-5 w-5" />
+            Two-Factor Authentication
+          </CardTitle>
+          <CardDescription>
+            Add an extra layer of security to your account with TOTP-based two-factor authentication
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {is2faLoading ? (
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              ) : is2faEnabled ? (
+                <ShieldCheck className="h-5 w-5 text-green-600" />
+              ) : (
+                <ShieldAlert className="h-5 w-5 text-yellow-500" />
+              )}
+              <div>
+                <p className="font-medium">
+                  {is2faLoading
+                    ? "Checking status..."
+                    : is2faEnabled
+                      ? "Two-factor authentication is enabled"
+                      : "Two-factor authentication is not enabled"}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {is2faEnabled
+                    ? "Your account is protected with an authenticator app"
+                    : "Protect your account by requiring a verification code on login"}
+                </p>
+              </div>
+            </div>
+            {!is2faLoading && (
+              is2faEnabled ? (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => {
+                    setTwoFaError(null);
+                    setDisablePassword("");
+                    setShowDisablePassword(false);
+                    setIs2faDisableOpen(true);
+                  }}
+                >
+                  Disable 2FA
+                </Button>
+              ) : (
+                <Button size="sm" onClick={handle2faSetup}>
+                  Enable 2FA
+                </Button>
+              )
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* WebSocket Connection Status */}
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -1070,6 +1237,174 @@ export default function SecuritySettingsPage() {
                   <CheckCircle className="h-4 w-4 mr-2" />
                   Resolve {selectedEventIds.size} Event{selectedEventIds.size !== 1 ? "s" : ""}
                 </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 2FA Setup Dialog */}
+      <Dialog open={is2faSetupOpen} onOpenChange={(open) => { if (!open) { setIs2faSetupOpen(false); setTwoFaError(null); } }}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <QrCode className="h-5 w-5" />
+              Set Up Two-Factor Authentication
+            </DialogTitle>
+            <DialogDescription>
+              Scan the QR code with your authenticator app (Google Authenticator, Authy, etc.) and enter the verification code.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-4">
+            {twoFaError && (
+              <div className="flex items-center gap-2 p-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 rounded-lg">
+                <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                {twoFaError}
+              </div>
+            )}
+
+            {is2faSubmitting && !setupQrData && !twoFaError ? (
+              <div className="flex flex-col items-center gap-3 py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">Generating QR code...</p>
+              </div>
+            ) : setupQrData ? (
+              <>
+                {/* QR Code */}
+                <div className="flex flex-col items-center gap-3 p-4 bg-muted rounded-lg">
+                  <img
+                    src={setupQrData}
+                    alt="2FA QR Code"
+                    className="w-48 h-48 rounded"
+                  />
+                  <p className="text-xs text-muted-foreground text-center">
+                    Scan this QR code with your authenticator app
+                  </p>
+                </div>
+
+                {/* Manual secret key */}
+                {setupSecret && (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">
+                      Or enter this key manually:
+                    </Label>
+                    <code className="block p-2 bg-muted rounded text-sm font-mono text-center tracking-wider select-all">
+                      {setupSecret}
+                    </code>
+                  </div>
+                )}
+
+                {/* TOTP verification input */}
+                <div className="space-y-2">
+                  <Label htmlFor="totp-code">Verification code</Label>
+                  <Input
+                    id="totp-code"
+                    placeholder="Enter 6-digit code"
+                    value={totpCode}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, "").slice(0, 6);
+                      setTotpCode(v);
+                    }}
+                    maxLength={6}
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    className="text-center text-lg tracking-[0.5em] font-mono"
+                  />
+                </div>
+              </>
+            ) : !twoFaError ? (
+              <div className="flex flex-col items-center gap-3 py-8 text-muted-foreground">
+                <QrCode className="h-12 w-12" />
+                <p className="text-sm text-center">
+                  Scan this QR code with your authenticator app
+                </p>
+              </div>
+            ) : null}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIs2faSetupOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handle2faVerify}
+              disabled={is2faSubmitting || totpCode.length !== 6}
+            >
+              {is2faSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Verifying...
+                </>
+              ) : (
+                "Enable 2FA"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 2FA Disable Dialog */}
+      <Dialog open={is2faDisableOpen} onOpenChange={(open) => { if (!open) { setIs2faDisableOpen(false); setTwoFaError(null); } }}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldAlert className="h-5 w-5 text-destructive" />
+              Disable Two-Factor Authentication
+            </DialogTitle>
+            <DialogDescription>
+              This will reduce the security of your account. Enter your password to confirm.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-4">
+            {twoFaError && (
+              <div className="flex items-center gap-2 p-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 rounded-lg">
+                <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                {twoFaError}
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="disable-2fa-password">Password</Label>
+              <div className="relative">
+                <Input
+                  id="disable-2fa-password"
+                  type={showDisablePassword ? "text" : "password"}
+                  placeholder="Enter your password"
+                  value={disablePassword}
+                  onChange={(e) => setDisablePassword(e.target.value)}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowDisablePassword(!showDisablePassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  tabIndex={-1}
+                  aria-label="Toggle password visibility"
+                >
+                  {showDisablePassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIs2faDisableOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handle2faDisable}
+              disabled={is2faSubmitting || !disablePassword}
+            >
+              {is2faSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Disabling...
+                </>
+              ) : (
+                "Disable 2FA"
               )}
             </Button>
           </DialogFooter>
