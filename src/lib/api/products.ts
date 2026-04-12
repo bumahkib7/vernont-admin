@@ -138,6 +138,16 @@ export interface Product {
   tags: string[];
   categories: string[];  // category names
   metadata?: Record<string, unknown>;
+  // SEO meta overrides (null when unset)
+  metaTitle?: string | null;
+  metaDescription?: string | null;
+  metaKeywords?: string | null;
+  canonicalUrl?: string | null;
+  noindex?: boolean;
+  ogTitle?: string | null;
+  ogDescription?: string | null;
+  ogImageUrl?: string | null;
+  focusKeyword?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -259,6 +269,17 @@ export interface UpdateProductInput {
   categories?: string[];  // category IDs
   shippingProfileId?: string;
   metadata?: Record<string, unknown>;
+  // SEO meta overrides — empty string clears a previously-set override,
+  // null/undefined leaves the stored value untouched.
+  metaTitle?: string | null;
+  metaDescription?: string | null;
+  metaKeywords?: string | null;
+  canonicalUrl?: string | null;
+  noindex?: boolean;
+  ogTitle?: string | null;
+  ogDescription?: string | null;
+  ogImageUrl?: string | null;
+  focusKeyword?: string | null;
 }
 
 // Update product
