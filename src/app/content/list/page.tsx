@@ -144,7 +144,7 @@ export default function ContentListPage() {
   };
 
   const filteredContent = content.filter((item) =>
-    item.productTitle.toLowerCase().includes(searchQuery.toLowerCase())
+    item.productTitle?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (

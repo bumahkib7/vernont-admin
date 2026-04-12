@@ -132,7 +132,7 @@ export default function GenerateContentPage() {
   };
 
   const filteredProducts = products.filter((product) =>
-    product.title.toLowerCase().includes(searchQuery.toLowerCase())
+    product.title?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const productsWithoutContent = filteredProducts.filter((p) => !p.hasContent);
