@@ -74,7 +74,8 @@ export default function ContentListPage() {
       const response = await fetch(`/api/admin/content/list?${params.toString()}`);
       if (response.ok) {
         const data = await response.json();
-        setContent(data);
+        // Backend returns a Spring Page object with 'content' array
+        setContent(Array.isArray(data) ? data : (data.content || []));
       } else {
         toast.error("Failed to load content");
       }

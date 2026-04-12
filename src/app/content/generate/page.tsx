@@ -58,7 +58,8 @@ export default function GenerateContentPage() {
       const response = await fetch("/api/admin/content/products-needing-content");
       if (response.ok) {
         const data = await response.json();
-        setProducts(data);
+        // Backend returns a Spring Page object with 'content' array
+        setProducts(Array.isArray(data) ? data : (data.content || []));
       } else {
         toast.error("Failed to load products");
       }
