@@ -197,6 +197,10 @@ const navItems: NavItem[] = [
     title: "Analytics",
     url: "/analytics",
     icon: BarChart3,
+    children: [
+      { title: "Overview", url: "/analytics" },
+      { title: "Consent", url: "/analytics/consent" },
+    ],
   },
 ];
 
