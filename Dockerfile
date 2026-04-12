@@ -30,12 +30,14 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
-# Create cache directories for Next.js image optimization.
-# The standalone server needs these writable at runtime — without them
-# the Image Optimizer crashes with ENOENT on mkdir('/app/.next/cache/images').
+# Pre-create cache directories at build time (belt).
 RUN mkdir -p .next/cache/images .next/cache/fetch-cache && chown -R nextjs:nodejs .next/cache
 
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000 HOSTNAME="0.0.0.0"
-CMD ["node", "server.js"]
+
+# Create cache dirs at startup too (suspenders) — if Runix/K8s mounts
+# an emptyDir over /app/.next for writability, the build-time dirs are
+# shadowed. This ensures they exist before server.js tries to use them.
+CMD ["sh", "-c", "mkdir -p /app/.next/cache/images /app/.next/cache/fetch-cache && exec node server.js"]
