@@ -31,16 +31,21 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-interface Product {
-  id: string;
-  title: string;
-  status: string;
-  thumbnail?: string;
-  hasContent: boolean;
+interface ProductContentStatus {
+  productId: string;
+  productTitle: string;
+  productHandle: string;
+  brandName: string | null;
+  thumbnailUrl: string | null;
+  hasImages: boolean;
+  currentStatus: string; // "NO_CONTENT", "DRAFT", "PENDING_REVIEW", etc.
+  qualityScore: number | null;
+  lastAttemptAt: string | null;
+  canGenerateNow: boolean;
 }
 
 export default function GenerateContentPage() {
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<ProductContentStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -82,10 +87,10 @@ export default function GenerateContentPage() {
   };
 
   const handleSelectAll = () => {
-    if (selectedProducts.size === filteredProducts.length) {
+    if (selectedProducts.size === productsWithoutContent.length) {
       setSelectedProducts(new Set());
     } else {
-      setSelectedProducts(new Set(filteredProducts.map((p) => p.id)));
+      setSelectedProducts(new Set(productsWithoutContent.map((p) => p.productId)));
     }
   };
 
@@ -132,11 +137,11 @@ export default function GenerateContentPage() {
   };
 
   const filteredProducts = products.filter((product) =>
-    product.title?.toLowerCase().includes(searchQuery.toLowerCase())
+    product.productTitle?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const productsWithoutContent = filteredProducts.filter((p) => !p.hasContent);
-  const productsWithContent = filteredProducts.filter((p) => p.hasContent);
+  const productsWithoutContent = filteredProducts.filter((p) => p.currentStatus === "NO_CONTENT");
+  const productsWithContent = filteredProducts.filter((p) => p.currentStatus !== "NO_CONTENT");
 
   return (
     <div className="space-y-6 p-6">
@@ -239,19 +244,19 @@ export default function GenerateContentPage() {
               </TableHeader>
               <TableBody>
                 {productsWithoutContent.map((product) => (
-                  <TableRow key={product.id}>
+                  <TableRow key={product.productId}>
                     <TableCell>
                       <Checkbox
-                        checked={selectedProducts.has(product.id)}
-                        onCheckedChange={() => handleSelectProduct(product.id)}
+                        checked={selectedProducts.has(product.productId)}
+                        onCheckedChange={() => handleSelectProduct(product.productId)}
                       />
                     </TableCell>
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-3">
-                        {product.thumbnail ? (
+                        {product.thumbnailUrl ? (
                           <img
-                            src={product.thumbnail}
-                            alt={product.title}
+                            src={product.thumbnailUrl}
+                            alt={product.productTitle}
                             className="h-10 w-10 rounded object-cover"
                           />
                         ) : (
@@ -259,11 +264,13 @@ export default function GenerateContentPage() {
                             <Package className="h-5 w-5 text-muted-foreground" />
                           </div>
                         )}
-                        <span>{product.title}</span>
+                        <span>{product.productTitle}</span>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="secondary">{product.status}</Badge>
+                      <Badge variant="secondary">
+                        {product.brandName || "No Brand"}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">
@@ -302,17 +309,19 @@ export default function GenerateContentPage() {
               </TableHeader>
               <TableBody>
                 {productsWithContent.slice(0, 10).map((product) => (
-                  <TableRow key={product.id}>
+                  <TableRow key={product.productId}>
                     <TableCell className="font-medium">
-                      {product.title}
+                      {product.productTitle}
                     </TableCell>
                     <TableCell>
-                      <Badge variant="secondary">{product.status}</Badge>
+                      <Badge variant="secondary">
+                        {product.brandName || "No Brand"}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
                         <CheckCircle2 className="mr-1 h-3 w-3" />
-                        Has Content
+                        {product.currentStatus.replace("_", " ")}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
