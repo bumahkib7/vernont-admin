@@ -4,10 +4,10 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:9000";
 
 export async function POST(request: NextRequest) {
   try {
-    const token = request.cookies.get("token")?.value;
+    const token = request.cookies.get("admin_access_token")?.value;
     const body = await request.json();
 
-    const response = await fetch(`${BACKEND_URL}/admin/content/bulk-generate`, {
+    const response = await fetch(`${BACKEND_URL}/admin/content-dashboard/bulk-generate`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

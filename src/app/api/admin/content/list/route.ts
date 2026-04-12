@@ -4,7 +4,7 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:9000";
 
 export async function GET(request: NextRequest) {
   try {
-    const token = request.cookies.get("token")?.value;
+    const token = request.cookies.get("admin_access_token")?.value;
     const { searchParams } = new URL(request.url);
 
     const queryParams = new URLSearchParams();
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     }
 
     const response = await fetch(
-      `${BACKEND_URL}/admin/content/list?${queryParams.toString()}`,
+      `${BACKEND_URL}/admin/seo/approval/content/status/APPROVED?${queryParams.toString()}`,
       {
         method: "GET",
         headers: {

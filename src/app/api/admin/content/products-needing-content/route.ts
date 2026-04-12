@@ -4,10 +4,10 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:9000";
 
 export async function GET(request: NextRequest) {
   try {
-    const token = request.cookies.get("token")?.value;
+    const token = request.cookies.get("admin_access_token")?.value;
 
     const response = await fetch(
-      `${BACKEND_URL}/admin/content/products/needs-content`,
+      `${BACKEND_URL}/admin/content-dashboard/products/needs-content`,
       {
         method: "GET",
         headers: {
