@@ -30,8 +30,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
-# Create cache directory for Next.js image optimization
-RUN mkdir -p .next/cache && chown -R nextjs:nodejs .next/cache
+# Create cache directories for Next.js image optimization.
+# The standalone server needs these writable at runtime — without them
+# the Image Optimizer crashes with ENOENT on mkdir('/app/.next/cache/images').
+RUN mkdir -p .next/cache/images .next/cache/fetch-cache && chown -R nextjs:nodejs .next/cache
 
 USER nextjs
 EXPOSE 3000
