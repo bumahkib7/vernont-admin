@@ -24,9 +24,11 @@ import {
 import { toast } from "sonner";
 
 interface DashboardStats {
-  totalProducts: number;
-  productsWithContent: number;
-  productsWithoutContent: number;
+  totalPublishedProducts: number;
+  productsWithApprovedContent: number;
+  productsNeedingContent: number;
+  pendingReviewCount: number;
+  contentGeneratedLast24h: number;
   coveragePercentage: number;
   contentByStatus: {
     draft: number;
@@ -115,7 +117,7 @@ export default function ContentDashboardPage() {
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalProducts}</div>
+            <div className="text-2xl font-bold">{stats.totalPublishedProducts}</div>
             <p className="text-xs text-muted-foreground">
               Published products in catalog
             </p>
@@ -128,7 +130,7 @@ export default function ContentDashboardPage() {
             <CheckCircle2 className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.productsWithContent}</div>
+            <div className="text-2xl font-bold">{stats.productsWithApprovedContent}</div>
             <p className="text-xs text-muted-foreground">
               Have approved AI content
             </p>
@@ -141,7 +143,7 @@ export default function ContentDashboardPage() {
             <AlertCircle className="h-4 w-4 text-amber-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.productsWithoutContent}</div>
+            <div className="text-2xl font-bold">{stats.productsNeedingContent}</div>
             <p className="text-xs text-muted-foreground">
               Missing SEO content
             </p>
@@ -155,7 +157,7 @@ export default function ContentDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {stats.coveragePercentage.toFixed(1)}%
+              {stats.coveragePercentage}%
             </div>
             <p className="text-xs text-muted-foreground">
               Content completion rate
