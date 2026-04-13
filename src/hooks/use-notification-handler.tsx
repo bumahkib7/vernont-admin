@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useWebSocket } from "./use-websocket";
+import { useNotificationSound } from "./use-notification-sound";
 import {
   useNotificationsWebSocketUpdate,
   useNotificationStore,
@@ -71,6 +72,7 @@ export function useNotificationHandler() {
   const router = useRouter();
   const { isConnected, subscribe, unsubscribe } = useWebSocket();
   const { handleNewNotification } = useNotificationsWebSocketUpdate();
+  const { play: playNotificationSound } = useNotificationSound();
   const subscriptionRef = useRef<ReturnType<typeof subscribe> | null>(null);
   const hasSubscribedRef = useRef(false);
 
@@ -97,21 +99,42 @@ export function useNotificationHandler() {
         });
       }
 
-      // Show toast notification
-      toast(notification.title, {
-        description: notification.message || undefined,
-        duration: 5000,
-        action: notification.navigateTo
-          ? {
-              label: getActionLabel(notification.entityType),
-              onClick: () => {
-                router.push(notification.navigateTo!);
-              },
-            }
-          : undefined,
-      });
+      // Play sound for order events, use success toast for emphasis
+      const isOrderEvent = msg.eventType?.startsWith("ORDER_CREATED") ||
+        msg.eventType?.startsWith("ORDER_PAID") ||
+        notification.entityType === "ORDER";
+
+      if (isOrderEvent) {
+        playNotificationSound();
+        toast.success(notification.title, {
+          description: notification.message || undefined,
+          duration: 10000,
+          action: notification.navigateTo
+            ? {
+                label: getActionLabel(notification.entityType),
+                onClick: () => {
+                  router.push(notification.navigateTo!);
+                },
+              }
+            : undefined,
+        });
+      } else {
+        // Standard toast for non-order notifications
+        toast(notification.title, {
+          description: notification.message || undefined,
+          duration: 5000,
+          action: notification.navigateTo
+            ? {
+                label: getActionLabel(notification.entityType),
+                onClick: () => {
+                  router.push(notification.navigateTo!);
+                },
+              }
+            : undefined,
+        });
+      }
     },
-    [handleNewNotification, router]
+    [handleNewNotification, router, playNotificationSound]
   );
 
   // Send activity heartbeat every 5 minutes
