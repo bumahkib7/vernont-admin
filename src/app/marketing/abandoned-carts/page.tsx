@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -20,10 +21,13 @@ import {
   Clock,
   Eye,
   MousePointer,
+  Send,
 } from "lucide-react";
+import { toast } from "sonner";
 import {
   getAbandonedCartStats,
   getAbandonedCartNotifications,
+  sendCartRecoveryEmail,
   type AbandonedCartStats,
   type AbandonedCartNotification,
 } from "@/lib/api";
@@ -53,6 +57,22 @@ export default function AbandonedCartsPage() {
   const [notifications, setNotifications] = useState<AbandonedCartNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sendingId, setSendingId] = useState<string | null>(null);
+
+  const handleSendRecovery = async (notification: AbandonedCartNotification) => {
+    setSendingId(notification.id);
+    try {
+      await sendCartRecoveryEmail(notification.cartId);
+      toast.success(`Recovery email sent to ${notification.email}`);
+      fetchData();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to send recovery email"
+      );
+    } finally {
+      setSendingId(null);
+    }
+  };
 
   const fetchData = useCallback(async () => {
     try {
@@ -165,6 +185,7 @@ export default function AbandonedCartsPage() {
                   <TableHead>Sent</TableHead>
                   <TableHead>Opened</TableHead>
                   <TableHead>Recovered</TableHead>
+                  <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -181,6 +202,24 @@ export default function AbandonedCartsPage() {
                     </TableCell>
                     <TableCell className="text-muted-foreground text-sm">
                       {formatDateTime(n.recoveredAt)}
+                    </TableCell>
+                    <TableCell>
+                      {n.status !== "RECOVERED" && n.status !== "EXPIRED" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-1"
+                          disabled={sendingId === n.id}
+                          onClick={() => handleSendRecovery(n)}
+                        >
+                          {sendingId === n.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Send className="h-3 w-3" />
+                          )}
+                          Send
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

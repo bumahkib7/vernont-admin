@@ -300,6 +300,33 @@ export async function deleteProduct(id: string): Promise<void> {
   });
 }
 
+// Bulk update product status (calls updateProduct for each id)
+export interface BulkStatusUpdateResult {
+  updated: number;
+  failed: string[];
+}
+
+export async function bulkUpdateProductStatus(
+  ids: string[],
+  status: ProductStatus
+): Promise<BulkStatusUpdateResult> {
+  const results = await Promise.allSettled(
+    ids.map((id) => updateProduct(id, { status }))
+  );
+
+  const failed: string[] = [];
+  let updated = 0;
+  results.forEach((result, idx) => {
+    if (result.status === "fulfilled") {
+      updated++;
+    } else {
+      failed.push(ids[idx]);
+    }
+  });
+
+  return { updated, failed };
+}
+
 // Bulk delete products
 export interface BulkDeleteResponse {
   deleted: number;

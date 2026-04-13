@@ -41,79 +41,6 @@ function formatRelativeTime(timestamp: string) {
   return formatDistanceToNow(new Date(timestamp), { addSuffix: true });
 }
 
-/**
- * TODO: Replace with real sparkline data from the API when available.
- * Currently generates deterministic-looking mock data seeded by index.
- */
-function generateMockSparkline(seed: number, trend: "up" | "down" | "neutral" = "up"): number[] {
-  const points: number[] = [];
-  let value = 30 + seed * 7;
-  for (let i = 0; i < 7; i++) {
-    const delta = trend === "up" ? 2 + (i * 1.5) : trend === "down" ? -(1 + i * 1.2) : Math.sin(i) * 3;
-    value += delta + (Math.sin(seed * 3 + i * 2) * 5);
-    points.push(Math.max(0, value));
-  }
-  return points;
-}
-
-// ---------------------------------------------------------------------------
-// Sparkline SVG
-// ---------------------------------------------------------------------------
-
-function Sparkline({
-  data,
-  color = "currentColor",
-  width = 80,
-  height = 28,
-}: {
-  data: number[];
-  color?: string;
-  width?: number;
-  height?: number;
-}) {
-  if (!data || data.length < 2) return null;
-
-  const min = Math.min(...data);
-  const max = Math.max(...data);
-  const range = max - min || 1;
-  const padding = 2;
-
-  const points = data
-    .map((v, i) => {
-      const x = padding + (i / (data.length - 1)) * (width - padding * 2);
-      const y = height - padding - ((v - min) / range) * (height - padding * 2);
-      return `${x},${y}`;
-    })
-    .join(" ");
-
-  // Gradient area fill
-  const firstX = padding;
-  const lastX = padding + ((data.length - 1) / (data.length - 1)) * (width - padding * 2);
-
-  return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="overflow-visible">
-      <defs>
-        <linearGradient id={`sparkGrad-${color.replace("#", "")}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity={0.15} />
-          <stop offset="100%" stopColor={color} stopOpacity={0} />
-        </linearGradient>
-      </defs>
-      <polygon
-        points={`${firstX},${height} ${points} ${lastX},${height}`}
-        fill={`url(#sparkGrad-${color.replace("#", "")})`}
-      />
-      <polyline
-        points={points}
-        fill="none"
-        stroke={color}
-        strokeWidth={1.5}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 // ---------------------------------------------------------------------------
 // Skeleton Components
 // ---------------------------------------------------------------------------
@@ -125,9 +52,8 @@ function KpiCardSkeleton() {
         <Skeleton className="h-4 w-24" />
         <Skeleton className="h-4 w-4" />
       </div>
-      <div className="mt-3 flex items-end justify-between">
+      <div className="mt-3">
         <Skeleton className="h-8 w-24" />
-        <Skeleton className="h-7 w-20" />
       </div>
       <div className="mt-2">
         <Skeleton className="h-4 w-32" />
@@ -184,8 +110,6 @@ interface KpiCardProps {
   changePercent: number;
   changeDirection: "up" | "down" | "neutral";
   comparisonLabel: string;
-  sparklineData: number[];
-  sparklineColor: string;
   loading?: boolean;
   subtitle?: string;
 }
@@ -197,8 +121,6 @@ function KpiCard({
   changePercent,
   changeDirection,
   comparisonLabel,
-  sparklineData,
-  sparklineColor,
   loading = false,
   subtitle,
 }: KpiCardProps) {
@@ -217,9 +139,8 @@ function KpiCard({
         <span className="text-small-regular text-muted-foreground">{title}</span>
         <span className="text-muted-foreground [&>svg]:h-4 [&>svg]:w-4">{icon}</span>
       </div>
-      <div className="mt-3 flex items-end justify-between gap-4">
+      <div className="mt-3">
         <span className="text-2xl-semi tracking-tight">{value}</span>
-        <Sparkline data={sparklineData} color={sparklineColor} />
       </div>
       <div className="mt-2 flex items-center gap-1.5 text-small-regular">
         {changeDirection === "up" ? (
@@ -452,8 +373,7 @@ function LowStockAlerts({
     );
   }
 
-  // TODO: Replace with actual low-stock items from a dedicated API endpoint
-  // Currently showing a summary count with link to inventory
+  // No dedicated low-stock items endpoint — show summary count with link to inventory
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/30">
@@ -534,25 +454,13 @@ export default function DashboardPage() {
     [activities, activityFilter]
   );
 
-  // Mock sparkline data (TODO: source from real API trend data)
-  const sparklines = useMemo(
-    () => ({
-      revenue: generateMockSparkline(1, stats?.revenue.trend || "up"),
-      orders: generateMockSparkline(2, "up"),
-      customers: generateMockSparkline(3, "up"),
-      products: generateMockSparkline(4, "neutral"),
-    }),
-    [stats?.revenue.trend]
-  );
-
-  // Compute AOV from analytics if available
+  // Compute AOV from today's revenue and order count
   const avgOrderValue = useMemo(() => {
-    if (!analytics?.salesOverTime || analytics.salesOverTime.length === 0) return null;
-    // TODO: Replace with real AOV from API when available
-    const totalRev = analytics.salesOverTime.reduce((sum, d) => sum + d.revenue, 0);
-    const totalOrders = stats?.orders.today || 1;
-    return totalRev > 0 ? totalRev / Math.max(totalOrders * 7, 1) : null;
-  }, [analytics, stats?.orders.today]);
+    const todayRevenue = stats?.revenue.today ?? 0;
+    const todayOrders = stats?.orders.today ?? 0;
+    if (todayOrders === 0 || todayRevenue === 0) return null;
+    return todayRevenue / todayOrders;
+  }, [stats?.revenue.today, stats?.orders.today]);
 
   if (isError) {
     return (
@@ -592,8 +500,6 @@ export default function DashboardPage() {
           changePercent={stats?.revenue.changePercent || 0}
           changeDirection={stats?.revenue.trend || "up"}
           comparisonLabel="vs yesterday"
-          sparklineData={sparklines.revenue}
-          sparklineColor="#10b981"
           loading={isLoading}
         />
 
@@ -604,8 +510,6 @@ export default function DashboardPage() {
           changePercent={stats?.orders.today ? Math.round(((stats.orders.today - (stats.orders.today * 0.85)) / Math.max(stats.orders.today * 0.85, 1)) * 100) : 0}
           changeDirection="up"
           comparisonLabel="vs 7-day avg"
-          sparklineData={sparklines.orders}
-          sparklineColor="#6366f1"
           loading={isLoading}
           subtitle={`${stats?.orders.pending || 0} pending \u00b7 ${stats?.orders.processing || 0} processing`}
         />
@@ -617,8 +521,6 @@ export default function DashboardPage() {
           changePercent={stats?.customers.newThisWeek || 0}
           changeDirection="up"
           comparisonLabel="new this week"
-          sparklineData={sparklines.customers}
-          sparklineColor="#f59e0b"
           loading={isLoading}
         />
 
@@ -629,8 +531,6 @@ export default function DashboardPage() {
           changePercent={0}
           changeDirection="neutral"
           comparisonLabel="in catalog"
-          sparklineData={sparklines.products}
-          sparklineColor="#8b5cf6"
           loading={isLoading}
           subtitle={
             (stats?.products.lowStock || 0) > 0

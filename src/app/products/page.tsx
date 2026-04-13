@@ -61,7 +61,7 @@ import { resolveImageUrl, formatPrice } from "@/lib/api/client";
 import type { ProductSummary, ProductStatus } from "@/lib/api/products";
 import { usePageContext } from "@/hooks/use-page-context";
 import { useProductStore } from "@/stores/product-store";
-import { useProducts, useCategories, useDeleteProduct, useBulkDeleteProducts } from "@/hooks/use-products";
+import { useProducts, useCategories, useDeleteProduct, useBulkDeleteProducts, useBulkUpdateProductStatus } from "@/hooks/use-products";
 
 function getStatusBadge(status: ProductStatus) {
   switch (status) {
@@ -141,6 +141,7 @@ export default function ProductsPage() {
 
   const deleteMutation = useDeleteProduct();
   const bulkDeleteMutation = useBulkDeleteProducts();
+  const bulkStatusMutation = useBulkUpdateProductStatus();
 
   const products = productsData?.content ?? [];
   const totalElements = productsData?.totalElements ?? 0;
@@ -186,14 +187,38 @@ export default function ProductsPage() {
   }, [productToDeleteId, deleteMutation, closeDeleteDialog]);
 
   const handleBulkPublish = useCallback(async () => {
-    toast.success(`Published ${selectedIds.size} products`);
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    try {
+      const result = await bulkStatusMutation.mutateAsync({ ids, status: "published" });
+      if (result.failed.length > 0) {
+        toast.error(`${result.failed.length} product(s) failed to publish`);
+      }
+      if (result.updated > 0) {
+        toast.success(`Published ${result.updated} product(s)`);
+      }
+    } catch {
+      toast.error("Failed to publish products");
+    }
     clearSelection();
-  }, [selectedIds.size, clearSelection]);
+  }, [selectedIds, bulkStatusMutation, clearSelection]);
 
   const handleBulkUnpublish = useCallback(async () => {
-    toast.success(`Unpublished ${selectedIds.size} products`);
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    try {
+      const result = await bulkStatusMutation.mutateAsync({ ids, status: "draft" });
+      if (result.failed.length > 0) {
+        toast.error(`${result.failed.length} product(s) failed to unpublish`);
+      }
+      if (result.updated > 0) {
+        toast.success(`Unpublished ${result.updated} product(s)`);
+      }
+    } catch {
+      toast.error("Failed to unpublish products");
+    }
     clearSelection();
-  }, [selectedIds.size, clearSelection]);
+  }, [selectedIds, bulkStatusMutation, clearSelection]);
 
   const handleBulkDelete = useCallback(async () => {
     const ids = Array.from(selectedIds);
@@ -461,9 +486,9 @@ export default function ProductsPage() {
         selectedCount={selectedIds.size}
         onClearSelection={clearSelection}
         actions={[
-          { label: "Publish", icon: <Eye className="h-4 w-4" />, onClick: handleBulkPublish },
-          { label: "Unpublish", icon: <EyeOff className="h-4 w-4" />, onClick: handleBulkUnpublish, variant: "outline" },
-          { label: "Delete", icon: <Trash2 className="h-4 w-4" />, onClick: handleBulkDelete, variant: "destructive" },
+          { label: bulkStatusMutation.isPending ? "Publishing..." : "Publish", icon: <Eye className="h-4 w-4" />, onClick: handleBulkPublish, disabled: bulkStatusMutation.isPending || bulkDeleteMutation.isPending },
+          { label: bulkStatusMutation.isPending ? "Unpublishing..." : "Unpublish", icon: <EyeOff className="h-4 w-4" />, onClick: handleBulkUnpublish, variant: "outline", disabled: bulkStatusMutation.isPending || bulkDeleteMutation.isPending },
+          { label: bulkDeleteMutation.isPending ? "Deleting..." : "Delete", icon: <Trash2 className="h-4 w-4" />, onClick: handleBulkDelete, variant: "destructive", disabled: bulkStatusMutation.isPending || bulkDeleteMutation.isPending },
         ]}
       />
 

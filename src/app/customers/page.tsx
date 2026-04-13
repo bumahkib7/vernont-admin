@@ -45,7 +45,16 @@ import {
   CheckCircle,
   UsersRound,
   RefreshCw,
+  Loader2,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { BulkActionBar } from "@/components/ui/bulk-action-bar";
 import { DataTable, type Column } from "@/components/ui/data-table";
 import { toast } from "sonner";
@@ -57,6 +66,8 @@ import {
   formatPrice,
   formatDate,
   importCustomersCsv,
+  createCustomer,
+  activateCustomer,
   type CustomerSummary,
   type CustomerTier,
   type CustomerStatus,
@@ -153,6 +164,51 @@ export default function CustomersPage() {
   const handleBulkExport = () => {
     toast.success(`Exported ${selectedIds.size} customers`);
     clearSelection();
+  };
+
+  // --- Create Customer dialog state ---
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createLoading, setCreateLoading] = useState(false);
+  const [newFirstName, setNewFirstName] = useState("");
+  const [newLastName, setNewLastName] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+
+  const handleCreateCustomer = async () => {
+    if (!newEmail.trim()) {
+      toast.error("Email is required");
+      return;
+    }
+    setCreateLoading(true);
+    try {
+      await createCustomer({
+        email: newEmail.trim(),
+        firstName: newFirstName.trim() || undefined,
+        lastName: newLastName.trim() || undefined,
+        phone: newPhone.trim() || undefined,
+      });
+      toast.success("Customer created successfully");
+      setCreateDialogOpen(false);
+      setNewFirstName("");
+      setNewLastName("");
+      setNewEmail("");
+      setNewPhone("");
+      refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to create customer");
+    } finally {
+      setCreateLoading(false);
+    }
+  };
+
+  const handleActivateCustomer = async (customer: CustomerSummary) => {
+    try {
+      await activateCustomer(customer.id);
+      toast.success(`${getCustomerName(customer)} has been activated`);
+      refetch();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to activate customer");
+    }
   };
 
   const handleActionSuccess = () => {
@@ -266,7 +322,7 @@ export default function CustomersPage() {
               ) : (
                 <DropdownMenuItem
                   className="text-green-600"
-                  onClick={() => toast.info("Customer activation coming soon")}
+                  onClick={() => handleActivateCustomer(customer)}
                 >
                   <CheckCircle className="mr-2 h-4 w-4" />
                   Activate Account
@@ -332,7 +388,7 @@ export default function CustomersPage() {
           </Button>
           <CsvExportButton type="customers" />
           <CsvImportDialog type="customers" onImport={importCustomersCsv} onComplete={() => refetch()} />
-          <Button className="gap-2" onClick={() => toast.info("Add customer coming soon")}>
+          <Button className="gap-2" onClick={() => setCreateDialogOpen(true)}>
             <UserPlus className="h-4 w-4" />
             Add Customer
           </Button>
@@ -481,6 +537,65 @@ export default function CustomersPage() {
           />
         </>
       )}
+
+      {/* Create Customer Dialog */}
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Customer</DialogTitle>
+            <DialogDescription>
+              Create a new customer account. Email is required.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <span className="text-sm font-medium">First Name</span>
+                <Input
+                  placeholder="John"
+                  value={newFirstName}
+                  onChange={(e) => setNewFirstName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <span className="text-sm font-medium">Last Name</span>
+                <Input
+                  placeholder="Doe"
+                  value={newLastName}
+                  onChange={(e) => setNewLastName(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <span className="text-sm font-medium">Email *</span>
+              <Input
+                type="email"
+                placeholder="john@example.com"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <span className="text-sm font-medium">Phone (optional)</span>
+              <Input
+                type="tel"
+                placeholder="+44 7700 000000"
+                value={newPhone}
+                onChange={(e) => setNewPhone(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateCustomer} disabled={createLoading || !newEmail.trim()}>
+              {createLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Create Customer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -10,6 +10,7 @@ interface BulkAction {
   icon?: React.ReactNode;
   onClick: () => void;
   variant?: "default" | "destructive" | "outline";
+  disabled?: boolean;
 }
 
 interface BulkActionBarProps {
@@ -76,6 +77,7 @@ export function BulkActionBar({
                   : ""
               )}
               onClick={action.onClick}
+              disabled={action.disabled}
             >
               {action.icon}
               {action.label}

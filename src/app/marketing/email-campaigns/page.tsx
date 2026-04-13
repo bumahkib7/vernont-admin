@@ -52,6 +52,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
   MoreHorizontal,
@@ -108,6 +109,7 @@ async function createCampaign(data: {
   name: string;
   type: string;
   emailSubject: string;
+  htmlBody?: string;
   templateId: string;
   targetAllCustomers: boolean;
 }) {
@@ -519,6 +521,7 @@ function CreateCampaignDialog({
   const [name, setName] = useState("");
   const [type, setType] = useState("MANUAL");
   const [emailSubject, setEmailSubject] = useState("");
+  const [htmlBody, setHtmlBody] = useState("");
   const [templateId, setTemplateId] = useState("");
   const [targetAllCustomers, setTargetAllCustomers] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -535,6 +538,7 @@ function CreateCampaignDialog({
         name,
         type,
         emailSubject,
+        htmlBody: htmlBody || undefined,
         templateId: templateId || undefined as unknown as string,
         targetAllCustomers,
       });
@@ -591,7 +595,20 @@ function CreateCampaignDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="campaign-template">Template ID</Label>
+            <Label htmlFor="campaign-body">Email Body (HTML)</Label>
+            <Textarea
+              id="campaign-body"
+              placeholder={"<h1>Hello!</h1>\n<p>Check out our latest deals...</p>"}
+              value={htmlBody}
+              onChange={(e) => setHtmlBody(e.target.value)}
+              className="min-h-[160px] font-mono text-sm"
+            />
+            <p className="text-xs text-muted-foreground">
+              Write your email content in HTML. Leave empty to use a template instead.
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="campaign-template">Template ID (optional)</Label>
             <Input
               id="campaign-template"
               placeholder="e.g. order-confirmation"

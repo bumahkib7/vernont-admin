@@ -52,8 +52,14 @@ export default function CachePage() {
         });
       }
     } catch (error: any) {
+      console.error("Cache clear error:", error);
+      const errorMsg = error.status === 404
+        ? "Cache endpoint not found. Backend may need to be redeployed with latest changes."
+        : error.message || "An error occurred while clearing the caches.";
+
       toast.error("Failed to clear Pinterest feed caches", {
-        description: error.message || "An error occurred while clearing the caches.",
+        description: errorMsg,
+        duration: 5000,
       });
     } finally {
       setIsPinterestClearing(false);
@@ -74,8 +80,14 @@ export default function CachePage() {
         });
       }
     } catch (error: any) {
+      console.error("Cache clear all error:", error);
+      const errorMsg = error.status === 404
+        ? "Cache endpoint not found. Backend may need to be redeployed with latest changes."
+        : error.message || "An error occurred while clearing the caches.";
+
       toast.error("Failed to clear all caches", {
-        description: error.message || "An error occurred while clearing the caches.",
+        description: errorMsg,
+        duration: 5000,
       });
     } finally {
       setIsClearing(false);
@@ -93,8 +105,14 @@ export default function CachePage() {
         });
       }
     } catch (error: any) {
+      console.error("Cache load error:", error);
+      const errorMsg = error.status === 404
+        ? "Cache endpoint not found. Backend may need to be redeployed with latest changes."
+        : error.message || "An error occurred while loading cache names.";
+
       toast.error("Failed to load cache names", {
-        description: error.message || "An error occurred while loading cache names.",
+        description: errorMsg,
+        duration: 5000,
       });
     } finally {
       setIsLoadingCaches(false);
@@ -120,6 +138,8 @@ export default function CachePage() {
         <AlertTitle>About Caching</AlertTitle>
         <AlertDescription>
           Caches help improve performance by storing frequently accessed data. Clear caches after making updates to ensure changes are immediately visible.
+          <br /><br />
+          <strong>Note:</strong> If cache clearing fails with 404 errors, the backend may need to be redeployed with the latest cache management endpoints.
         </AlertDescription>
       </Alert>
 

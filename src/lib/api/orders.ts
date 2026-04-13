@@ -383,6 +383,30 @@ export function getDraftOrderStatusDisplay(status: DraftOrderStatus): { label: s
   }
 }
 
+// Refund APIs
+export interface RefundOrderRequest {
+  amount: number; // In cents
+  reason?: string;
+  note?: string;
+}
+
+export interface RefundOrderResponse {
+  order: Order;
+  refundId: string;
+  amount: number;
+  message: string;
+}
+
+export async function refundOrder(
+  id: string,
+  data: RefundOrderRequest
+): Promise<RefundOrderResponse> {
+  return apiFetch<RefundOrderResponse>(`/admin/orders/${id}/refund`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
 // Order Edit APIs
 export interface OrderEditItem {
   id: string;

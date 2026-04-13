@@ -13,7 +13,9 @@ import {
   updateProduct,
   deleteProduct,
   bulkDeleteProducts,
+  bulkUpdateProductStatus,
   type BulkDeleteResponse,
+  type BulkStatusUpdateResult,
   getCategories,
   type ProductStatus,
   type ProductsResponse,
@@ -142,6 +144,24 @@ export function useBulkDeleteProducts() {
 
   return useMutation<BulkDeleteResponse, Error, string[]>({
     mutationFn: bulkDeleteProducts,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: productKeys.lists() });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Bulk update product status mutation
+// ---------------------------------------------------------------------------
+export function useBulkUpdateProductStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    BulkStatusUpdateResult,
+    Error,
+    { ids: string[]; status: ProductStatus }
+  >({
+    mutationFn: ({ ids, status }) => bulkUpdateProductStatus(ids, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: productKeys.lists() });
     },

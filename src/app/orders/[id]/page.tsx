@@ -41,6 +41,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Copy,
   MoreHorizontal,
   ArrowRight,
@@ -56,6 +63,7 @@ import {
   MapPin,
   ExternalLink,
   Ban,
+  Undo2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { usePageContext } from "@/hooks/use-page-context";
@@ -64,10 +72,12 @@ import {
   fulfillOrder,
   cancelOrder,
   completeOrder,
+  refundOrder,
   getShippingConfig,
   getOrderTracking,
   getOrderFulfillments,
   voidShippingLabel,
+  getRefundReasons,
   Order,
   PaymentStatus,
   FulfillmentStatus,
@@ -75,6 +85,7 @@ import {
   FulfillmentDetail,
   TrackingInfo,
   TrackingEvent,
+  RefundReason,
   formatPrice,
   formatDateTime,
   getPaymentStatusDisplay,
@@ -125,6 +136,12 @@ export default function OrderDetailsPage() {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
+  const [refundDialogOpen, setRefundDialogOpen] = useState(false);
+  const [refundType, setRefundType] = useState<"full" | "partial">("full");
+  const [refundAmount, setRefundAmount] = useState("");
+  const [refundReason, setRefundReason] = useState("");
+  const [refundNote, setRefundNote] = useState("");
+  const [refundReasons, setRefundReasons] = useState<RefundReason[]>([]);
 
   // ShipEngine config (used for Shipping & Label Card)
   const [shippingConfig, setShippingConfig] = useState<ShippingConfig | null>(null);
@@ -287,6 +304,55 @@ export default function OrderDetailsPage() {
     }
   };
 
+  const openRefundDialog = async () => {
+    setRefundDialogOpen(true);
+    setRefundType("full");
+    setRefundAmount("");
+    setRefundReason("");
+    setRefundNote("");
+    try {
+      const res = await getRefundReasons({ active: true });
+      setRefundReasons(res.refund_reasons || []);
+    } catch {
+      // Reasons are optional — dialog still works with a free-text note
+    }
+  };
+
+  const handleRefund = async () => {
+    if (!order) return;
+    const amountInCents =
+      refundType === "full"
+        ? order.total
+        : Math.round(parseFloat(refundAmount) * 100);
+    if (isNaN(amountInCents) || amountInCents <= 0) {
+      toast.error("Please enter a valid refund amount");
+      return;
+    }
+    if (amountInCents > order.total) {
+      toast.error("Refund amount cannot exceed order total");
+      return;
+    }
+    setActionLoading("refund");
+    try {
+      await refundOrder(order.id, {
+        amount: amountInCents,
+        reason: refundReason || undefined,
+        note: refundNote || undefined,
+      });
+      await fetchOrder();
+      setRefundDialogOpen(false);
+      toast.success(
+        refundType === "full"
+          ? "Full refund processed"
+          : `Refund of ${formatPrice(amountInCents, order.currencyCode)} processed`
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to process refund");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   // Loading state (including auth loading)
   if (authLoading || loading) {
     return (
@@ -331,6 +397,10 @@ export default function OrderDetailsPage() {
   const canShip = (order.fulfillmentStatus === "FULFILLED" || order.fulfillmentStatus === "NOT_FULFILLED") && order.status !== "CANCELED";
   const canComplete = order.status === "PENDING" && order.fulfillmentStatus !== "NOT_FULFILLED";
   const canCancel = order.status === "PENDING";
+  const canRefund =
+    (order.status === "COMPLETED" || order.paymentStatus === "PAID" || order.paymentStatus === "CAPTURED") &&
+    order.paymentStatus !== "REFUNDED" &&
+    order.status !== "CANCELED";
 
   // Build activity timeline from order data
   const activity = [
@@ -429,7 +499,7 @@ export default function OrderDetailsPage() {
                   <StatusBadge status={order.status} type="order" dot />
                   <PaymentStatusBadge status={order.paymentStatus} />
                   <FulfillmentStatusBadge status={order.fulfillmentStatus} />
-                  {(canFulfill || canShip || canComplete || canCancel) && (
+                  {(canFulfill || canShip || canComplete || canRefund || canCancel) && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon">
@@ -455,14 +525,25 @@ export default function OrderDetailsPage() {
                             Complete Order
                           </DropdownMenuItem>
                         )}
-                        {(canFulfill || canShip || canComplete) && canCancel && <DropdownMenuSeparator />}
+                        {canRefund && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={openRefundDialog}>
+                              <Undo2 className="mr-2 h-4 w-4" />
+                              Refund Order
+                            </DropdownMenuItem>
+                          </>
+                        )}
                         {canCancel && (
-                          <DropdownMenuItem
-                            onClick={() => setCancelDialogOpen(true)}
-                            className="text-red-600 dark:text-red-400"
-                          >
-                            Cancel Order
-                          </DropdownMenuItem>
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => setCancelDialogOpen(true)}
+                              className="text-red-600 dark:text-red-400"
+                            >
+                              Cancel Order
+                            </DropdownMenuItem>
+                          </>
                         )}
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -919,6 +1000,106 @@ export default function OrderDetailsPage() {
             <Button variant="destructive" onClick={handleCancel} disabled={actionLoading === "cancel"}>
               {actionLoading === "cancel" && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Cancel Order
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Refund Dialog */}
+      <Dialog open={refundDialogOpen} onOpenChange={setRefundDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Refund Order</DialogTitle>
+            <DialogDescription>
+              Process a refund for order #{order.displayId}. Total: {formatPrice(order.total, order.currencyCode)}
+              {order.paymentStatus === "PARTIALLY_REFUNDED" && (
+                <span className="block mt-1 text-yellow-600">This order has already been partially refunded.</span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            {/* Refund Type */}
+            <div className="space-y-2">
+              <span className="text-sm font-medium">Refund Type</span>
+              <Select value={refundType} onValueChange={(v) => setRefundType(v as "full" | "partial")}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="full">Full Refund ({formatPrice(order.total, order.currencyCode)})</SelectItem>
+                  <SelectItem value="partial">Partial Refund</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Partial Amount */}
+            {refundType === "partial" && (
+              <div className="space-y-2">
+                <span className="text-sm font-medium">Refund Amount ({order.currencyCode})</span>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  max={(order.total / 100).toFixed(2)}
+                  placeholder="0.00"
+                  value={refundAmount}
+                  onChange={(e) => setRefundAmount(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Maximum: {formatPrice(order.total, order.currencyCode)}
+                </p>
+              </div>
+            )}
+
+            {/* Reason */}
+            <div className="space-y-2">
+              <span className="text-sm font-medium">Reason</span>
+              {refundReasons.length > 0 ? (
+                <Select value={refundReason} onValueChange={setRefundReason}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a reason" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {refundReasons.map((r) => (
+                      <SelectItem key={r.id} value={r.label}>{r.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  placeholder="Reason for refund"
+                  value={refundReason}
+                  onChange={(e) => setRefundReason(e.target.value)}
+                />
+              )}
+            </div>
+
+            {/* Note */}
+            <div className="space-y-2">
+              <span className="text-sm font-medium">Note (optional)</span>
+              <Input
+                placeholder="Internal note about this refund"
+                value={refundNote}
+                onChange={(e) => setRefundNote(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRefundDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleRefund}
+              disabled={actionLoading === "refund" || (refundType === "partial" && !refundAmount)}
+            >
+              {actionLoading === "refund" && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {refundType === "full"
+                ? `Refund ${formatPrice(order.total, order.currencyCode)}`
+                : refundAmount
+                  ? `Refund ${formatPrice(Math.round(parseFloat(refundAmount) * 100), order.currencyCode)}`
+                  : "Refund"
+              }
             </Button>
           </DialogFooter>
         </DialogContent>

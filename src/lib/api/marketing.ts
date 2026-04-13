@@ -159,3 +159,9 @@ export async function getAbandonedCartStats(): Promise<AbandonedCartStats> {
 export async function getAbandonedCartNotifications(): Promise<{ notifications: AbandonedCartNotification[]; count: number }> {
   return apiFetch("/admin/marketing/abandoned-carts");
 }
+
+export async function sendCartRecoveryEmail(cartId: string): Promise<{ cartId: string; status: string; message: string }> {
+  return apiFetch(`/admin/marketing/abandoned-carts/${cartId}/send-recovery`, {
+    method: "POST",
+  });
+}
