@@ -10,12 +10,15 @@ import {
   deleteBlogPost,
   updateBlogPostStatus,
   generateBlogPostAI,
+  aiAssistBlocks,
   type BlogPostsResponse,
   type BlogPost,
   type BlogPostsQueryParams,
   type BlogPostStatus,
   type CreateBlogPostInput,
   type GenerateBlogPostAIInput,
+  type AiAssistBlocksInput,
+  type AiAssistBlocksResponse,
 } from "@/lib/api/blog";
 
 // ============================================================================
@@ -143,6 +146,19 @@ export function useGenerateBlogPostAI() {
     },
     onError: (error) => {
       toast.error(`AI generation failed: ${error.message}`);
+    },
+  });
+}
+
+export function useAiAssistBlocks() {
+  return useMutation<
+    AiAssistBlocksResponse,
+    Error,
+    { postId: string; data: AiAssistBlocksInput }
+  >({
+    mutationFn: ({ postId, data }) => aiAssistBlocks(postId, data),
+    onError: (error) => {
+      toast.error(`AI copilot failed: ${error.message}`);
     },
   });
 }

@@ -53,10 +53,12 @@ import {
   useUpdateBlogPost,
   useUpdateBlogPostStatus,
   useGenerateBlogPostAI,
+  useAiAssistBlocks,
 } from "@/hooks/use-blog-posts";
 import { generatePreviewToken } from "@/lib/api/blog";
 import { BlockEditor } from "@/components/blog/BlockEditor";
 import { BlogPostAIDialog } from "@/components/blog/BlogPostAIDialog";
+import { AiCopilotPanel } from "@/components/blog/AiCopilotPanel";
 import type {
   BlogPost,
   BlogBlock,
@@ -264,6 +266,7 @@ export default function BlogEditorPage() {
   const updatePost = useUpdateBlogPost();
   const updateStatus = useUpdateBlogPostStatus();
   const generateAI = useGenerateBlogPostAI();
+  const aiAssist = useAiAssistBlocks();
 
   // ── Local form state ─────────────────────────────────────────────────────
   const [title, setTitle] = useState("");
@@ -464,6 +467,35 @@ export default function BlogEditorPage() {
   const handleRemoveProduct = useCallback((productId: string) => {
     setProducts((prev) => prev.filter((p) => p.productId !== productId));
   }, []);
+
+  // ── AI Copilot handler ──────────────────────────────────────────────────
+  const handleCopilotSubmit = useCallback(
+    (prompt: string) => {
+      aiAssist.mutate(
+        {
+          postId,
+          data: {
+            prompt,
+            blocks,
+            context: { title, postType, category },
+          },
+        },
+        {
+          onSuccess: (result) => {
+            setBlocks(result.blocks as BlogBlock[]);
+            // Push response message to copilot panel
+            const addMessage = (window as unknown as Record<string, unknown>)
+              .__blogCopilotAddMessage as
+              | ((message: string, summary: string) => void)
+              | undefined;
+            addMessage?.(result.message, result.summary);
+            toast.success(`AI Copilot: ${result.summary}`);
+          },
+        }
+      );
+    },
+    [postId, blocks, title, postType, category, aiAssist]
+  );
 
   // ── Preview URL ──────────────────────────────────────────────────────────
   const previewUrl = previewToken
@@ -793,6 +825,18 @@ export default function BlogEditorPage() {
               <BlockEditor blocks={blocks} onChange={setBlocks} />
             </CardContent>
           </Card>
+
+          {/* AI Copilot Panel */}
+          <AiCopilotPanel
+            postId={postId}
+            blocks={blocks}
+            title={title}
+            postType={postType}
+            category={category}
+            onBlocksUpdate={setBlocks}
+            isPending={aiAssist.isPending}
+            onSubmit={handleCopilotSubmit}
+          />
         </div>
 
         {/* Right Column */}

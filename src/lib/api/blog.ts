@@ -223,6 +223,31 @@ export async function generateBlogPostAI(
   });
 }
 
+export interface AiAssistBlocksInput {
+  prompt: string;
+  blocks: BlogBlock[];
+  context: { title?: string; postType?: string; category?: string };
+}
+
+export interface AiAssistBlocksResponse {
+  blocks: BlogBlock[];
+  message: string;
+  summary: string;
+}
+
+export async function aiAssistBlocks(
+  postId: string,
+  data: AiAssistBlocksInput
+): Promise<AiAssistBlocksResponse> {
+  return apiFetch<AiAssistBlocksResponse>(
+    `/api/v1/admin/blog/posts/${postId}/ai-assist`,
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    }
+  );
+}
+
 export async function searchProductsForBlog(
   query: string
 ): Promise<BlogProductSearchResult[]> {
