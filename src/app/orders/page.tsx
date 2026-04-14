@@ -226,8 +226,8 @@ function PipelineColumnView({
 
   return (
     <div
-      className={`flex flex-col min-w-[280px] max-w-[320px] ${
-        collapsed ? "w-12 min-w-12 max-w-12" : "flex-1"
+      className={`flex flex-col shrink-0 ${
+        collapsed ? "w-12 min-w-12 max-w-12" : "w-[220px] sm:w-[250px] lg:w-[280px] lg:max-w-[320px] lg:flex-1"
       } transition-all`}
     >
       {/* Sticky Header */}
@@ -275,7 +275,7 @@ function PipelineColumnView({
       {/* Card List */}
       {!collapsed && (
         <ScrollArea className="flex-1 rounded-b-lg border border-t-0 bg-muted/30">
-          <div className="p-2 space-y-2" style={{ maxHeight: "calc(100vh - 320px)" }}>
+          <div className="p-2 space-y-2" style={{ maxHeight: "calc(100vh - 280px)" }}>
             {orders.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
                 <Inbox className="h-8 w-8 mb-2 opacity-40" />
@@ -325,7 +325,7 @@ function PipelineBoard({
   }
 
   return (
-    <div className="flex gap-3 overflow-x-auto pb-2 sm:pb-0" style={{ minHeight: 400 }}>
+    <div className="flex gap-3 overflow-x-auto pb-4" style={{ minHeight: 400, maxHeight: "calc(100vh - 240px)" }}>
       {PIPELINE_COLUMNS.map((col) => (
         <PipelineColumnView
           key={col.id}
@@ -345,7 +345,7 @@ function PipelineSkeleton() {
   return (
     <div className="flex gap-3 overflow-x-auto" style={{ minHeight: 400 }}>
       {PIPELINE_COLUMNS.filter((c) => !c.collapsedByDefault).map((col) => (
-        <div key={col.id} className="flex flex-col min-w-[280px] max-w-[320px] flex-1">
+        <div key={col.id} className="flex flex-col shrink-0 w-[220px] sm:w-[250px] lg:w-[280px] lg:max-w-[320px] lg:flex-1">
           <div className={`rounded-t-lg px-3 py-2.5 ${col.headerClass}`}>
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold">{col.label}</span>

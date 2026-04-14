@@ -29,6 +29,7 @@ import {
   HeartPulse,
   FileText,
   Zap,
+  Headphones,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -92,6 +93,11 @@ const navItems: NavItem[] = [
       { title: "All Orders", url: "/orders" },
       { title: "Drafts", url: "/orders/drafts" },
     ],
+  },
+  {
+    title: "Customer Support",
+    url: "/messages",
+    icon: Headphones,
   },
   {
     title: "Returns",
