@@ -44,6 +44,7 @@ const ROUTE_LABELS: Record<string, string> = {
   catalogs: "Product Catalog",
   connect: "Connect",
   new: "New",
+  blog: "Blog",
   support: "Customer Support",
   tickets: "Tickets",
   "canned-responses": "Canned Responses",

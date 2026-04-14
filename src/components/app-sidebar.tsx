@@ -207,6 +207,15 @@ const navItems: NavItem[] = [
     ],
   },
   {
+    title: "Blog",
+    url: "/blog",
+    icon: FileText,
+    children: [
+      { title: "All Posts", url: "/blog" },
+      { title: "New Post", url: "/blog/new" },
+    ],
+  },
+  {
     title: "Analytics",
     url: "/analytics",
     icon: BarChart3,
