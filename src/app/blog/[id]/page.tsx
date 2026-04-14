@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -288,6 +288,9 @@ export default function BlogEditorPage() {
   const [previewToken, setPreviewToken] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [aiDialogOpen, setAiDialogOpen] = useState(false);
+  const [previewSize, setPreviewSize] = useState<"desktop" | "tablet" | "mobile">("desktop");
+  const [previewReady, setPreviewReady] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // ── Sync from fetched data ───────────────────────────────────────────────
   useEffect(() => {
@@ -316,6 +319,48 @@ export default function BlogEditorPage() {
       setSlug(slugify(title));
     }
   }, [title, slugManuallyEdited]);
+
+  // ── Listen for PREVIEW_READY from iframe ─────────────────────────────────
+  useEffect(() => {
+    function handleMessage(event: MessageEvent) {
+      if (event.data?.type === "PREVIEW_READY") {
+        setPreviewReady(true);
+      }
+    }
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
+
+  // ── Send live updates to iframe via PostMessage ─────────────────────────
+  useEffect(() => {
+    if (!previewReady || !iframeRef.current?.contentWindow) return;
+    iframeRef.current.contentWindow.postMessage(
+      {
+        type: "PREVIEW_UPDATE",
+        title,
+        subtitle,
+        excerpt,
+        coverImageUrl,
+        category,
+        readingTimeMinutes: Math.max(1, Math.ceil(
+          blocks.filter((b) => b.type === "paragraph" || b.type === "heading")
+            .reduce((sum, b) => sum + String(b.text ?? "").split(/\s+/).length, 0) / 200
+        )),
+        author: authorName ? { name: authorName, credential: authorCredential } : null,
+        blocks,
+      },
+      "*"
+    );
+  }, [previewReady, title, subtitle, excerpt, coverImageUrl, category, authorName, authorCredential, blocks]);
+
+  // ── Scroll to block in preview ──────────────────────────────────────────
+  const scrollToBlockInPreview = useCallback((index: number) => {
+    if (!iframeRef.current?.contentWindow) return;
+    iframeRef.current.contentWindow.postMessage(
+      { type: "SCROLL_TO_BLOCK", index },
+      "*"
+    );
+  }, []);
 
   // ── Save handler ─────────────────────────────────────────────────────────
   const handleSave = useCallback(async () => {
@@ -756,7 +801,9 @@ export default function BlogEditorPage() {
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium">Preview</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Preview {previewReady && <span className="text-xs text-green-600 font-normal ml-1">Live</span>}
+                </CardTitle>
                 <div className="flex gap-1.5">
                   {previewToken && (
                     <Button
@@ -788,14 +835,54 @@ export default function BlogEditorPage() {
                   </Button>
                 </div>
               </div>
+              {/* Responsive preview toggle */}
+              {previewUrl && (
+                <div className="flex gap-1 mt-2">
+                  {(["desktop", "tablet", "mobile"] as const).map((size) => (
+                    <Button
+                      key={size}
+                      variant={previewSize === size ? "default" : "ghost"}
+                      size="sm"
+                      className="h-6 text-xs px-2"
+                      onClick={() => setPreviewSize(size)}
+                    >
+                      {size === "desktop" ? "Desktop" : size === "tablet" ? "Tablet" : "Mobile"}
+                    </Button>
+                  ))}
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               {previewUrl ? (
-                <iframe
-                  src={previewUrl}
-                  className="w-full h-[500px] border rounded"
-                  title="Blog post preview"
-                />
+                <div className="flex justify-center bg-muted/30 rounded p-2">
+                  <iframe
+                    ref={iframeRef}
+                    src={previewUrl}
+                    className="border rounded bg-white transition-all duration-300 h-[600px]"
+                    style={{
+                      width: previewSize === "mobile" ? "375px" : previewSize === "tablet" ? "768px" : "100%",
+                    }}
+                    title="Blog post preview"
+                    onLoad={() => {
+                      // Send initial data once iframe loads
+                      setTimeout(() => {
+                        iframeRef.current?.contentWindow?.postMessage(
+                          {
+                            type: "PREVIEW_UPDATE",
+                            title,
+                            subtitle,
+                            excerpt,
+                            coverImageUrl,
+                            category,
+                            author: authorName ? { name: authorName, credential: authorCredential } : null,
+                            blocks,
+                          },
+                          "*"
+                        );
+                      }, 500);
+                    }}
+                  />
+                </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <Eye className="h-10 w-10 text-muted-foreground/30 mb-3" />
