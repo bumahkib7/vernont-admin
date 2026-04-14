@@ -5,12 +5,18 @@ import { Client, IMessage, StompSubscription } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 
 const DIRECT_API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-// HTTP calls go through proxy for cookie auth; WebSocket needs direct URL
+// HTTP calls go through proxy for cookie auth
 const API_URL =
   typeof window !== "undefined" && process.env.NODE_ENV === "production"
     ? "/api/proxy"
     : DIRECT_API_URL;
-const WS_ENDPOINT = `${DIRECT_API_URL}/ws`;
+// WebSocket goes through the same proxy so cookies are sent as same-origin.
+// In production the Next.js rewrite forwards /api/proxy/ws → backend /ws.
+// In development we connect directly but cookies are still same-origin (localhost).
+const WS_ENDPOINT =
+  typeof window !== "undefined" && process.env.NODE_ENV === "production"
+    ? "/api/proxy/ws"
+    : `${DIRECT_API_URL}/ws`;
 
 export interface UseWebSocketOptions {
   autoConnect?: boolean;
@@ -40,7 +46,6 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
   const [isConnected, setIsConnected] = useState(false);
   const clientRef = useRef<Client | null>(null);
   const subscriptionsRef = useRef<Map<string, StompSubscription>>(new Map());
-  const wsTokenRef = useRef<string | null>(null);
   const pendingSubscriptionsRef = useRef<PendingSubscription[]>([]);
 
   const log = useCallback(
@@ -81,41 +86,17 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
     });
   }, [log]);
 
-  // Fetch a WebSocket token from the backend (authenticated via HTTP-only cookie)
-  const fetchWsToken = useCallback(async (): Promise<string | null> => {
-    try {
-      const response = await fetch(`${API_URL}/api/v1/internal/auth/ws-token`, {
-        method: "POST",
-        credentials: "include", // Send HTTP-only cookies
-        headers: { "X-Requested-With": "XMLHttpRequest" },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        return data.token || null;
-      }
-      log("Failed to fetch WS token:", response.status);
-      return null;
-    } catch (error) {
-      log("Error fetching WS token:", error);
-      return null;
-    }
-  }, [log]);
-
   const connect = useCallback(async () => {
     if (clientRef.current?.active) {
       log("Already connected or connecting");
       return;
     }
 
-    // Get WS token for authentication
-    const token = await fetchWsToken();
-    if (!token) {
-      log("No WS token available, cannot connect");
-      return;
-    }
-    wsTokenRef.current = token;
-
-    const wsUrl = `${WS_ENDPOINT}?token=${token}`;
+    // Cookie-based auth: the HTTP-only access_token cookie is sent automatically
+    // with the WebSocket handshake because we connect through the same origin
+    // (via Next.js rewrite proxy in production, or same localhost in development).
+    // No need to pass tokens in the URL — that is insecure (URLs are logged everywhere).
+    const wsUrl = WS_ENDPOINT;
 
     const client = new Client({
       webSocketFactory: () => {
@@ -146,7 +127,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
 
     clientRef.current = client;
     client.activate();
-  }, [reconnectDelay, debug, log, fetchWsToken, processPendingSubscriptions]);
+  }, [reconnectDelay, debug, log, processPendingSubscriptions]);
 
   const disconnect = useCallback(() => {
     if (clientRef.current) {
