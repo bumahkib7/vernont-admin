@@ -15,8 +15,29 @@ import {
   type ChatMessageListResponse,
   type SendChatMessageRequest,
 } from "@/lib/api/chat";
+import { importKey, decrypt } from "@/lib/chat-crypto";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { useNotificationSound } from "@/hooks/use-notification-sound";
+
+// In-memory store for per-conversation CryptoKeys (never persisted)
+const conversationKeys = new Map<string, CryptoKey>();
+
+async function ensureConversationKey(
+  conversationId: string,
+  rawKey: string | null | undefined
+): Promise<CryptoKey | null> {
+  if (conversationKeys.has(conversationId)) {
+    return conversationKeys.get(conversationId)!;
+  }
+  if (!rawKey) return null;
+  try {
+    const key = await importKey(rawKey);
+    conversationKeys.set(conversationId, key);
+    return key;
+  } catch {
+    return null;
+  }
+}
 
 // ============================================================================
 // Query Keys
@@ -60,7 +81,14 @@ export function useChatConversations(params?: {
 export function useChatMessages(conversationId: string | null) {
   return useQuery({
     queryKey: chatKeys.messages(conversationId ?? ""),
-    queryFn: () => getChatMessages(conversationId!, { size: 100 }),
+    queryFn: async () => {
+      const data = await getChatMessages(conversationId!, { size: 100 });
+      // Capture encryption key from the messages response (delivered via HTTPS)
+      if (conversationId && data.encryptionKey) {
+        await ensureConversationKey(conversationId, data.encryptionKey);
+      }
+      return data;
+    },
     enabled: !!conversationId,
     staleTime: 5_000,
     select: (data: ChatMessageListResponse) => data.messages,
@@ -149,27 +177,65 @@ export function useChatWebSocket(activeConversationId: string | null) {
 
   const handleIncomingMessage = useCallback(
     (payload: unknown) => {
-      const message = payload as ChatMessage;
-      if (!message?.id || !message?.conversationId) return;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const raw = payload as any;
+      if (!raw?.id || !raw?.conversationId) return;
 
-      // Append to message cache if viewing this conversation
-      queryClient.setQueryData<ChatMessage[]>(
-        chatKeys.messages(message.conversationId),
-        (old = []) => {
-          if (old.some((m) => m.id === message.id)) return old;
-          return [...old, message];
-        }
-      );
+      const conversationId = raw.conversationId as string;
 
-      // Play sound + show toast for messages from customers
-      if (message.senderRole === "CUSTOMER") {
-        playNotificationSound();
-        if (message.conversationId !== activeConversationRef.current) {
-          toast.info("New customer message", {
-            description: message.body.slice(0, 100),
-          });
+      // Handle encrypted message bodies
+      const processMessage = async () => {
+        let body: string = raw.body || "";
+
+        if (raw.encryptedBody && raw.iv) {
+          const cryptoKey = conversationKeys.get(conversationId);
+          if (cryptoKey) {
+            try {
+              body = await decrypt(cryptoKey, raw.encryptedBody, raw.iv);
+            } catch {
+              body = "[Decryption failed]";
+            }
+          } else {
+            body = raw.encryptedBody; // No key available
+          }
         }
-      }
+
+        const message: ChatMessage = {
+          id: raw.id,
+          conversationId: raw.conversationId,
+          senderUserId: raw.senderUserId,
+          senderRole: raw.senderRole,
+          messageType: raw.messageType || "TEXT",
+          body,
+          status: raw.status,
+          moderationStatus: raw.moderationStatus || "ALLOWED",
+          moderationReason: raw.moderationReason || null,
+          moderationScore: raw.moderationScore || null,
+          createdAt: raw.createdAt,
+          clientMessageId: raw.clientMessageId || null,
+        };
+
+        // Append to message cache if viewing this conversation
+        queryClient.setQueryData<ChatMessage[]>(
+          chatKeys.messages(message.conversationId),
+          (old = []) => {
+            if (old.some((m) => m.id === message.id)) return old;
+            return [...old, message];
+          }
+        );
+
+        // Play sound + show toast for messages from customers
+        if (message.senderRole === "CUSTOMER") {
+          playNotificationSound();
+          if (message.conversationId !== activeConversationRef.current) {
+            toast.info("New customer message", {
+              description: body.slice(0, 100),
+            });
+          }
+        }
+      };
+
+      processMessage();
     },
     [queryClient, playNotificationSound]
   );

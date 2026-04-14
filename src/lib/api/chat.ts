@@ -28,6 +28,7 @@ export interface ChatConversation {
   unreadForAdmin: number;
   openedAt: string;
   closedAt: string | null;
+  encryptionKey: string | null;
 }
 
 export interface ChatMessage {
@@ -51,6 +52,7 @@ export interface ChatMessageListResponse {
   size: number;
   total: number;
   hasMore: boolean;
+  encryptionKey: string | null;
 }
 
 // ============================================================================
