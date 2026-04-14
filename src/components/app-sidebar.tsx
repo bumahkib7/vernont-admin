@@ -96,8 +96,15 @@ const navItems: NavItem[] = [
   },
   {
     title: "Customer Support",
-    url: "/messages",
+    url: "/support",
     icon: Headphones,
+    children: [
+      { title: "Dashboard", url: "/support" },
+      { title: "Tickets", url: "/support/tickets" },
+      { title: "Live Chat", url: "/messages" },
+      { title: "Canned Responses", url: "/support/canned-responses" },
+      { title: "SLA Policies", url: "/support/sla" },
+    ],
   },
   {
     title: "Returns",

@@ -44,7 +44,19 @@ const ROUTE_LABELS: Record<string, string> = {
   catalogs: "Product Catalog",
   connect: "Connect",
   new: "New",
+  support: "Customer Support",
+  tickets: "Tickets",
+  "canned-responses": "Canned Responses",
+  sla: "SLA Policies",
 };
+
+// Routes that should be rendered with a custom parent breadcrumb
+// Maps a path prefix to a custom breadcrumb trail
+type CustomBreadcrumb = { label: string; href: string };
+const CUSTOM_BREADCRUMB_ROUTES: { prefix: string; parent: CustomBreadcrumb; labelOverride?: string }[] = [
+  { prefix: "/messages", parent: { label: "Customer Support", href: "/support" }, labelOverride: "Live Chat" },
+  { prefix: "/support", parent: { label: "Customer Support", href: "/support" } },
+];
 
 function formatSegment(segment: string): string {
   return (
@@ -73,12 +85,49 @@ export function PageBreadcrumbs() {
 
   const segments = pathname.split("/").filter(Boolean);
 
-  // Build breadcrumb items with accumulated paths
-  const crumbs = segments.map((segment, index) => ({
-    label: formatSegment(segment),
-    href: "/" + segments.slice(0, index + 1).join("/"),
-    isLast: index === segments.length - 1,
-  }));
+  // Check if this route has a custom breadcrumb parent
+  const customRoute = CUSTOM_BREADCRUMB_ROUTES.find((r) => pathname.startsWith(r.prefix));
+
+  let crumbs: { label: string; href: string; isLast: boolean }[];
+
+  if (customRoute) {
+    if (customRoute.prefix === "/messages") {
+      // /messages is a standalone route that belongs under Customer Support
+      crumbs = [
+        { label: customRoute.parent.label, href: customRoute.parent.href, isLast: false },
+        { label: customRoute.labelOverride || "Live Chat", href: "/messages", isLast: true },
+      ];
+    } else {
+      // /support routes: skip the first segment (support) since the parent covers it
+      const subSegments = segments.slice(1);
+      if (subSegments.length === 0) {
+        // /support itself -> "Customer Support" > "Dashboard"
+        crumbs = [
+          { label: customRoute.parent.label, href: customRoute.parent.href, isLast: false },
+          { label: "Dashboard", href: "/support", isLast: true },
+        ];
+      } else {
+        crumbs = [
+          { label: customRoute.parent.label, href: customRoute.parent.href, isLast: false },
+          ...subSegments.map((segment, index) => {
+            const isLast = index === subSegments.length - 1;
+            const href = "/support/" + subSegments.slice(0, index + 1).join("/");
+            // For dynamic ticket IDs, show "Ticket #..."
+            const isTicketId = index === 1 && subSegments[0] === "tickets" && segment !== "new";
+            const label = isTicketId ? `Ticket #${segment}` : formatSegment(segment);
+            return { label, href, isLast };
+          }),
+        ];
+      }
+    }
+  } else {
+    // Default breadcrumb behavior
+    crumbs = segments.map((segment, index) => ({
+      label: formatSegment(segment),
+      href: "/" + segments.slice(0, index + 1).join("/"),
+      isLast: index === segments.length - 1,
+    }));
+  }
 
   const hasMany = crumbs.length >= 3;
 

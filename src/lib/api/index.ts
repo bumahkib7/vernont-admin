@@ -21,3 +21,4 @@ export * from "./ai-sessions";
 export * from "./tags";
 export * from "./cache";
 export * from "./chat";
+export * from "./support";
