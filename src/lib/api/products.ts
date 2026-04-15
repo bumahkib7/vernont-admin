@@ -196,7 +196,8 @@ export interface ImageInput {
 export interface CreateProductInput {
   title: string;
   description?: string;
-  handle: string;
+  // Optional: backend auto-generates from brand + title when omitted.
+  handle?: string;
   status?: ProductStatus;
   shippingProfileId: string;
   images?: ImageInput[];

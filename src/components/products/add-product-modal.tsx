@@ -306,7 +306,9 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
       const productInput: CreateProductInput = {
         title: store.title,
         description: store.description || undefined,
-        handle: store.handle || store.title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+        // Blank → backend derives from brand + title. Avoid a shoddy client-side
+        // fallback ("rayban6") that produces useless slugs for SEO.
+        handle: store.handle?.trim() || undefined,
         status: isDraft ? "draft" : "published",
         shippingProfileId: "default",
         categoryIds: store.category ? [store.category] : [],

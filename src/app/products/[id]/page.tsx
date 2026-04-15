@@ -991,8 +991,13 @@ export default function ProductDetailPage() {
                   <Input
                     id="handle"
                     value={formData.handle}
+                    placeholder="Auto-generated from brand + title"
                     onChange={(e) => updateField("handle", e.target.value)}
                   />
+                  <p className="text-[11px] text-muted-foreground">
+                    URL slug. Leave blank to regenerate. Changing it records a
+                    redirect so old URLs keep working.
+                  </p>
                 </div>
               </div>
               <div className="space-y-2">
