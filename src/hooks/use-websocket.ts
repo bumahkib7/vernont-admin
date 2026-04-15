@@ -2,21 +2,25 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Client, IMessage, StompSubscription } from "@stomp/stompjs";
-import SockJS from "sockjs-client";
 
 const DIRECT_API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-// HTTP calls go through proxy for cookie auth
+// HTTP calls still go through the Next.js rewrite so cookies are same-origin
+// (helps with Safari ITP on regular XHR/fetch).
 const API_URL =
   typeof window !== "undefined" && process.env.NODE_ENV === "production"
     ? "/api/proxy"
     : DIRECT_API_URL;
-// WebSocket goes through the same proxy so cookies are sent as same-origin.
-// In production the Next.js rewrite forwards /api/proxy/ws → backend /ws.
-// In development we connect directly but cookies are still same-origin (localhost).
-const WS_ENDPOINT =
-  typeof window !== "undefined" && process.env.NODE_ENV === "production"
-    ? "/api/proxy/ws"
-    : `${DIRECT_API_URL}/ws`;
+
+// WebSocket connects directly to the backend using the native WebSocket API.
+// We dropped SockJS: the Next.js rewrite can't proxy the HTTP Upgrade frame,
+// which made SockJS fall back to 5+ HTTP transports (xhr_streaming,
+// eventsource, htmlfile, jsonp, iframe.html) — each failing differently.
+// The backend auth cookie is `SameSite=None; Secure` and admin.vernont.com
+// is on the CORS allow-list, so it's sent on the cross-origin WS handshake.
+const WS_ENDPOINT = (() => {
+  const base = DIRECT_API_URL.replace(/^http:/, "ws:").replace(/^https:/, "wss:");
+  return `${base}/ws`;
+})();
 
 export interface UseWebSocketOptions {
   autoConnect?: boolean;
@@ -92,18 +96,13 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
       return;
     }
 
-    // Cookie-based auth: the HTTP-only access_token cookie is sent automatically
-    // with the WebSocket handshake because we connect through the same origin
-    // (via Next.js rewrite proxy in production, or same localhost in development).
-    // No need to pass tokens in the URL — that is insecure (URLs are logged everywhere).
-    const wsUrl = WS_ENDPOINT;
-
+    // Cookie-based auth: the HTTP-only access_token cookie is sent on the
+    // WebSocket handshake. It's `SameSite=None; Secure` so the browser sends
+    // it even though the handshake is cross-origin (admin.vernont.com →
+    // vernont-backend-*.runixcloud.dev). No token in the URL — URLs get
+    // logged everywhere.
     const client = new Client({
-      webSocketFactory: () => {
-        return new SockJS(wsUrl, null, {
-          timeout: 5000,
-        }) as unknown as WebSocket;
-      },
+      brokerURL: WS_ENDPOINT,
       reconnectDelay,
       debug: debug ? (msg) => console.log(`[STOMP] ${msg}`) : () => {},
       onConnect: () => {
