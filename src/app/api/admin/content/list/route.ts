@@ -7,10 +7,21 @@ export async function GET(request: NextRequest) {
     const token = request.cookies.get("admin_access_token")?.value;
     const { searchParams } = new URL(request.url);
 
+    // Backend route is /admin/seo/approval/content/status/{status} where
+    // {status} is the path variable. The previous implementation hardcoded
+    // APPROVED regardless of the requested status, so ?status=pending_review
+    // silently returned APPROVED (usually empty). Map the query param onto
+    // the path variable instead.
+    const ALLOWED_STATUSES = new Set([
+      "DRAFT",
+      "PENDING_REVIEW",
+      "APPROVED",
+      "REJECTED",
+    ]);
+    const requestedStatus = (searchParams.get("status") || "PENDING_REVIEW").toUpperCase();
+    const status = ALLOWED_STATUSES.has(requestedStatus) ? requestedStatus : "PENDING_REVIEW";
+
     const queryParams = new URLSearchParams();
-    if (searchParams.get("status")) {
-      queryParams.set("status", searchParams.get("status")!);
-    }
     if (searchParams.get("page")) {
       queryParams.set("page", searchParams.get("page")!);
     }
@@ -19,7 +30,7 @@ export async function GET(request: NextRequest) {
     }
 
     const response = await fetch(
-      `${BACKEND_URL}/admin/seo/approval/content/status/APPROVED?${queryParams.toString()}`,
+      `${BACKEND_URL}/admin/seo/approval/content/status/${status}?${queryParams.toString()}`,
       {
         method: "GET",
         headers: {
