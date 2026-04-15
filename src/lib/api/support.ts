@@ -101,21 +101,21 @@ export async function getTickets(
 
   const qs = searchParams.toString();
   return apiFetch<TicketsResponse>(
-    `/api/v1/admin/support/tickets${qs ? `?${qs}` : ""}`
+    `/admin/support/tickets${qs ? `?${qs}` : ""}`
   );
 }
 
 export async function bulkUpdateTickets(
   data: BulkTicketUpdateRequest
 ): Promise<void> {
-  return apiFetch<void>("/api/v1/admin/support/tickets/bulk", {
+  return apiFetch<void>("/admin/support/tickets/bulk", {
     method: "PATCH",
     body: JSON.stringify(data),
   });
 }
 
 export async function getAssignableUsers(): Promise<TicketAssignee[]> {
-  return apiFetch<TicketAssignee[]>("/api/v1/admin/internal-users/assignable");
+  return apiFetch<TicketAssignee[]>("/admin/internal-users/assignable");
 }
 
 // ============================================================================
@@ -197,7 +197,7 @@ export interface TicketDetail {
 export async function createTicket(
   data: CreateTicketInput
 ): Promise<TicketDetail> {
-  return apiFetch<TicketDetail>("/api/v1/admin/support/tickets", {
+  return apiFetch<TicketDetail>("/admin/support/tickets", {
     method: "POST",
     body: JSON.stringify(data),
   });
@@ -209,7 +209,7 @@ export async function createTicket(
 
 export async function getTicket(ticketId: string): Promise<TicketDetail> {
   return apiFetch<TicketDetail>(
-    `/api/v1/admin/support/tickets/${ticketId}`
+    `/admin/support/tickets/${ticketId}`
   );
 }
 
@@ -218,7 +218,7 @@ export async function replyToTicket(
   data: { body: string; messageType: TicketMessageType }
 ): Promise<TicketMessage> {
   return apiFetch<TicketMessage>(
-    `/api/v1/admin/support/tickets/${ticketId}/reply`,
+    `/admin/support/tickets/${ticketId}/reply`,
     { method: "POST", body: JSON.stringify(data) }
   );
 }
@@ -228,7 +228,7 @@ export async function updateTicketStatus(
   status: TicketStatus
 ): Promise<void> {
   return apiFetch<void>(
-    `/api/v1/admin/support/tickets/${ticketId}/status`,
+    `/admin/support/tickets/${ticketId}/status`,
     { method: "PATCH", body: JSON.stringify({ status }) }
   );
 }
@@ -238,7 +238,7 @@ export async function updateTicketPriority(
   priority: TicketPriority
 ): Promise<void> {
   return apiFetch<void>(
-    `/api/v1/admin/support/tickets/${ticketId}/priority`,
+    `/admin/support/tickets/${ticketId}/priority`,
     { method: "PATCH", body: JSON.stringify({ priority }) }
   );
 }
@@ -248,7 +248,7 @@ export async function assignTicket(
   assigneeId: string
 ): Promise<void> {
   return apiFetch<void>(
-    `/api/v1/admin/support/tickets/${ticketId}/assign`,
+    `/admin/support/tickets/${ticketId}/assign`,
     { method: "POST", body: JSON.stringify({ assigneeId }) }
   );
 }
@@ -258,8 +258,8 @@ export async function updateTicketTags(
   tags: string[]
 ): Promise<void> {
   return apiFetch<void>(
-    `/api/v1/admin/support/tickets/${ticketId}/tags`,
-    { method: "PUT", body: JSON.stringify({ tags }) }
+    `/admin/support/tickets/${ticketId}/tags`,
+    { method: "PATCH", body: JSON.stringify({ tags }) }
   );
 }
 
@@ -306,14 +306,14 @@ export async function getCannedResponses(params?: {
   if (params?.search) searchParams.set("search", params.search);
   const qs = searchParams.toString();
   return apiFetch<CannedResponsesResponse>(
-    `/api/v1/admin/support/canned-responses${qs ? `?${qs}` : ""}`
+    `/admin/support/canned-responses${qs ? `?${qs}` : ""}`
   );
 }
 
 export async function createCannedResponse(
   data: CreateCannedResponseInput
 ): Promise<CannedResponse> {
-  return apiFetch<CannedResponse>("/api/v1/admin/support/canned-responses", {
+  return apiFetch<CannedResponse>("/admin/support/canned-responses", {
     method: "POST",
     body: JSON.stringify(data),
   });
@@ -324,7 +324,7 @@ export async function updateCannedResponse(
   data: UpdateCannedResponseInput
 ): Promise<CannedResponse> {
   return apiFetch<CannedResponse>(
-    `/api/v1/admin/support/canned-responses/${id}`,
+    `/admin/support/canned-responses/${id}`,
     {
       method: "PUT",
       body: JSON.stringify(data),
@@ -333,7 +333,7 @@ export async function updateCannedResponse(
 }
 
 export async function deleteCannedResponse(id: string): Promise<void> {
-  return apiFetch<void>(`/api/v1/admin/support/canned-responses/${id}`, {
+  return apiFetch<void>(`/admin/support/canned-responses/${id}`, {
     method: "DELETE",
   });
 }
@@ -363,7 +363,7 @@ export interface UpdateSlaPolicyInput {
 
 export async function getSlaPolicies(): Promise<SlaPoliciesResponse> {
   return apiFetch<SlaPoliciesResponse>(
-    "/api/v1/admin/support/sla-policies"
+    "/admin/support/sla-policies"
   );
 }
 
@@ -371,7 +371,7 @@ export async function updateSlaPolicy(
   id: string,
   data: UpdateSlaPolicyInput
 ): Promise<SlaPolicy> {
-  return apiFetch<SlaPolicy>(`/api/v1/admin/support/sla-policies/${id}`, {
+  return apiFetch<SlaPolicy>(`/admin/support/sla-policies/${id}`, {
     method: "PUT",
     body: JSON.stringify(data),
   });
@@ -391,7 +391,7 @@ export interface SupportStats {
 }
 
 export async function getSupportStats(): Promise<SupportStats> {
-  return apiFetch<SupportStats>("/api/v1/admin/support/stats");
+  return apiFetch<SupportStats>("/admin/support/stats");
 }
 
 export interface OverdueTicket {
@@ -405,7 +405,7 @@ export interface OverdueTicket {
 }
 
 export async function getOverdueTickets(): Promise<OverdueTicket[]> {
-  return apiFetch<OverdueTicket[]>("/api/v1/admin/support/overdue");
+  return apiFetch<OverdueTicket[]>("/admin/support/overdue");
 }
 
 export interface SupportActivityEvent {
@@ -419,7 +419,7 @@ export interface SupportActivityEvent {
 }
 
 export async function getSupportActivity(limit: number = 10): Promise<SupportActivityEvent[]> {
-  return apiFetch<SupportActivityEvent[]>(`/api/v1/admin/support/activity?limit=${limit}`);
+  return apiFetch<SupportActivityEvent[]>(`/admin/support/activity?limit=${limit}`);
 }
 
 // ============================================================================
@@ -430,6 +430,6 @@ export async function searchCustomersForSupport(
   query: string
 ): Promise<TicketCustomer[]> {
   return apiFetch<TicketCustomer[]>(
-    `/api/v1/admin/customers/search?q=${encodeURIComponent(query)}&limit=10`
+    `/admin/customers/search?q=${encodeURIComponent(query)}&limit=10`
   );
 }
