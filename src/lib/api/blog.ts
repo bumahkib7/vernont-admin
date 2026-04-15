@@ -151,18 +151,18 @@ export async function listBlogPosts(
 
   const qs = searchParams.toString();
   return apiFetch<BlogPostsResponse>(
-    `/api/v1/admin/blog/posts${qs ? `?${qs}` : ""}`
+    `/admin/blog/posts${qs ? `?${qs}` : ""}`
   );
 }
 
 export async function getBlogPost(id: string): Promise<BlogPost> {
-  return apiFetch<BlogPost>(`/api/v1/admin/blog/posts/${id}`);
+  return apiFetch<BlogPost>(`/admin/blog/posts/${id}`);
 }
 
 export async function createBlogPost(
   data: CreateBlogPostInput
 ): Promise<BlogPost> {
-  return apiFetch<BlogPost>("/api/v1/admin/blog/posts", {
+  return apiFetch<BlogPost>("/admin/blog/posts", {
     method: "POST",
     body: JSON.stringify(data),
   });
@@ -172,14 +172,14 @@ export async function updateBlogPost(
   id: string,
   data: Partial<BlogPost>
 ): Promise<BlogPost> {
-  return apiFetch<BlogPost>(`/api/v1/admin/blog/posts/${id}`, {
+  return apiFetch<BlogPost>(`/admin/blog/posts/${id}`, {
     method: "PUT",
     body: JSON.stringify(data),
   });
 }
 
 export async function deleteBlogPost(id: string): Promise<void> {
-  return apiFetch<void>(`/api/v1/admin/blog/posts/${id}`, {
+  return apiFetch<void>(`/admin/blog/posts/${id}`, {
     method: "DELETE",
   });
 }
@@ -188,8 +188,8 @@ export async function updateBlogPostStatus(
   id: string,
   status: BlogPostStatus
 ): Promise<BlogPost> {
-  return apiFetch<BlogPost>(`/api/v1/admin/blog/posts/${id}/status`, {
-    method: "PATCH",
+  return apiFetch<BlogPost>(`/admin/blog/posts/${id}/status`, {
+    method: "PUT",
     body: JSON.stringify({ status }),
   });
 }
@@ -198,9 +198,9 @@ export async function setBlogPostProducts(
   id: string,
   products: SetBlogPostProductInput[]
 ): Promise<void> {
-  return apiFetch<void>(`/api/v1/admin/blog/posts/${id}/products`, {
+  return apiFetch<void>(`/admin/blog/posts/${id}/products`, {
     method: "PUT",
-    body: JSON.stringify({ products }),
+    body: JSON.stringify(products),
   });
 }
 
@@ -208,7 +208,7 @@ export async function generatePreviewToken(
   id: string
 ): Promise<PreviewTokenResponse> {
   return apiFetch<PreviewTokenResponse>(
-    `/api/v1/admin/blog/posts/${id}/preview-token`,
+    `/admin/blog/posts/${id}/preview-token`,
     { method: "POST" }
   );
 }
@@ -217,7 +217,7 @@ export async function generateBlogPostAI(
   id: string,
   data: GenerateBlogPostAIInput
 ): Promise<BlogPost> {
-  return apiFetch<BlogPost>(`/api/v1/admin/blog/posts/${id}/generate`, {
+  return apiFetch<BlogPost>(`/admin/blog/posts/${id}/generate`, {
     method: "POST",
     body: JSON.stringify(data),
   });
@@ -240,7 +240,7 @@ export async function aiAssistBlocks(
   data: AiAssistBlocksInput
 ): Promise<AiAssistBlocksResponse> {
   return apiFetch<AiAssistBlocksResponse>(
-    `/api/v1/admin/blog/posts/${postId}/ai-assist`,
+    `/admin/blog/posts/${postId}/ai-assist`,
     {
       method: "POST",
       body: JSON.stringify(data),
@@ -252,6 +252,6 @@ export async function searchProductsForBlog(
   query: string
 ): Promise<BlogProductSearchResult[]> {
   return apiFetch<BlogProductSearchResult[]>(
-    `/api/v1/admin/blog/products/search?q=${encodeURIComponent(query)}`
+    `/admin/blog/products/search?q=${encodeURIComponent(query)}`
   );
 }
