@@ -43,11 +43,13 @@ import { toast } from "sonner";
 interface ContentItem {
   id: string;
   productId: string;
-  productTitle: string;
+  entityId?: string;
+  productTitle?: string;
   status: string;
   qualityScore: number | null;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
+  contentUpdatedAt?: string;
 }
 
 export default function ContentListPage() {
@@ -88,7 +90,7 @@ export default function ContentListPage() {
   };
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
+    switch (status?.toLowerCase()) {
       case "approved":
         return (
           <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
@@ -143,9 +145,11 @@ export default function ContentListPage() {
     );
   };
 
-  const filteredContent = content.filter((item) =>
-    item.productTitle?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredContent = content.filter((item) => {
+    if (!searchQuery) return true;
+    const haystack = `${item.productTitle ?? ""} ${item.productId ?? ""}`.toLowerCase();
+    return haystack.includes(searchQuery.toLowerCase());
+  });
 
   return (
     <div className="space-y-6 p-6">
@@ -245,7 +249,11 @@ export default function ContentListPage() {
                 {filteredContent.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell className="font-medium">
-                      {item.productTitle}
+                      {item.productTitle ?? (
+                        <span className="text-xs text-muted-foreground font-mono">
+                          {item.productId ?? item.entityId ?? "—"}
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell>{getStatusBadge(item.status)}</TableCell>
                     <TableCell>{getQualityBadge(item.qualityScore)}</TableCell>
@@ -253,7 +261,10 @@ export default function ContentListPage() {
                       {new Date(item.createdAt).toLocaleDateString()}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {new Date(item.updatedAt).toLocaleDateString()}
+                      {(() => {
+                        const ts = item.updatedAt ?? item.contentUpdatedAt ?? item.createdAt;
+                        return ts ? new Date(ts).toLocaleDateString() : "—";
+                      })()}
                     </TableCell>
                     <TableCell className="text-right">
                       <Link href={`/content/${item.id}`}>
