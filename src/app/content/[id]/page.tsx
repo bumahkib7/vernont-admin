@@ -267,13 +267,31 @@ export default function ContentDetailPage({ params }: Props) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Content</CardTitle>
+          <CardTitle>Storefront preview</CardTitle>
           <CardDescription>
-            Raw markdown as produced by the agent
+            Exactly how this content will render on the storefront once approved.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <pre className="whitespace-pre-wrap rounded-md border bg-muted/30 p-4 text-sm leading-relaxed font-sans">
+          <iframe
+            title="Storefront preview"
+            src={`/api/admin/content/${id}/preview`}
+            className="w-full rounded-md border bg-white"
+            style={{ height: "70vh" }}
+            sandbox="allow-same-origin allow-scripts allow-popups"
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Raw markdown</CardTitle>
+          <CardDescription>
+            Source produced by the agent — useful when the preview looks wrong.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <pre className="whitespace-pre-wrap rounded-md border bg-muted/30 p-4 text-sm leading-relaxed font-sans max-h-96 overflow-auto">
             {content.content || "(empty)"}
           </pre>
         </CardContent>
