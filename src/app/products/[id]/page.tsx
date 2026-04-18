@@ -108,11 +108,20 @@ import {
   assignProductSalesChannels,
 } from "@/lib/api";
 import { getBrands } from "@/lib/api/brands";
-import { SpecificationsEditor } from "@/components/products/specifications-editor";
+import { DynamicSpecificationsEditor } from "@/components/products/dynamic-specifications-editor";
 import { ProductAiAssistant } from "@/components/products/product-ai-assistant";
+import { useSpecificationTypes } from "@/hooks/use-specification-schema";
 import { VariantImagePicker } from "@/components/products/VariantImagePicker";
 import { useRef } from "react";
 import { toast } from "sonner";
+
+const FALLBACK_PRODUCT_TYPES = [
+  { value: "eyewear", label: "Eyewear" },
+  { value: "shoes", label: "Shoes" },
+  { value: "bags", label: "Bags" },
+  { value: "fashion", label: "Fashion" },
+  { value: "fragrance", label: "Fragrance" },
+];
 
 import { usePageContext } from "@/hooks/use-page-context";
 import { useConfirm } from "@/hooks/use-confirm";
@@ -201,6 +210,7 @@ export default function ProductDetailPage() {
     categoryId: "",
     collectionId: "",
     brandId: "",
+    productType: "",
     // SEO meta overrides — all optional free-text inputs. Blank string
     // is the cleared state; the save handler turns blank into explicit
     // empty string on the payload so the backend clears the override.
@@ -222,6 +232,12 @@ export default function ProductDetailPage() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [ConfirmDialog, confirm] = useConfirm();
+
+  // Product types — API with hardcoded fallback
+  const { data: specTypes } = useSpecificationTypes();
+  const productTypes = (specTypes && specTypes.length > 0)
+    ? specTypes.map((st) => ({ value: st.type, label: st.display_name }))
+    : FALLBACK_PRODUCT_TYPES;
 
   // Fetch product via React Query
   const productQuery = useQuery({
@@ -257,6 +273,7 @@ export default function ProductDetailPage() {
           categoryId: data.categories?.[0] || "",
           collectionId: data.collectionId || "",
           brandId: data.brandId || "",
+          productType: data.typeId || "",
           metaTitle: data.metaTitle ?? "",
           metaDescription: data.metaDescription ?? "",
           metaKeywords: data.metaKeywords ?? "",
@@ -387,6 +404,7 @@ export default function ProductDetailPage() {
         categories: formData.categoryId ? [formData.categoryId] : undefined,
         collectionId: formData.collectionId || undefined,
         brandId: formData.brandId || undefined,
+        typeId: formData.productType || undefined,
         // SEO meta: always send the current form value so blank-string
         // explicitly clears the backend override (service treats "" as null).
         metaTitle: formData.metaTitle,
@@ -1434,8 +1452,8 @@ export default function ProductDetailPage() {
             </CardContent>
           </Card>
 
-          {/* Specifications */}
-          <SpecificationsEditor productId={product.id} />
+          {/* Specifications — dynamic, schema-driven editor */}
+          <DynamicSpecificationsEditor productId={product.id} />
 
           {/* AI Product Assistant */}
           {product && (
@@ -1738,6 +1756,28 @@ export default function ProductDetailPage() {
                     <SelectItem value="female">Women</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <Separator />
+              <div className="space-y-2">
+                <Label>Product Type</Label>
+                <Select
+                  value={formData.productType || ""}
+                  onValueChange={(value) => updateField("productType", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {productTypes.map((pt) => (
+                      <SelectItem key={pt.value} value={pt.value}>
+                        {pt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Determines specification fields and storefront category
+                </p>
               </div>
             </CardContent>
           </Card>

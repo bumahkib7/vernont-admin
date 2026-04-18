@@ -44,6 +44,22 @@ import {
   useProductFormStore,
   getVariantDisplayName,
 } from "@/stores/product-form-store";
+import { useSpecificationTypes } from "@/hooks/use-specification-schema";
+
+const FALLBACK_PRODUCT_TYPES = [
+  { value: "eyewear", label: "Eyewear" },
+  { value: "shoes", label: "Shoes" },
+  { value: "bags", label: "Bags" },
+  { value: "fashion", label: "Fashion" },
+  { value: "fragrance", label: "Fragrance" },
+];
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type Step = {
   id: string;
@@ -108,6 +124,12 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [fieldErrors, setFieldErrors] = React.useState<FieldErrors>({});
 
+  // Product types — API with hardcoded fallback
+  const { data: specTypes } = useSpecificationTypes();
+  const productTypes = (specTypes && specTypes.length > 0)
+    ? specTypes.map((st) => ({ value: st.type, label: st.display_name }))
+    : FALLBACK_PRODUCT_TYPES;
+
   // Backend data (kept local — not form state)
   const [categories, setCategories] = React.useState<ProductCategory[]>([]);
   const [collections, setCollections] = React.useState<ProductCollection[]>([]);
@@ -116,6 +138,8 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
 
   // WebSocket for progress tracking
   const { isConnected, subscribe, unsubscribe } = useWebSocket({ autoConnect: true });
+
+
 
   // --- Zustand store ---
   const store = useProductFormStore();
@@ -313,6 +337,7 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
         shippingProfileId: "default",
         categoryIds: store.category ? [store.category] : [],
         brandId: store.brandId || undefined,  // omit if no brand selected
+        typeId: store.productType || undefined,
         tags: store.tags.length > 0 ? store.tags : undefined,
         images: uploadedImages.length > 0 ? uploadedImages : undefined,
         options: store.hasVariants
@@ -565,6 +590,29 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                           </p>
                         )}
                       </div>
+                    </div>
+
+                    {/* Product Type */}
+                    <div className="space-y-2">
+                      <Label>Product Type</Label>
+                      <Select
+                        value={store.productType || ""}
+                        onValueChange={(value) => store.setField("productType", value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a product type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {productTypes.map((pt) => (
+                            <SelectItem key={pt.value} value={pt.value}>
+                              {pt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">
+                        Determines specification fields and storefront category
+                      </p>
                     </div>
 
                     <div className="space-y-2">

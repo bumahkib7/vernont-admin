@@ -157,15 +157,16 @@ export function SpecificationsEditor({ productId }: SpecificationsEditorProps) {
     try {
       const data = await getProductSpecifications(productId);
       if (data?.data) {
+        const d = data.data as unknown as EyewearSpecification;
         setSpec({
-          frame: data.data.frame || {},
-          lens: data.data.lens || {},
-          measurements: data.data.measurements || {},
-          fit: data.data.fit || {},
-          model: data.data.model || {},
-          includedItems: data.data.includedItems || [],
-          careInstructions: data.data.careInstructions || [],
-          features: data.data.features || [],
+          frame: d.frame || {},
+          lens: d.lens || {},
+          measurements: d.measurements || {},
+          fit: d.fit || {},
+          model: d.model || {},
+          includedItems: d.includedItems || [],
+          careInstructions: d.careInstructions || [],
+          features: d.features || [],
         });
         setHasExisting(true);
       }

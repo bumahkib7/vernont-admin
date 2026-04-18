@@ -208,6 +208,7 @@ export interface CreateProductInput {
   tags?: string[];
   salesChannelIds?: string[];
   brandId?: string;
+  typeId?: string;
 }
 
 // Get products list
@@ -888,8 +889,8 @@ export interface EyewearSpecification {
 
 export interface ProductSpecificationResponse {
   productId: string;
-  type: string;
-  data: EyewearSpecification;
+  type: string | null;
+  data: Record<string, unknown> | null;
   isComplete: boolean;
 }
 
@@ -937,6 +938,69 @@ export async function deleteProductSpecifications(
   await apiFetch<void>(`/admin/products/${productId}/specifications`, {
     method: "DELETE",
   });
+}
+
+// =============================================================================
+// Generic Specification API (type-aware)
+// =============================================================================
+
+export interface SpecificationFieldSchema {
+  name: string;
+  path: string;
+  type: "string" | "number" | "boolean" | "object" | "array<string>" | "array<object>" | "map";
+  nullable?: boolean;
+  description: string;
+  options?: string[];
+  fields?: SpecificationFieldSchema[];
+  item_fields?: SpecificationFieldSchema[];
+}
+
+export interface SpecificationTypeInfo {
+  type: string;
+  display_name: string;
+  field_count: number;
+  default_options: string[];
+  filter_fields: string[];
+  sort_fields: string[];
+}
+
+export interface SpecificationSchema {
+  type: string;
+  description: string;
+  fields: SpecificationFieldSchema[];
+  tools: Record<string, string>;
+}
+
+export async function getSpecificationTypes(): Promise<SpecificationTypeInfo[]> {
+  return apiFetch<SpecificationTypeInfo[]>("/admin/specification-schemas");
+}
+
+export async function getSpecificationSchema(
+  type: string
+): Promise<SpecificationSchema> {
+  return apiFetch<SpecificationSchema>(`/admin/specification-schemas/${type}`);
+}
+
+export async function setSpecification(
+  productId: string,
+  type: string,
+  spec: Record<string, unknown>
+): Promise<ProductSpecificationResponse> {
+  return apiFetch<ProductSpecificationResponse>(
+    `/admin/products/${productId}/specifications/${type}`,
+    { method: "PUT", body: JSON.stringify(spec) }
+  );
+}
+
+export async function patchSpecification(
+  productId: string,
+  type: string,
+  patch: Record<string, unknown>
+): Promise<ProductSpecificationResponse> {
+  return apiFetch<ProductSpecificationResponse>(
+    `/admin/products/${productId}/specifications/${type}`,
+    { method: "PATCH", body: JSON.stringify(patch) }
+  );
 }
 
 // =============================================================================

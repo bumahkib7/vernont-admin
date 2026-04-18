@@ -40,6 +40,7 @@ export interface ProductFormState {
   category: string;
   collection: string;
   brandId: string;
+  productType: string;
   tags: string[];
 
   // Variants
@@ -212,6 +213,7 @@ const initialState: ProductFormState = {
   category: "",
   collection: "",
   brandId: "",
+  productType: "",
   tags: [],
   options: [],
   variantPrices: [],
@@ -381,6 +383,7 @@ export const useProductFormStore = create<ProductFormState & ProductFormActions>
       if (data.category != null) updates.category = String(data.category);
       if (data.collection != null) updates.collection = String(data.collection);
       if (data.brandId != null) updates.brandId = String(data.brandId);
+      if (data.productType != null) updates.productType = String(data.productType);
       if (Array.isArray(data.tags)) updates.tags = data.tags as string[];
       set(updates);
     },
