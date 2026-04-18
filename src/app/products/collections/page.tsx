@@ -53,6 +53,7 @@ import {
   Info,
 } from "lucide-react";
 import { toast } from "sonner";
+import { Checkbox } from "@/components/ui/checkbox";
 import { type Collection } from "@/lib/api";
 import {
   useCollections,
@@ -60,14 +61,24 @@ import {
   useDeleteCollection,
 } from "@/hooks/use-collections";
 
+const PRODUCT_TYPES = [
+  { value: "EYEWEAR", label: "Eyewear" },
+  { value: "SHOES", label: "Shoes" },
+  { value: "BAGS", label: "Bags" },
+  { value: "FASHION", label: "Fashion" },
+  { value: "FRAGRANCE", label: "Fragrance" },
+];
+
 type CollectionFormData = {
   title: string;
   handle: string;
+  product_types: string[];
 };
 
 const initialFormData: CollectionFormData = {
   title: "",
   handle: "",
+  product_types: [],
 };
 
 export default function CollectionsPage() {
@@ -108,6 +119,7 @@ export default function CollectionsPage() {
       {
         title: formData.title,
         handle: formData.handle || generateHandle(formData.title),
+        product_types: formData.product_types.length > 0 ? formData.product_types : undefined,
       },
       {
         onSuccess: (response) => {
@@ -278,6 +290,33 @@ export default function CollectionsPage() {
                   value={formData.handle}
                   onChange={(e) => setFormData({ ...formData, handle: e.target.value })}
                 />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Product Types</Label>
+              <p className="text-xs text-muted-foreground">
+                Which verticals does this collection belong to?
+              </p>
+              <div className="space-y-2 pt-1">
+                {PRODUCT_TYPES.map((pt) => (
+                  <div key={pt.value} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`col-pt-${pt.value}`}
+                      checked={formData.product_types.includes(pt.value)}
+                      onCheckedChange={(checked) =>
+                        setFormData((f) => ({
+                          ...f,
+                          product_types: checked
+                            ? [...f.product_types, pt.value]
+                            : f.product_types.filter((v) => v !== pt.value),
+                        }))
+                      }
+                    />
+                    <Label htmlFor={`col-pt-${pt.value}`} className="text-sm font-normal cursor-pointer">
+                      {pt.label}
+                    </Label>
+                  </div>
+                ))}
               </div>
             </div>
           </div>

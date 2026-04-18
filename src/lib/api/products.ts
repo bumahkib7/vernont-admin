@@ -74,6 +74,7 @@ export interface ProductCategory {
   source?: string;
   product_count: number;
   subcategory_count: number;
+  product_types: string[];
   created_at: string;
   updated_at: string;
   deleted_at?: string;
@@ -94,6 +95,7 @@ export interface ProductCollection {
   image_url: string | null;
   product_count: number;
   products: CollectionProduct[];
+  product_types: string[];
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -362,6 +364,7 @@ export interface CreateCategoryInput {
   is_internal?: boolean;
   position?: number;
   parent_category_id?: string;
+  product_types?: string[];
 }
 
 export async function getCategories(params?: {
@@ -503,6 +506,7 @@ export interface CreateCollectionInput {
   title: string;
   handle?: string;
   metadata?: Record<string, unknown>;
+  product_types?: string[];
 }
 
 export async function getCollections(params?: {

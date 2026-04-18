@@ -58,6 +58,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Search,
   Plus,
@@ -100,11 +101,20 @@ type CategoryWithChildren = ProductCategory & {
   loadedProducts?: CategoryProductItem[];
 };
 
+const PRODUCT_TYPES = [
+  { value: "EYEWEAR", label: "Eyewear" },
+  { value: "SHOES", label: "Shoes" },
+  { value: "BAGS", label: "Bags" },
+  { value: "FASHION", label: "Fashion" },
+  { value: "FRAGRANCE", label: "Fragrance" },
+];
+
 type CategoryFormData = {
   name: string;
   handle: string;
   description: string;
   parent_category_id: string;
+  product_types: string[];
 };
 
 const initialFormData: CategoryFormData = {
@@ -112,6 +122,7 @@ const initialFormData: CategoryFormData = {
   handle: "",
   description: "",
   parent_category_id: "",
+  product_types: [],
 };
 
 function buildCategoryTree(categories: ProductCategory[]): CategoryWithChildren[] {
@@ -265,11 +276,18 @@ function DraggableCategoryRow({
         </TableCell>
         <TableCell className="text-center">{category.product_count}</TableCell>
         <TableCell>
-          {category.is_active ? (
-            <Badge className="bg-green-100 dark:bg-green-950/30 text-green-800 dark:text-green-400">Active</Badge>
-          ) : (
-            <Badge variant="secondary">Inactive</Badge>
-          )}
+          <div className="flex flex-wrap items-center gap-1">
+            {category.is_active ? (
+              <Badge className="bg-green-100 dark:bg-green-950/30 text-green-800 dark:text-green-400">Active</Badge>
+            ) : (
+              <Badge variant="secondary">Inactive</Badge>
+            )}
+            {(category.product_types ?? []).map((pt) => (
+              <Badge key={pt} variant="outline" className="text-[10px] px-1.5 py-0">
+                {pt.charAt(0) + pt.slice(1).toLowerCase()}
+              </Badge>
+            ))}
+          </div>
         </TableCell>
         <TableCell>
           <DropdownMenu>
@@ -558,6 +576,7 @@ export default function CategoriesPage() {
       handle: category.handle,
       description: category.description || "",
       parent_category_id: category.parent_category_id || "",
+      product_types: category.product_types ?? [],
     });
     setEditModalOpen(true);
   };
@@ -577,6 +596,7 @@ export default function CategoriesPage() {
       handle: formData.handle || generateHandle(formData.name),
       description: formData.description || undefined,
       parent_category_id: formData.parent_category_id || undefined,
+      product_types: formData.product_types.length > 0 ? formData.product_types : undefined,
     };
     createMutation.mutate(data, {
       onSuccess: () => {
@@ -600,6 +620,7 @@ export default function CategoriesPage() {
           handle: formData.handle || undefined,
           description: formData.description || undefined,
           parent_category_id: formData.parent_category_id || undefined,
+          product_types: formData.product_types,
         },
       },
       {
@@ -1004,6 +1025,33 @@ export default function CategoriesPage() {
                     ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Product Types</Label>
+              <p className="text-xs text-muted-foreground">
+                Which verticals does this category belong to?
+              </p>
+              <div className="space-y-2 pt-1">
+                {PRODUCT_TYPES.map((pt) => (
+                  <div key={pt.value} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`cat-pt-${pt.value}`}
+                      checked={formData.product_types.includes(pt.value)}
+                      onCheckedChange={(checked) =>
+                        setFormData((f) => ({
+                          ...f,
+                          product_types: checked
+                            ? [...f.product_types, pt.value]
+                            : f.product_types.filter((v) => v !== pt.value),
+                        }))
+                      }
+                    />
+                    <Label htmlFor={`cat-pt-${pt.value}`} className="text-sm font-normal cursor-pointer">
+                      {pt.label}
+                    </Label>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 

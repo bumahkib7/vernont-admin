@@ -76,6 +76,14 @@ import {
   useRemoveProductsFromCollection,
 } from "@/hooks/use-collections";
 
+const PRODUCT_TYPES = [
+  { value: "EYEWEAR", label: "Eyewear" },
+  { value: "SHOES", label: "Shoes" },
+  { value: "BAGS", label: "Bags" },
+  { value: "FASHION", label: "Fashion" },
+  { value: "FRAGRANCE", label: "Fragrance" },
+];
+
 export default function CollectionDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -96,7 +104,7 @@ export default function CollectionDetailPage() {
   // UI-only state
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [editForm, setEditForm] = useState({ title: "", handle: "" });
+  const [editForm, setEditForm] = useState({ title: "", handle: "", product_types: [] as string[] });
 
   // Add products modal state
   const [addProductsModalOpen, setAddProductsModalOpen] = useState(false);
@@ -117,7 +125,7 @@ export default function CollectionDetailPage() {
 
   const openEditModal = () => {
     if (!collection) return;
-    setEditForm({ title: collection.title, handle: collection.handle });
+    setEditForm({ title: collection.title, handle: collection.handle, product_types: collection.product_types ?? [] });
     setEditModalOpen(true);
   };
 
@@ -125,7 +133,7 @@ export default function CollectionDetailPage() {
     if (!collection) return;
 
     updateMutation.mutate(
-      { id: collection.id, data: { title: editForm.title, handle: editForm.handle } },
+      { id: collection.id, data: { title: editForm.title, handle: editForm.handle, product_types: editForm.product_types } },
       {
         onSuccess: () => {
           toast.success("Collection updated");
@@ -380,6 +388,33 @@ export default function CollectionDetailPage() {
                   value={editForm.handle}
                   onChange={(e) => setEditForm({ ...editForm, handle: e.target.value })}
                 />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Product Types</Label>
+              <p className="text-xs text-muted-foreground">
+                Which verticals does this collection belong to?
+              </p>
+              <div className="space-y-2 pt-1">
+                {PRODUCT_TYPES.map((pt) => (
+                  <div key={pt.value} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`edit-col-pt-${pt.value}`}
+                      checked={editForm.product_types.includes(pt.value)}
+                      onCheckedChange={(checked) =>
+                        setEditForm((f) => ({
+                          ...f,
+                          product_types: checked
+                            ? [...f.product_types, pt.value]
+                            : f.product_types.filter((v) => v !== pt.value),
+                        }))
+                      }
+                    />
+                    <Label htmlFor={`edit-col-pt-${pt.value}`} className="text-sm font-normal cursor-pointer">
+                      {pt.label}
+                    </Label>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -644,14 +679,34 @@ export default function CollectionDetailPage() {
                   </div>
                 </div>
               </div>
+              <div className="space-y-2">
+                <Label>Product Types</Label>
+                <div className="flex flex-wrap gap-3 pt-1">
+                  {PRODUCT_TYPES.map((pt) => (
+                    <div key={pt.value} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`detail-col-pt-${pt.value}`}
+                        checked={(editForm.product_types.length > 0 ? editForm.product_types : collection.product_types ?? []).includes(pt.value)}
+                        onCheckedChange={(checked) =>
+                          setEditForm((f) => ({
+                            ...f,
+                            product_types: checked
+                              ? [...(f.product_types.length > 0 ? f.product_types : collection.product_types ?? []), pt.value]
+                              : (f.product_types.length > 0 ? f.product_types : collection.product_types ?? []).filter((v) => v !== pt.value),
+                          }))
+                        }
+                      />
+                      <Label htmlFor={`detail-col-pt-${pt.value}`} className="text-sm font-normal cursor-pointer">
+                        {pt.label}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
               <div className="flex justify-end">
                 <Button
                   onClick={handleSaveEdit}
-                  disabled={
-                    updateMutation.isPending ||
-                    ((editForm.title || collection.title) === collection.title &&
-                      (editForm.handle || collection.handle) === collection.handle)
-                  }
+                  disabled={updateMutation.isPending}
                 >
                   {updateMutation.isPending ? (
                     <>
