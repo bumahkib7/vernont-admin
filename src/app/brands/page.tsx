@@ -54,6 +54,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Search,
   Plus,
@@ -68,6 +69,14 @@ import {
 import { toast } from "sonner";
 import { useBrands, useCreateBrand, useUpdateBrand, useDeleteBrand } from "@/hooks/use-brands";
 import type { Brand, BrandTier, CreateBrandInput, UpdateBrandInput } from "@/lib/api/brands";
+
+const PRODUCT_TYPES = [
+  { value: "EYEWEAR", label: "Eyewear" },
+  { value: "SHOES", label: "Shoes" },
+  { value: "BAGS", label: "Bags" },
+  { value: "FASHION", label: "Fashion" },
+  { value: "FRAGRANCE", label: "Fragrance" },
+];
 
 function generateSlug(name: string): string {
   return name
@@ -129,7 +138,7 @@ export default function BrandsPage() {
   });
 
   const handleCreateOpen = () => {
-    setCreateForm({ name: "", slug: "", tier: "STANDARD", active: true });
+    setCreateForm({ name: "", slug: "", tier: "STANDARD", active: true, productTypes: [] });
     setCreateOpen(true);
   };
 
@@ -160,6 +169,7 @@ export default function BrandsPage() {
       websiteUrl: brand.websiteUrl ?? "",
       tier: brand.tier,
       active: brand.active,
+      productTypes: brand.productTypes ?? [],
     });
   };
 
@@ -234,6 +244,7 @@ export default function BrandsPage() {
                     <TableHead>Name</TableHead>
                     <TableHead>Slug</TableHead>
                     <TableHead>Tier</TableHead>
+                    <TableHead>Product Types</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Website</TableHead>
                     <TableHead className="w-[50px]" />
@@ -247,6 +258,17 @@ export default function BrandsPage() {
                         {brand.slug}
                       </TableCell>
                       <TableCell>{tierBadge(brand.tier)}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {(brand.productTypes ?? []).length > 0
+                            ? brand.productTypes.map((pt) => (
+                                <Badge key={pt} variant="outline" className="text-xs">
+                                  {PRODUCT_TYPES.find((p) => p.value === pt)?.label ?? pt}
+                                </Badge>
+                              ))
+                            : <span className="text-muted-foreground text-sm">--</span>}
+                        </div>
+                      </TableCell>
                       <TableCell>
                         {brand.active ? (
                           <Badge className="bg-green-100 dark:bg-green-950/30 text-green-800 dark:text-green-400 hover:bg-green-100">
@@ -425,6 +447,27 @@ export default function BrandsPage() {
                 placeholder="https://..."
               />
             </div>
+            <div className="space-y-2">
+              <Label>Product Types</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {PRODUCT_TYPES.map((pt) => (
+                  <label key={pt.value} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <Checkbox
+                      checked={(createForm.productTypes ?? []).includes(pt.value)}
+                      onCheckedChange={(checked) =>
+                        setCreateForm((f) => ({
+                          ...f,
+                          productTypes: checked
+                            ? [...(f.productTypes ?? []), pt.value]
+                            : (f.productTypes ?? []).filter((v) => v !== pt.value),
+                        }))
+                      }
+                    />
+                    {pt.label}
+                  </label>
+                ))}
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>
@@ -522,6 +565,27 @@ export default function BrandsPage() {
                 value={editForm.logoUrl ?? ""}
                 onChange={(e) => setEditForm((f) => ({ ...f, logoUrl: e.target.value }))}
               />
+            </div>
+            <div className="space-y-2">
+              <Label>Product Types</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {PRODUCT_TYPES.map((pt) => (
+                  <label key={pt.value} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <Checkbox
+                      checked={(editForm.productTypes ?? []).includes(pt.value)}
+                      onCheckedChange={(checked) =>
+                        setEditForm((f) => ({
+                          ...f,
+                          productTypes: checked
+                            ? [...(f.productTypes ?? []), pt.value]
+                            : (f.productTypes ?? []).filter((v) => v !== pt.value),
+                        }))
+                      }
+                    />
+                    {pt.label}
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
           <DialogFooter>

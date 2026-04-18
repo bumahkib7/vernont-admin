@@ -13,6 +13,7 @@ export interface Brand {
   websiteUrl: string | null;
   active: boolean;
   tier: BrandTier;
+  productTypes: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -33,6 +34,7 @@ export interface CreateBrandInput {
   websiteUrl?: string;
   active?: boolean;
   tier?: BrandTier;
+  productTypes?: string[];
 }
 
 export interface UpdateBrandInput {
@@ -43,6 +45,7 @@ export interface UpdateBrandInput {
   websiteUrl?: string;
   active?: boolean;
   tier?: BrandTier;
+  productTypes?: string[];
 }
 
 // --- API Functions ---
