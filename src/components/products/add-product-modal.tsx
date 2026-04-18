@@ -53,13 +53,6 @@ const FALLBACK_PRODUCT_TYPES = [
   { value: "fashion", label: "Fashion" },
   { value: "fragrance", label: "Fragrance" },
 ];
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 type Step = {
   id: string;
@@ -595,21 +588,18 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                     {/* Product Type */}
                     <div className="space-y-2">
                       <Label>Product Type</Label>
-                      <Select
+                      <select
                         value={store.productType || ""}
-                        onValueChange={(value) => store.setField("productType", value)}
+                        onChange={(e) => store.setField("productType", e.target.value)}
+                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                       >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a product type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {productTypes.map((pt) => (
-                            <SelectItem key={pt.value} value={pt.value}>
-                              {pt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        <option value="">Select a product type</option>
+                        {productTypes.map((pt) => (
+                          <option key={pt.value} value={pt.value}>
+                            {pt.label}
+                          </option>
+                        ))}
+                      </select>
                       <p className="text-xs text-muted-foreground">
                         Determines specification fields and storefront category
                       </p>
