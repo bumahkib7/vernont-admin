@@ -29,6 +29,7 @@ export interface Promotion {
   buyQuantity?: number;
   getQuantity?: number;
   getDiscountValue?: number;
+  productTypes: string[];
   rules: PromotionRuleDto[];
   stats?: PromotionStats;
   status: PromotionStatus;
@@ -103,6 +104,7 @@ export interface CreatePromotionRequest {
   buyQuantity?: number;
   getQuantity?: number;
   getDiscountValue?: number;
+  productTypes?: string[];
   rules?: CreatePromotionRuleRequest[];
   activateImmediately?: boolean;
 }
@@ -130,6 +132,7 @@ export interface UpdatePromotionRequest {
   buyQuantity?: number;
   getQuantity?: number;
   getDiscountValue?: number;
+  productTypes?: string[];
   rules?: CreatePromotionRuleRequest[];
 }
 

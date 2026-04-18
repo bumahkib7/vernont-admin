@@ -40,6 +40,7 @@ import {
   Users,
   ShoppingCart,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   createDiscount,
   updateDiscount,
@@ -51,6 +52,14 @@ import {
   getPromotionTypeDisplay,
 } from "@/lib/api";
 import { useAgentActionsStore } from "@/stores/agent-actions";
+
+const PRODUCT_TYPES = [
+  { value: "EYEWEAR", label: "Eyewear" },
+  { value: "SHOES", label: "Shoes" },
+  { value: "BAGS", label: "Bags" },
+  { value: "FASHION", label: "Fashion" },
+  { value: "FRAGRANCE", label: "Fragrance" },
+];
 
 interface DiscountDialogProps {
   open: boolean;
@@ -78,6 +87,7 @@ interface FormData {
   buyQuantity: number | null;
   getQuantity: number | null;
   getDiscountValue: number | null;
+  productTypes: string[];
   activateImmediately: boolean;
   rules: CreatePromotionRuleRequest[];
 }
@@ -99,6 +109,7 @@ const initialFormData: FormData = {
   buyQuantity: null,
   getQuantity: null,
   getDiscountValue: null,
+  productTypes: [],
   activateImmediately: false,
   rules: [],
 };
@@ -151,6 +162,7 @@ export function DiscountDialog({
         buyQuantity: discount.buyQuantity || null,
         getQuantity: discount.getQuantity || null,
         getDiscountValue: discount.getDiscountValue || null,
+        productTypes: discount.productTypes ?? [],
         activateImmediately: discount.isActive,
         rules: discount.rules?.map((r) => ({
           type: r.type,
@@ -267,6 +279,7 @@ export function DiscountDialog({
         buyQuantity: formData.buyQuantity ?? undefined,
         getQuantity: formData.getQuantity ?? undefined,
         getDiscountValue: formData.getDiscountValue ?? undefined,
+        productTypes: formData.productTypes.length > 0 ? formData.productTypes : undefined,
         rules: formData.rules.length > 0 ? formData.rules : undefined,
         activateImmediately: formData.activateImmediately,
       };
@@ -683,6 +696,33 @@ export function DiscountDialog({
             {/* Step 4: Rules */}
             {step === 4 && (
               <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Product Types</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Limit this discount to specific verticals. Leave empty for all.
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {PRODUCT_TYPES.map((pt) => (
+                      <label key={pt.value} className="flex items-center gap-2 text-sm cursor-pointer">
+                        <Checkbox
+                          checked={formData.productTypes.includes(pt.value)}
+                          onCheckedChange={(checked) =>
+                            setFormData({
+                              ...formData,
+                              productTypes: checked
+                                ? [...formData.productTypes, pt.value]
+                                : formData.productTypes.filter((v) => v !== pt.value),
+                            })
+                          }
+                        />
+                        {pt.label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <Separator />
+
                 <p className="text-sm text-muted-foreground">
                   Add eligibility rules to restrict who can use this discount.
                   Rules will be applied in the checkout flow.
@@ -851,6 +891,22 @@ export function DiscountDialog({
                       </div>
                     )}
                   </div>
+
+                  {formData.productTypes.length > 0 && (
+                    <>
+                      <Separator />
+                      <div>
+                        <span className="text-sm text-muted-foreground">Product Types:</span>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {formData.productTypes.map((pt) => (
+                            <Badge key={pt} variant="outline">
+                              {PRODUCT_TYPES.find((p) => p.value === pt)?.label ?? pt}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
 
                   {formData.rules.length > 0 && (
                     <>

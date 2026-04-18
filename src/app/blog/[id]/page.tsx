@@ -29,6 +29,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   ArrowLeft,
   Save,
@@ -78,6 +79,14 @@ const POST_TYPE_OPTIONS: { value: BlogPostType; label: string }[] = [
   { value: "CATEGORY_GUIDE", label: "Category Guide" },
   { value: "EDITORIAL", label: "Editorial" },
   { value: "EXPERT_COLUMN", label: "Expert Column" },
+];
+
+const PRODUCT_TYPES = [
+  { value: "EYEWEAR", label: "Eyewear" },
+  { value: "SHOES", label: "Shoes" },
+  { value: "BAGS", label: "Bags" },
+  { value: "FASHION", label: "Fashion" },
+  { value: "FRAGRANCE", label: "Fragrance" },
 ];
 
 const STATUS_STYLES: Record<string, { bg: string; text: string; dot: string }> = {
@@ -276,6 +285,7 @@ export default function BlogEditorPage() {
   const [postType, setPostType] = useState<BlogPostType>("PRODUCT_GUIDE");
   const [category, setCategory] = useState("");
   const [tags, setTags] = useState<string[]>([]);
+  const [productTypes, setProductTypes] = useState<string[]>([]);
   const [excerpt, setExcerpt] = useState("");
   const [coverImageUrl, setCoverImageUrl] = useState("");
   const [authorName, setAuthorName] = useState("");
@@ -304,6 +314,7 @@ export default function BlogEditorPage() {
       setPostType(post.postType ?? "PRODUCT_GUIDE");
       setCategory(post.category ?? "");
       setTags(post.tags ?? []);
+      setProductTypes(post.productTypes ?? []);
       setExcerpt(post.excerpt ?? "");
       setCoverImageUrl(post.coverImageUrl ?? "");
       setAuthorName(post.author?.name ?? "");
@@ -377,6 +388,7 @@ export default function BlogEditorPage() {
           postType,
           category: category || undefined,
           tags,
+          productTypes,
           excerpt: excerpt || undefined,
           coverImageUrl: coverImageUrl || undefined,
           author:
@@ -401,6 +413,7 @@ export default function BlogEditorPage() {
     postType,
     category,
     tags,
+    productTypes,
     excerpt,
     coverImageUrl,
     authorName,
@@ -713,6 +726,28 @@ export default function BlogEditorPage() {
                   <div className="space-y-1.5 sm:col-span-2">
                     <Label>Tags</Label>
                     <TagInput tags={tags} onChange={setTags} />
+                  </div>
+
+                  {/* Product Types */}
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label>Product Types</Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {PRODUCT_TYPES.map((pt) => (
+                        <label key={pt.value} className="flex items-center gap-2 text-sm cursor-pointer">
+                          <Checkbox
+                            checked={productTypes.includes(pt.value)}
+                            onCheckedChange={(checked) =>
+                              setProductTypes((prev) =>
+                                checked
+                                  ? [...prev, pt.value]
+                                  : prev.filter((v) => v !== pt.value)
+                              )
+                            }
+                          />
+                          {pt.label}
+                        </label>
+                      ))}
+                    </div>
                   </div>
 
                   {/* Excerpt */}

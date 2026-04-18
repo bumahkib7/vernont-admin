@@ -7,6 +7,7 @@ import { apiFetch } from "./client";
 export interface ProductTag {
   id: string;
   value: string;
+  product_types: string[];
   product_count: number;
   created_at: string;
   updated_at: string;
@@ -30,17 +31,17 @@ export async function getProductTags(q?: string): Promise<ProductTagListResponse
   return apiFetch<ProductTagListResponse>(`/admin/product-tags${query ? `?${query}` : ""}`);
 }
 
-export async function createProductTag(value: string): Promise<ProductTagSingleResponse> {
+export async function createProductTag(value: string, productTypes?: string[]): Promise<ProductTagSingleResponse> {
   return apiFetch<ProductTagSingleResponse>("/admin/product-tags", {
     method: "POST",
-    body: JSON.stringify({ value }),
+    body: JSON.stringify({ value, product_types: productTypes }),
   });
 }
 
-export async function updateProductTag(id: string, value: string): Promise<ProductTagSingleResponse> {
+export async function updateProductTag(id: string, value: string, productTypes?: string[]): Promise<ProductTagSingleResponse> {
   return apiFetch<ProductTagSingleResponse>(`/admin/product-tags/${id}`, {
     method: "PUT",
-    body: JSON.stringify({ value }),
+    body: JSON.stringify({ value, product_types: productTypes }),
   });
 }
 

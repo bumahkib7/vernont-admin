@@ -20,10 +20,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, Loader2, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { useCreateBlogPost } from "@/hooks/use-blog-posts";
 import type { BlogPostType } from "@/lib/api";
+
+const PRODUCT_TYPES = [
+  { value: "EYEWEAR", label: "Eyewear" },
+  { value: "SHOES", label: "Shoes" },
+  { value: "BAGS", label: "Bags" },
+  { value: "FASHION", label: "Fashion" },
+  { value: "FRAGRANCE", label: "Fragrance" },
+];
 
 const POST_TYPE_OPTIONS: { value: BlogPostType; label: string }[] = [
   { value: "PRODUCT_GUIDE", label: "Product Guide" },
@@ -39,6 +48,7 @@ export default function NewBlogPostPage() {
 
   const [title, setTitle] = useState("");
   const [postType, setPostType] = useState<BlogPostType | "">("");
+  const [productTypes, setProductTypes] = useState<string[]>([]);
 
   const canSubmit = title.trim().length > 0 && postType !== "";
 
@@ -50,6 +60,7 @@ export default function NewBlogPostPage() {
       const result = await createPost.mutateAsync({
         title: title.trim(),
         postType: postType as BlogPostType,
+        productTypes: productTypes.length > 0 ? productTypes : undefined,
       });
       router.push(`/blog/${result.id}`);
     } catch {
@@ -108,6 +119,30 @@ export default function NewBlogPostPage() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Product Types</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {PRODUCT_TYPES.map((pt) => (
+                  <label key={pt.value} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <Checkbox
+                      checked={productTypes.includes(pt.value)}
+                      onCheckedChange={(checked) =>
+                        setProductTypes((prev) =>
+                          checked
+                            ? [...prev, pt.value]
+                            : prev.filter((v) => v !== pt.value)
+                        )
+                      }
+                    />
+                    {pt.label}
+                  </label>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Which verticals should this post appear in?
+              </p>
             </div>
 
             <div className="flex justify-end gap-2 pt-2">

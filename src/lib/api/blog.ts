@@ -56,6 +56,7 @@ export interface BlogPost {
   coverImageAlt?: string;
   author?: { name: string; credential: string; avatar?: string };
   tags: string[];
+  productTypes: string[];
   category?: string;
   seoTitle?: string;
   seoDescription?: string;
@@ -79,6 +80,7 @@ export interface BlogPostListItem {
   category?: string;
   excerpt?: string;
   coverImageUrl?: string;
+  productTypes: string[];
   readingTimeMinutes: number;
   wordCount: number;
   qualityScore?: number;
@@ -107,6 +109,7 @@ export interface CreateBlogPostInput {
   postType: BlogPostType;
   category?: string;
   tags?: string[];
+  productTypes?: string[];
   excerpt?: string;
 }
 
