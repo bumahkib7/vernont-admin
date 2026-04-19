@@ -98,14 +98,24 @@ function validatePricingStep(
 ): FieldErrors {
   const errors: FieldErrors = {};
   if (hasVariants) {
-    const emptyPrices = variantPrices.filter((v) => !v.price || parseFloat(v.price) <= 0);
+    const emptyPrices = variantPrices.filter((v) => {
+      const trimmed = (v.price || "").trim();
+      if (!trimmed) return true; // Empty
+      const parsed = parseFloat(trimmed);
+      return isNaN(parsed) || parsed <= 0; // Invalid or zero
+    });
     if (emptyPrices.length > 0) {
-      errors.variantPrices = `${emptyPrices.length} variant(s) missing a price`;
+      errors.variantPrices = `${emptyPrices.length} variant(s) missing a valid price (must be greater than 0)`;
     }
   } else {
-    const parsed = parseFloat(price);
-    if (!price || isNaN(parsed) || parsed <= 0) {
-      errors.price = "Price must be greater than 0";
+    const trimmed = (price || "").trim();
+    if (!trimmed) {
+      errors.price = "Price is required";
+    } else {
+      const parsed = parseFloat(trimmed);
+      if (isNaN(parsed) || parsed <= 0) {
+        errors.price = "Price must be greater than 0";
+      }
     }
   }
   return errors;
@@ -394,7 +404,21 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
         }, 500);
       }, 300);
     } catch (err) {
-      store.setError(err instanceof Error ? err.message : "Failed to create product");
+      // Parse backend validation errors to show specific messages
+      let errorMessage = "Failed to create product";
+      if (err instanceof Error) {
+        errorMessage = err.message;
+        // Extract more specific error from backend validation messages
+        // E.g., "Variant 'New Balance ': price must be greater than 0 (GBP: 0)"
+        if (errorMessage.includes("price must be greater than 0")) {
+          errorMessage = "One or more variants are missing a valid price. Please ensure all prices are greater than 0.";
+        } else if (errorMessage.includes("Handle cannot be blank") || errorMessage.includes("handle")) {
+          errorMessage = "Product handle is invalid. Please enter a valid handle or leave it blank for auto-generation.";
+        } else if (errorMessage.includes("At least one variant is required")) {
+          errorMessage = "At least one product variant is required.";
+        }
+      }
+      store.setError(errorMessage);
       store.setProgress(null);
       console.error("Failed to create product:", err);
       store.setSaving(false);
@@ -1094,9 +1118,20 @@ export function AddProductModal({ isOpen, onClose, onSave }: AddProductModalProp
                                             type="text"
                                             inputMode="decimal"
                                             placeholder="0.00"
-                                            className="h-8 pl-5 text-sm"
+                                            className={cn(
+                                              "h-8 pl-5 text-sm",
+                                              fieldErrors.variantPrices && (!variant.price || parseFloat(variant.price) <= 0 || isNaN(parseFloat(variant.price)))
+                                                ? "border-red-500"
+                                                : ""
+                                            )}
                                             value={variant.price}
-                                            onChange={(e) => store.updateVariantPrice(idx, "price", e.target.value)}
+                                            onChange={(e) => {
+                                              store.updateVariantPrice(idx, "price", e.target.value);
+                                              // Clear variant price error when user starts typing
+                                              if (fieldErrors.variantPrices) {
+                                                setFieldErrors((prev) => { const { variantPrices, ...rest } = prev; return rest; });
+                                              }
+                                            }}
                                           />
                                         </div>
                                       </td>
